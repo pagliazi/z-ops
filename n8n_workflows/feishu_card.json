@@ -1,0 +1,118 @@
+{
+  "name": "飞书交互卡片 v2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "feishu-card",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "fc1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst cardType = input.card_type || 'info';\nconst title = input.title || 'Z-OPS 通知';\nconst content = input.content || '';\nconst buttons = input.action_buttons || [];\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nconst colorMap = { info: 'blue', success: 'green', warning: 'orange', error: 'red', approval: 'purple' };\nconst emojiMap = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '🔴', approval: '🔐' };\n\nreturn {\n  card_type: cardType,\n  title: `${emojiMap[cardType] || 'ℹ️'} ${title}`,\n  content,\n  color: colorMap[cardType] || 'blue',\n  action_buttons: buttons,\n  timestamp: cstTime,\n};"
+      },
+      "id": "fc2",
+      "name": "构建卡片",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'send_feishu', card_type: $json.card_type, title: $json.title, content: $json.content, color: $json.color, action_buttons: $json.action_buttons, timestamp: $json.timestamp }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "fc3",
+      "name": "发送卡片",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        650,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, card_type: $json.card_type, title: $json.title }) }}"
+      },
+      "id": "fc4",
+      "name": "响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "构建卡片",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "构建卡片": {
+      "main": [
+        [
+          {
+            "node": "发送卡片",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "发送卡片": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "notification",
+    "飞书",
+    "卡片"
+  ]
+}

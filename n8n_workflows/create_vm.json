@@ -1,0 +1,211 @@
+{
+  "name": "创建虚拟机 v2 (审批流)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "create-vm",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "cv1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst params = input.params || input;\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nreturn {\n  name: params.name || '',\n  cpu: params.cpu || 2,\n  memory: params.memory || 4096,\n  disk: params.disk || 50,\n  template: params.template || 'ubuntu-22.04',\n  network: params.network || 'default',\n  triggered_by: input.triggered_by || 'zops_api',\n  timestamp: cstTime,\n};"
+      },
+      "id": "cv2",
+      "name": "解析参数",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'approval_request', request_type: 'create_vm', title: `创建VM: ${$json.name}`, content: `名称: ${$json.name}\\nCPU: ${$json.cpu}核\\n内存: ${$json.memory}MB\\n磁盘: ${$json.disk}GB\\n模板: ${$json.template}\\n网络: ${$json.network}\\n请求人: ${$json.triggered_by}\\n时间: ${$json.timestamp}`, callback_url: 'http://localhost:7789/api/webhook/n8n_callback' }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "cv3",
+      "name": "发送审批",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        650,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/gcoc/vm/create",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.name, cpu: $json.cpu, memory: $json.memory, disk: $json.disk, template: $json.template, network: $json.network }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "cv4",
+      "name": "创建VM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        650,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 10000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'workflow_result', workflow_id: 'create_vm', vm_name: $json.name, status: 'completed', timestamp: $json.timestamp }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "cv5",
+      "name": "结果回调",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        850,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, vm_name: $json.name, status: 'pending_approval', message: '创建VM请求已提交审批' }) }}"
+      },
+      "id": "cv6",
+      "name": "响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "解析参数",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析参数": {
+      "main": [
+        [
+          {
+            "node": "发送审批",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "发送审批": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "创建VM": {
+      "main": [
+        [
+          {
+            "node": "结果回调",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "结果回调": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "vm",
+    "创建",
+    "审批",
+    "高危操作"
+  ]
+}

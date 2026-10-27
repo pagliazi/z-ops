@@ -1,0 +1,43 @@
+# ═══ Z-OPS 运维智能体 v2.0.0 — Python 依赖 ═══
+
+# 核心依赖
+redis[hiredis]>=5.0.0
+python-dotenv>=1.0.0
+pyyaml>=6.0
+httpx>=0.27.0
+aiohttp>=3.9.0
+# 本机设备协议: Ed25519 设备身份与签名验证 (core/cu)
+cryptography>=42.0.0
+
+# Web 框架
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+
+# CLI 工具 (v2.0 新增)
+# click>=8.1.0   # 可选: 替代 argparse
+
+# 通道扩展 (v2.0 新增)
+# python-telegram-bot>=21.0   # Telegram 通道
+
+# LLM (按需启用)
+# langchain-openai>=1.1.9
+# langchain-anthropic
+# langchain-google-genai
+# langchain-core>=1.2.14
+
+# 浏览器自动化 (可选)
+# playwright
+# browser-use>=0.11.11
+
+# 运维场景 (可选)
+# paramiko          # SSH 连接管理
+# ansible-runner    # Ansible 集成
+# pyVmomi           # VMware vCenter API
+# libvirt-python    # KVM/QEMU 管理
+# proxmoxer         # Proxmox VE API
+# netmiko           # 网络设备 SSH
+# nmap              # 端口扫描
+
+# 向量数据库 (可选)
+# chromadb
+# networkx

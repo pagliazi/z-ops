@@ -1,0 +1,111 @@
+# ============================================================
+# Z-OPS 主仓库 .gitignore
+# ============================================================
+
+# ══ 敏感配置（.env.example 对外展示 key 列表）══
+*.env
+!*.env.example
+
+# ══ 运行时产物 ══
+.pids/
+*.pid
+logs/
+*.log
+nohup.out
+zops-start.log
+zops-webchat.log
+
+# ══ 真实运维数据（含用户 ID/VM 名/业务报错）══
+data/cross_session_memory.json
+data/user_profiles.json
+data/skill_improvements.json
+data/memory_nudges.json
+data/trajectories/
+experiences/*.jsonl
+# 脱敏示例保留（data/sample/ 会被提交）
+
+# ══ 用户工作区 / 备份 / 截图 ══
+workspaces/
+backups/
+screenshots/
+
+# ══ Python 缓存 ══
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ══ 前端依赖与构建产物 ══
+web-next/node_modules/
+web-next/.next/
+web-next/out/
+web-next/dist/
+web-next/.turbo/
+web-next/tsconfig.tsbuildinfo
+webchat_frontend/node_modules/
+
+# ══ Companion 本地依赖与打包产物 ══
+companion/.venv/
+companion/.python/
+companion/.tools/
+companion/.cache/
+companion/.browsers/
+companion/.build/
+companion/dist/
+companion/build/
+companion/*.egg-info/
+
+# ══ 会话数据库 / 缓存 ══
+data-gym-cache/
+*.db
+data/skill_versions/
+data/skill_lifecycle/
+
+# ══ 历史 git 备份 ══
+.git.bak-*/
+.git.orig-*/
+
+# ══ Jupyter & 编辑器 ══
+.ipynb_checkpoints/
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ══ Wiki 子仓库（独立发布到 pagliazi/zops-wiki）══
+wiki/
+
+# ══ 历史备份与重复文件 ══
+*~
+* copy.md
+* copy 2.md
+* copy 3.md
+'21~'
+
+# ══ n8n 工作流运行时状态（实例私有）══
+n8n_workflows/*.credentials.json
+
+# ══ 2026-10-18 基线补充 (防 1.2GB 截图/env 密钥备份入库) ══
+webchat_frontend/nms_shots/
+.pw_tmp/
+downloads/
+data/memory_synthesis.json
+data/optimizations.json
+data/skill_lifecycle/
+*.env.bak*
+zops.env.*
+!zops.env.example
+
+# ══ 含公司标识的截图 / 私有证书 ══
+企业微信截图_*.png
+ssl/*.crt
+ssl/*.key
+*.bak
+*.bak-*
+*.bak_*

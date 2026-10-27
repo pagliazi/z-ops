@@ -1,0 +1,233 @@
+{
+  "name": "磁盘空间检查 v2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "value": "0 */4 * * *"
+            }
+          ]
+        }
+      },
+      "id": "ds1",
+      "name": "每4小时",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "disk-space-check",
+        "options": {}
+      },
+      "id": "ds0",
+      "name": "手动Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst threshold = input.params?.threshold || input.threshold || 85;\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\nreturn { threshold, timestamp: cstTime };"
+      },
+      "id": "ds2",
+      "name": "解析参数",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/health",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "ds3",
+      "name": "获取系统状态",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        700,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\nconst threshold = $('解析参数').first().json.threshold;\nlet health = {};\ntry { health = $('获取系统状态').first().json || {}; } catch(e) {}\n\nconst diskUsage = health.disk_usage_percent || 0;\nconst diskFree = health.disk_free_gb || 'N/A';\nconst isAlert = diskUsage >= threshold;\n\nreturn {\n  disk_usage_percent: diskUsage,\n  disk_free_gb: diskFree,\n  threshold,\n  is_alert: isAlert,\n  timestamp: cstTime,\n  summary: isAlert\n    ? `🔴 磁盘告警: 使用率 ${diskUsage}% (阈值 ${threshold}%), 剩余 ${diskFree}GB`\n    : `✅ 磁盘正常: 使用率 ${diskUsage}%, 剩余 ${diskFree}GB`\n};"
+      },
+      "id": "ds4",
+      "name": "磁盘评估",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "is-alert",
+              "leftValue": "={{ $json.is_alert }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "ds5",
+      "name": "超阈值?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'alert', level: 'error', message: $json.summary, source: 'disk_space_check', disk_usage: $json.disk_usage_percent, disk_free: $json.disk_free_gb, timestamp: $json.timestamp }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "ds6",
+      "name": "磁盘告警",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1300,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "每4小时": {
+      "main": [
+        [
+          {
+            "node": "解析参数",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "手动Webhook": {
+      "main": [
+        [
+          {
+            "node": "解析参数",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析参数": {
+      "main": [
+        [
+          {
+            "node": "获取系统状态",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "获取系统状态": {
+      "main": [
+        [
+          {
+            "node": "磁盘评估",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "磁盘评估",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "磁盘评估": {
+      "main": [
+        [
+          {
+            "node": "超阈值?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "超阈值?": {
+      "main": [
+        [
+          {
+            "node": "磁盘告警",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "ops",
+    "磁盘",
+    "告警",
+    "定时"
+  ]
+}

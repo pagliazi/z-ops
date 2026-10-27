@@ -1,0 +1,20 @@
+{
+  "profiles": {
+    "demo_user_001": {
+      "user_id": "demo_user_001",
+      "display_name": "演示用户",
+      "created_at": "2026-01-01T10:00:00",
+      "updated_at": "2026-01-01T10:15:00",
+      "dialectic_notes": [
+        {
+          "timestamp": "2026-01-01T10:15:00",
+          "note": "演示用户偏好通过 vm_agent 完成虚拟机备份检查。"
+        }
+      ],
+      "preferences": {
+        "language": "zh-CN",
+        "notification_channel": "wechat_work"
+      }
+    }
+  }
+}

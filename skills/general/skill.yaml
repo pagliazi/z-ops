@@ -1,0 +1,13 @@
+name: chat
+description: "通用问答 / 运维知识 / 文档生成"
+summary: "通用问答兜底: 概念解释/文档生成/无法归类的请求"
+domain: general
+parameters:
+  - name: text
+    type: string
+    description: "用户问题或对话内容"
+    required: true
+examples:
+  - "什么是 VLAN"
+  - "帮我解释 BGP 路由协议"
+  - "生成一份变更申请模板"

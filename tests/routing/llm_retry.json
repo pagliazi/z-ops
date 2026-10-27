@@ -1,0 +1,153 @@
+{
+  "mode": "llm",
+  "total": 16,
+  "passed": 6,
+  "failed": 10,
+  "errors": 0,
+  "results": [
+    {
+      "id": "kw-205",
+      "text": "G123456 的DNS记录",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-206",
+      "text": "88381 站点上有什么资源",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-303",
+      "text": "3103 这个数字什么意思",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "gid-guard"
+    },
+    {
+      "id": "kw-401",
+      "text": "找到ESXI-03的虚拟机列表",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "vm-hostname"
+    },
+    {
+      "id": "kw-506",
+      "text": "怎么给vm-web-01做快照",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "vm-power-guard"
+    },
+    {
+      "id": "kw-701",
+      "text": "198.18.96.169上有哪些备份",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "ip+resource"
+    },
+    {
+      "id": "kw-702",
+      "text": "192.168.1.100 这台虚拟机是谁的",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "ip+resource"
+    },
+    {
+      "id": "kw-703",
+      "text": "172.16.0.5 的vm列表",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "ip+resource"
+    },
+    {
+      "id": "kw-704",
+      "text": "10.0.0.8 上的快照有哪些",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "ip+resource"
+    },
+    {
+      "id": "kw-951",
+      "text": "我们最近遇到一个奇怪的问题：业务系统每天凌晨三点左右会出现短暂的连接超时，数据库团队说是网络抖动，网络团队说是应用连接池配置不当，应用团队又怀疑是防火墙会话数达到上限。这个问题已经持续了两周，重启过三次应用服务器也没有解决，故障窗口越来越频繁，业务方已经正式投诉了两次。我需要一份系统性的排查思路和优先级建议，最好包含每一步的检查命令和预期的判断依据，方便我们团队分工排查，尽快定位到底应该由哪个团队来主导解决",
+      "expect": "ops_agent",
+      "got": "kb_agent",
+      "ok": false,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "long-text-guard"
+    },
+    {
+      "id": "kw-952",
+      "text": "请根据以下背景帮我写一份变更方案：我们计划在下个月把核心业务从A机房整体迁移到B机房，涉及约四十台虚拟机、八套数据库和两条专线，需要完整的割接步骤、回滚预案和风险评估表格，格式按照公司的变更管理规范来",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_dev_agent",
+      "source": "long-text-guard"
+    },
+    {
+      "id": "kw-1004",
+      "text": "shell 脚本怎么写",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_dev_agent",
+      "source": "dev"
+    },
+    {
+      "id": "kw-1102",
+      "text": "我的python环境坏了怎么修",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_dev_agent",
+      "source": "dev-guard"
+    },
+    {
+      "id": "kw-1302",
+      "text": "批量执行命令重启服务",
+      "expect": "ops_agent",
+      "got": "ops_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_ops_agent",
+      "source": "ops-action"
+    },
+    {
+      "id": "llm-0502",
+      "text": "打开XX管理页面自动登录",
+      "expect": "browser_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "browser"
+    },
+    {
+      "id": "hist-001",
+      "text": "有几台？",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "followup"
+    }
+  ]
+}

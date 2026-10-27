@@ -1,0 +1,2283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智 OC - Operation Claw</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    <style>
+        /* ===== 全局样式 ===== */
+        :root {
+            --primary-blue: #3b82f6;
+            --primary-blue-dark: #2563eb;
+            --success-green: #10b981;
+            --warning-yellow: #f59e0b;
+            --danger-red: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+        
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            -webkit-font-smoothing: antialiased; 
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* ===== 滚动条美化 ===== */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--gray-100); }
+        ::-webkit-scrollbar-thumb { 
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark)); 
+            border-radius: 3px; 
+        }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-blue-dark); }
+        
+        /* ===== 动画效果 ===== */
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.98); }
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .animate-gradient {
+            background-size: 200% 200%;
+            animation: gradientShift 15s ease infinite;
+        }
+        
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .animate-slideIn {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        /* ===== 玻璃态效果 ===== */
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .glass-dark {
+            background: rgba(31, 41, 55, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* ===== 阴影效果 ===== */
+        .shadow-soft {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        .shadow-hover {
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .shadow-hover:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* ===== 渐变按钮 ===== */
+        .btn-gradient {
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        }
+        
+        .btn-gradient:active {
+            transform: translateY(0);
+        }
+        
+        /* ===== Markdown 样式增强 ===== */
+        .markdown-body { 
+            line-height: 1.8; 
+            font-size: 0.95em;
+        }
+        
+        .markdown-body p { 
+            margin: 0.6em 0; 
+        }
+        
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3,
+        .markdown-body h4 { 
+            margin: 0.8em 0 0.4em; 
+            font-weight: 700; 
+            color: var(--gray-900);
+            line-height: 1.4;
+        }
+        
+        .markdown-body h1 { font-size: 1.4em; border-bottom: 2px solid var(--primary-blue); padding-bottom: 0.3em; }
+        .markdown-body h2 { font-size: 1.25em; border-bottom: 1px solid var(--gray-200); padding-bottom: 0.3em; }
+        .markdown-body h3 { font-size: 1.1em; }
+        
+        .markdown-body strong { 
+            font-weight: 700; 
+            color: var(--gray-900); 
+        }
+        
+        .markdown-body code { 
+            background: rgba(59, 130, 246, 0.1); 
+            padding: 2px 6px; 
+            border-radius: 4px; 
+            font-size: 0.9em; 
+            color: var(--primary-blue-dark);
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        
+        .markdown-body pre code { 
+            display: block; 
+            padding: 16px; 
+            background: linear-gradient(135deg, #1e293b, #0f172a); 
+            color: #e2e8f0; 
+            border-radius: 10px; 
+            overflow-x: auto; 
+            white-space: pre; 
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85em;
+            line-height: 1.6;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+        
+        .markdown-body pre { 
+            margin: 0.8em 0; 
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .markdown-body table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 0.8em 0; 
+            font-size: 0.9em; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .markdown-body thead { 
+            background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-dark));
+            color: white;
+        }
+        
+        .markdown-body th { 
+            padding: 12px 16px; 
+            text-align: left; 
+            font-weight: 600; 
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+        
+        .markdown-body td { 
+            padding: 10px 16px; 
+            border-bottom: 1px solid var(--gray-200); 
+            color: var(--gray-700);
+        }
+        
+        .markdown-body tr:hover td { 
+            background: rgba(59, 130, 246, 0.05);
+        }
+        
+        .markdown-body ul,
+        .markdown-body ol { 
+            margin: 0.6em 0; 
+            padding-left: 1.8em; 
+        }
+        
+        .markdown-body li { 
+            margin: 0.3em 0; 
+            line-height: 1.7;
+        }
+        
+        .markdown-body blockquote { 
+            margin: 0.8em 0; 
+            padding: 12px 20px; 
+            border-left: 4px solid var(--primary-blue); 
+            color: var(--gray-600); 
+            background: rgba(59, 130, 246, 0.05); 
+            border-radius: 0 8px 8px 0; 
+        }
+        
+        .markdown-body hr { 
+            border: none; 
+            border-top: 2px solid var(--gray-200); 
+            margin: 1em 0; 
+        }
+        
+        .markdown-body a { 
+            color: var(--primary-blue-dark); 
+            text-decoration: none; 
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+        
+        .markdown-body a:hover {
+            border-bottom-color: var(--primary-blue);
+        }
+        /* thinking block */
+        .think-block { margin: 0.3em 0 0.6em; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
+        .think-block summary { cursor: pointer; padding: 6px 12px; font-size: 0.75em; color: #9ca3af; background: #f9fafb; user-select: none; display: flex; align-items: center; gap: 4px; }
+        .think-block summary:hover { color: #6b7280; background: #f3f4f6; }
+        .think-block summary::marker { font-size: 0.7em; }
+        .think-block .think-content { padding: 8px 12px; font-size: 0.78em; color: #9ca3af; line-height: 1.6; border-top: 1px solid #f3f4f6; max-height: 300px; overflow-y: auto; }
+        /* user bubble (white text) overrides */
+        .markdown-body.text-white h1,.markdown-body.text-white h2,.markdown-body.text-white h3,.markdown-body.text-white h4,.markdown-body.text-white strong { color: #fff; }
+        .markdown-body.text-white code { background: rgba(255,255,255,0.15); color: #fff; }
+        .markdown-body.text-white a { color: #bfdbfe; }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// ═══ Markdown 渲染 ═══
+try { marked.setOptions({ breaks: true, gfm: true }); } catch(e) {}
+
+function renderMarkdown(text) {
+    if (!text) return '';
+    try {
+        // 提取 <think>...</think> 思考过程
+        let thinkHtml = '';
+        let mainText = text;
+        const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+        const thinks = [];
+        let match;
+        while ((match = thinkRegex.exec(text)) !== null) {
+            thinks.push(match[1].trim());
+        }
+        if (thinks.length > 0) {
+            mainText = text.replace(thinkRegex, '').trim();
+            const thinkContent = thinks.join('\n\n');
+            thinkHtml = '<details class="think-block"><summary><i class="ri-lightbulb-line"></i> 思考过程</summary><div class="think-content">' + thinkContent.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') + '</div></details>';
+        }
+        const bodyHtml = marked.parse(mainText);
+        return thinkHtml + bodyHtml;
+    } catch(e) {
+        console.error('[Z-OPS] markdown parse error:', e);
+        return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    }
+}
+
+function MarkdownContent({ content, className }) {
+    const html = useMemo(() => renderMarkdown(content), [content]);
+    return React.createElement('div', { className, dangerouslySetInnerHTML: { __html: html } });
+}
+
+// ═══ API ═══
+const API = {
+    token: localStorage.getItem('zops_token') || '',
+    headers() {
+        const h = { 'Content-Type': 'application/json' };
+        if (this.token) h['Authorization'] = `Bearer ${this.token}`;
+        return h;
+    },
+    async get(path) {
+        const r = await fetch(path, { headers: this.headers() });
+        if (r.status === 401) { this.logout(); throw new Error('认证失败'); }
+        return r.json();
+    },
+    async post(path, body) {
+        return fetch(path, { method: 'POST', headers: this.headers(), body: JSON.stringify(body) });
+    },
+    async put(path, body) {
+        return fetch(path, { method: 'PUT', headers: this.headers(), body: JSON.stringify(body) });
+    },
+    async del(path) {
+        return fetch(path, { method: 'DELETE', headers: this.headers() });
+    },
+    setToken(t) { this.token = t; localStorage.setItem('zops_token', t); },
+    logout() { this.token = ''; localStorage.removeItem('zops_token'); localStorage.removeItem('zops_user'); }
+};
+
+function StatusDot({ status }) {
+    const c = { online: 'bg-green-500', offline: 'bg-red-400', timeout: 'bg-yellow-400', unknown: 'bg-gray-300' };
+    return <span className={`inline-block w-2 h-2 rounded-full ${c[status] || c.unknown}`} />;
+}
+
+// ═══ 登录页 ═══
+function LoginPage({ onLogin }) {
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [authType, setAuthType] = useState('ldap'); // 默认 LDAP
+    const [ldapEnabled, setLdapEnabled] = useState(true);
+
+    useEffect(() => {
+        fetch('/api/auth/ldap-status').then(r => r.json()).then(d => {
+            setLdapEnabled(d.ldap_enabled);
+            if (!d.ldap_enabled) setAuthType('local');
+        }).catch(() => {});
+    }, []);
+
+    const submit = async (e) => {
+        e.preventDefault(); setError(''); setLoading(true);
+        try {
+            const r = await fetch('/api/auth/login', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, auth_type: authType })
+            });
+            const d = await r.json();
+            if (r.ok && d.token) {
+                API.setToken(d.token);
+                localStorage.setItem('zops_user', JSON.stringify({ username: d.username, display_name: d.display_name, role: d.role }));
+                onLogin(d);
+            } else {
+                // AD 未授权 → 特殊提示
+                if (authType === 'ldap' && r.status === 403) {
+                    setError('您的账号尚未被授权访问智OC，请联系管理员审批');
+                } else {
+                    setError(d.detail || '登录失败');
+                }
+            }
+        } catch(e) { setError('网络错误'); }
+        setLoading(false);
+    };
+
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="w-full max-w-sm">
+                <div className="text-center mb-8">
+                    <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4 shadow-lg">智</div>
+                    <h1 className="text-2xl font-bold text-gray-900">智OC</h1>
+                    <p className="text-gray-400 text-sm mt-1">Operation Claw · 智能运维平台</p>
+                </div>
+                <form onSubmit={submit} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                    {ldapEnabled && (
+                        <div className="flex mb-5 bg-gray-100 rounded-lg p-1">
+                            <button type="button" onClick={() => setAuthType('ldap')}
+                                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${authType === 'ldap' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                                <i className="ri-shield-keyhole-line mr-1" />AD 域账号
+                            </button>
+                            <button type="button" onClick={() => setAuthType('local')}
+                                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${authType === 'local' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                                <i className="ri-user-line mr-1" />本地账号
+                            </button>
+                        </div>
+                    )}
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                            {authType === 'ldap' ? 'AD 域账号' : '用户名'}
+                        </label>
+                        <input type="text" value={username} onChange={e => setUsername(e.target.value)} autoFocus
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder={authType === 'ldap' ? '输入 AD 域账号 (如 zhangsan)' : '输入用户名'} />
+                    </div>
+                    <div className="mb-5">
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">密码</label>
+                        <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder={authType === 'ldap' ? '输入 AD 域密码' : '输入密码'} />
+                    </div>
+                    {error && (
+                        <div className={`text-sm mb-3 flex items-start gap-2 p-3 rounded-lg ${error.includes('未授权') ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                            <i className={error.includes('未授权') ? 'ri-shield-keyhole-line' : 'ri-error-warning-line'} />
+                            <span>{error}</span>
+                        </div>
+                    )}
+                    <button type="submit" disabled={loading || !username || !password}
+                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white py-2.5 rounded-lg font-medium text-sm transition-colors shadow-sm">
+                        {loading ? '登录中...' : (authType === 'ldap' ? 'AD 域登录' : '本地登录')}
+                    </button>
+                    {authType === 'ldap' && (
+                        <p className="text-xs text-gray-400 text-center mt-3">使用公司 AD 域账号登录，需管理员预先授权</p>
+                    )}
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// ═══ 顶部 Header ═══
+function Header({ user, overview, onLogout }) {
+    const [showMenu, setShowMenu] = useState(false);
+    const menuRef = useRef(null);
+    const onlineCount = overview?.agents ? Object.values(overview.agents).filter(a => a.status === 'online').length : 0;
+
+    useEffect(() => {
+        const handler = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false); };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    return (
+        <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-5 flex-shrink-0 z-20">
+            {/* 左侧 Logo */}
+            <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm">智</div>
+                <div>
+                    <div className="text-gray-900 font-semibold text-sm leading-tight">智OC <span className="text-[10px] font-normal text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded-full ml-1">v2.1</span></div>
+                    <div className="text-gray-400 text-[10px] leading-tight">Operation Claw</div>
+                </div>
+            </div>
+            {/* 中间状态 */}
+            <div className="hidden md:flex items-center gap-4 text-xs text-gray-400">
+                <div className="flex items-center gap-1.5"><StatusDot status="online" /><span className="text-gray-600 font-medium">{onlineCount}</span> Agent 在线</div>
+                <span className="text-gray-200">|</span>
+                <div>模型: <span className="text-gray-600 font-medium">{overview?.llm_real_model || overview?.llm_model || '-'}{overview?.llm_model_alias && <span className="text-[10px] text-gray-400 ml-1">({overview?.llm_model})</span>}</span></div>
+            </div>
+            {/* 右侧用户头像 */}
+            <div className="relative" ref={menuRef}>
+                <button onClick={() => setShowMenu(!showMenu)} className="flex items-center gap-2.5 hover:bg-gray-50 rounded-lg px-2.5 py-1.5 transition-colors">
+                    <div className="text-right hidden sm:block">
+                        <div className="text-gray-700 font-medium text-sm leading-tight">{user?.display_name || user?.username}</div>
+                        <div className="text-[10px] leading-tight">
+                            <span className={`${user?.role === 'admin' ? 'text-blue-500' : 'text-gray-400'}`}>{user?.role === 'admin' ? '管理员' : '用户'}</span>
+                        </div>
+                    </div>
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                        {(user?.display_name || user?.username || 'U')[0].toUpperCase()}
+                    </div>
+                    <i className={`ri-arrow-down-s-line text-gray-400 transition-transform ${showMenu ? 'rotate-180' : ''}`} />
+                </button>
+                {showMenu && (
+                    <div className="absolute right-0 top-full mt-1.5 w-48 bg-white border border-gray-200 rounded-xl shadow-lg py-1.5 z-50">
+                        <div className="px-4 py-2.5 border-b border-gray-100">
+                            <div className="text-sm font-medium text-gray-800">{user?.display_name || user?.username}</div>
+                            <div className="text-xs text-gray-400">@{user?.username}</div>
+                        </div>
+                        <button onClick={() => { setShowMenu(false); onLogout(); }}
+                            className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2 transition-colors">
+                            <i className="ri-logout-box-r-line" /> 退出登录
+                        </button>
+                    </div>
+                )}
+            </div>
+        </header>
+    );
+}
+
+// ═══ 侧边栏 (纯导航) ═══
+function Sidebar({ user, activeTab, setActiveTab }) {
+    const baseTabs = [
+        { id: 'chat', icon: 'ri-chat-3-line', label: '对话' },
+        { id: 'agents', icon: 'ri-robot-line', label: 'Agent 集群' },
+    ];
+    const adminTabs = [
+        { id: 'logs', icon: 'ri-file-list-3-line', label: '运维日志' },
+        { id: 'usage', icon: 'ri-bar-chart-line', label: 'LLM 用量' },
+        { id: 'admin', icon: 'ri-shield-user-line', label: '管理后台' },
+    ];
+    // N8N 工作流管理入口（仅管理员可见）
+    const n8nTab = [
+        { id: 'n8n', icon: 'ri-node-tree', label: 'N8N 工作流' },
+    ];
+    const isAdmin = user?.role === 'admin';
+    const tabs = isAdmin ? [...baseTabs, ...adminTabs, ...n8nTab] : baseTabs;
+
+    return (
+        <div className="w-52 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+            <nav className="flex-1 px-3 py-3 space-y-0.5">
+                {tabs.map(t => {
+                    const active = activeTab === t.id;
+                    return (
+                        <button key={t.id} onClick={() => setActiveTab(t.id)}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors relative ${active ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
+                            {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 rounded-r-full" />}
+                            <i className={`${t.icon} text-lg ${active ? 'text-blue-500' : 'text-gray-400'}`} />
+                            <span>{t.label}</span>
+                        </button>
+                    );
+                })}
+            </nav>
+        </div>
+    );
+}
+
+// ═══ 对话面板 (含会话列表) ═══
+function ChatPanel({ user }) {
+    const [sessions, setSessions] = useState([]);
+    const [activeSession, setActiveSession] = useState(null);
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState('');
+    const [targetAgent, setTargetAgent] = useState('');  // '' = auto (orchestrator)
+    const [loading, setLoading] = useState(false);
+    const [loadingText, setLoadingText] = useState('');
+    const endRef = useRef(null);
+    const scroll = () => endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    useEffect(scroll, [messages]);
+
+    // 加载会话列表
+    const loadSessions = useCallback(() => {
+        API.get('/api/chat/sessions').then(d => setSessions(d.sessions || [])).catch(() => {});
+    }, []);
+    useEffect(() => { loadSessions(); }, [loadSessions]);
+
+    // 切换会话时加载消息
+    useEffect(() => {
+        if (!activeSession) { setMessages([]); return; }
+        API.get(`/api/chat/messages/${activeSession}`).then(d => {
+            setMessages((d.messages || []).map(m => ({
+                role: m.role, content: m.content, source: m.source,
+                time: new Date(m.timestamp * 1000).toLocaleTimeString()
+            })));
+        }).catch(() => {});
+    }, [activeSession]);
+
+    const newSession = async () => {
+        try {
+            const d = await (await API.post('/api/chat/sessions', { title: '新对话' })).json();
+            setActiveSession(d.session_id);
+            setMessages([]);
+            loadSessions();
+        } catch(e) {}
+    };
+
+    const deleteSession = async (sid, e) => {
+        e.stopPropagation();
+        await API.del(`/api/chat/sessions/${sid}`);
+        if (activeSession === sid) { setActiveSession(null); setMessages([]); }
+        loadSessions();
+    };
+
+    const AGENT_OPTIONS = [
+        { value: '', label: '自动', icon: 'ri-magic-line', bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
+        { value: 'kb_agent', label: 'KB', icon: 'ri-book-open-line', bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
+        { value: 'gcoc_agent', label: 'GCOC', icon: 'ri-database-2-line', bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
+        { value: 'ops_agent', label: '运维', icon: 'ri-terminal-box-line', bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
+        { value: 'dev_agent', label: '脚本', icon: 'ri-code-s-slash-line', bg: '#ecfeff', text: '#0e7490', border: '#a5f3fc' },
+        { value: 'general_agent', label: '通用', icon: 'ri-chat-smile-2-line', bg: '#f9fafb', text: '#4b5563', border: '#d1d5db' },
+    ];
+    const currentAgent = AGENT_OPTIONS.find(a => a.value === targetAgent) || AGENT_OPTIONS[0];
+
+    const send = async () => {
+        if (!input.trim() || loading) return;
+        const msg = input; setInput(''); setLoading(true);
+        setMessages(p => [...p, { role: 'user', content: msg, time: new Date().toLocaleTimeString() }]);
+
+        try {
+            const payload = { message: msg, target: 'manager' };
+            if (activeSession) payload.session_id = activeSession;
+            if (targetAgent) payload.target_agent = targetAgent;
+            setLoadingText(`${currentAgent.label === '自动' ? 'AI 正在分析问题' : currentAgent.label + ' 正在处理'}，请稍候...`);
+            const resp = await API.post('/api/chat', payload);
+            const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '';
+            while (true) {
+                const { done, value } = await reader.read(); if (done) break;
+                buf += dec.decode(value, { stream: true }); const lines = buf.split('\n'); buf = lines.pop() || '';
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    try {
+                        const d = JSON.parse(line.slice(6));
+                        if (d.type === 'start') {
+                            setLoadingText('AI 正在分析问题，请稍候...');
+                            if (d.session_id && !activeSession) {
+                                setActiveSession(d.session_id);
+                                loadSessions();
+                            }
+                        }
+                        if (d.type === 'progress') {
+                            setLoadingText(d.text || '处理中...');
+                        }
+                        if (d.type === 'reply') {
+                            setLoadingText('');
+                            setMessages(p => { const u = [...p]; const l = u.length - 1;
+                                if (u[l]?.role === 'assistant') u[l] = { ...u[l], content: d.text };
+                                else u.push({ role: 'assistant', content: d.text, source: d.source, time: new Date().toLocaleTimeString() });
+                                return u; });
+                        } else if (d.type === 'error') {
+                            setLoadingText('');
+                            setMessages(p => [...p, { role: 'error', content: d.text, time: new Date().toLocaleTimeString() }]);
+                        }
+                    } catch(e) {}
+                }
+            }
+            loadSessions();
+        } catch(e) { setMessages(p => [...p, { role: 'error', content: `请求失败: ${e.message}`, time: new Date().toLocaleTimeString() }]); }
+        setLoading(false);
+    };
+
+    const relTime = (ts) => { const d = Math.floor(Date.now()/1000 - ts); return d < 60 ? '刚刚' : d < 3600 ? `${Math.floor(d/60)}分钟前` : d < 86400 ? `${Math.floor(d/3600)}小时前` : `${Math.floor(d/86400)}天前`; };
+
+    return (
+        <div className="flex h-full">
+            {/* 会话列表 */}
+            <div className="w-56 bg-white border-r border-gray-100 flex flex-col">
+                <div className="p-3 border-b border-gray-100">
+                    <button onClick={newSession} className="w-full flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                        <i className="ri-add-line" /> 新对话
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                    {sessions.map(s => (
+                        <div key={s.session_id} onClick={() => setActiveSession(s.session_id)}
+                            className={`group px-3 py-2.5 cursor-pointer border-b border-gray-50 transition-colors ${activeSession === s.session_id ? 'bg-blue-50 border-l-2 border-l-blue-500' : 'hover:bg-gray-50'}`}>
+                            <div className="flex items-center justify-between">
+                                <span className={`text-sm truncate flex-1 ${activeSession === s.session_id ? 'text-blue-700 font-medium' : 'text-gray-700'}`}>{s.title}</span>
+                                <button onClick={(e) => deleteSession(s.session_id, e)} className="text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1"><i className="ri-close-line text-xs" /></button>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-gray-400">
+                                <span>{s.msg_count} 条</span>
+                                <span>{relTime(s.updated_at)}</span>
+                            </div>
+                        </div>
+                    ))}
+                    {sessions.length === 0 && <div className="text-center text-gray-400 text-xs py-8">暂无对话记录</div>}
+                </div>
+            </div>
+            {/* 对话区域 */}
+            <div className="flex-1 flex flex-col">
+                <div className="border-b border-gray-200 px-6 py-3 bg-white flex items-center justify-between">
+                    <div><h2 className="text-gray-900 font-semibold text-base">对话</h2>
+                        <p className="text-gray-400 text-xs mt-0.5">{activeSession ? `会话 ${activeSession}` : '新建或选择一个对话'}</p></div>
+                </div>
+                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-gray-50">
+                    {messages.length === 0 && !activeSession && (
+                        <div className="text-center mt-16">
+                            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4"><i className="ri-robot-line text-3xl text-blue-500" /></div>
+                            <p className="text-gray-800 font-semibold text-lg">智OC <span className="text-xs font-normal text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">v2.1</span></p>
+                            <p className="text-gray-400 text-sm mt-1">双层路由引擎 · 9 个专业 Agent · 智能分派</p>
+                            <div className="mt-6 grid grid-cols-2 gap-2.5 max-w-md mx-auto">
+                                {['检查系统负载', '列出所有虚拟机', '搜索知识库', '生成巡检脚本'].map(q => (
+                                    <button key={q} onClick={() => setInput(q)} className="text-sm text-gray-500 bg-white border border-gray-200 rounded-lg px-4 py-2.5 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all shadow-sm">{q}</button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {messages.map((m, i) => {
+                        const agentMeta = {
+                            orchestrator: { icon: 'ri-brain-line', color: 'text-purple-500', bg: 'bg-purple-50' },
+                            general_agent: { icon: 'ri-question-answer-line', color: 'text-cyan-500', bg: 'bg-cyan-50' },
+                            ops_agent: { icon: 'ri-server-line', color: 'text-orange-500', bg: 'bg-orange-50' },
+                            network_agent: { icon: 'ri-global-line', color: 'text-blue-500', bg: 'bg-blue-50' },
+                            vm_agent: { icon: 'ri-cloud-line', color: 'text-green-500', bg: 'bg-green-50' },
+                            dev_agent: { icon: 'ri-code-s-slash-line', color: 'text-gray-500', bg: 'bg-gray-100' },
+                            browser_agent: { icon: 'ri-chrome-line', color: 'text-teal-500', bg: 'bg-teal-50' },
+                            gcoc_agent: { icon: 'ri-database-2-line', color: 'text-pink-500', bg: 'bg-pink-50' },
+                            kb_agent: { icon: 'ri-book-open-line', color: 'text-indigo-500', bg: 'bg-indigo-50' },
+                        };
+                        const am = m.source ? (agentMeta[m.source] || { icon: 'ri-robot-line', color: 'text-gray-400', bg: 'bg-gray-50' }) : null;
+                        return (
+                        <div key={i} className={`msg-enter flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[75%] rounded-xl px-4 py-3 shadow-sm ${m.role === 'user' ? 'bg-blue-600 text-white' : m.role === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-white text-gray-800 border border-gray-200'}`}>
+                                {am && <div className="text-xs mb-1.5 flex items-center gap-1.5">
+                                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${am.bg} ${am.color}`}><i className={am.icon} />{m.source.replace('_agent','')}</span>
+                                    <span className="text-gray-300">→ webchat</span>
+                                </div>}
+                                <MarkdownContent content={m.content} className={`markdown-body text-sm leading-relaxed ${m.role === 'user' ? 'text-white' : ''}`} />
+                                <div className={`text-xs mt-1.5 text-right ${m.role === 'user' ? 'text-blue-200' : 'text-gray-300'}`}>{m.time}</div>
+                            </div>
+                        </div>
+                        );
+                    })}
+                    {loading && (<div className="flex justify-start"><div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+                        <div className="flex items-center gap-2.5">
+                            <div className="flex gap-1.5">{[0,0.15,0.3].map((d,i) => <span key={i} className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{animationDelay:`${d}s`}} />)}</div>
+                            {loadingText && <span className="text-sm text-gray-500">{loadingText}</span>}
+                        </div>
+                    </div></div>)}
+                    <div ref={endRef} />
+                </div>
+                <div className="border-t border-gray-200 p-4 bg-white">
+                    {/* Agent 选择器 */}
+                    <div className="flex gap-1.5 max-w-3xl mx-auto mb-2">
+                        {AGENT_OPTIONS.map(a => (
+                            <button key={a.value} onClick={() => setTargetAgent(a.value)}
+                                style={targetAgent === a.value ? { background: a.bg, color: a.text, borderColor: a.border } : {}}
+                                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${
+                                    targetAgent === a.value
+                                        ? 'shadow-sm'
+                                        : 'bg-white text-gray-400 border-gray-100 hover:text-gray-600 hover:border-gray-200'
+                                }`}>
+                                <i className={`${a.icon} text-xs`} />{a.label}
+                            </button>
+                        ))}
+                    </div>
+                    {/* 输入框 */}
+                    <div className="flex gap-3 max-w-3xl mx-auto">
+                        <textarea value={input} onChange={e => setInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+                            placeholder={`${currentAgent.label === '自动' ? '输入运维问题' : '向 ' + currentAgent.label + ' 提问'}... (Enter 发送)`}
+                            className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" rows={1} />
+                        <button onClick={send} disabled={loading || !input.trim()} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white px-5 py-2.5 rounded-lg transition-colors shadow-sm font-medium text-sm flex items-center gap-1.5"><i className={`${currentAgent.icon}`} />发送</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ═══ Agents ═══
+function AgentsPanel({ overview, user }) {
+    const agents = overview?.agents || {};
+    const [detail, setDetail] = useState(null);
+    const [expandedAgent, setExpandedAgent] = useState(null);
+    const [viewMode, setViewMode] = useState('architecture');
+    const [hoveredAgent, setHoveredAgent] = useState(null);
+    const loadDetail = useCallback(() => { API.get('/api/agents/detail').then(setDetail).catch(() => {}); }, []);
+    useEffect(() => { loadDetail(); }, [loadDetail]);
+    
+    // Agent 元信息
+    const meta = {
+        orchestrator:   { icon: 'ri-brain-line', color: '#8b5cf6', textColor: 'text-purple-500', bg: 'bg-purple-50', label: 'Orchestrator', desc: '智能调度中枢' },
+        general_agent:  { icon: 'ri-question-answer-line', color: '#06b6d4', textColor: 'text-cyan-500', bg: 'bg-cyan-50', label: 'General', desc: '通用问答' },
+        ops_agent:      { icon: 'ri-server-line', color: '#f97316', textColor: 'text-orange-500', bg: 'bg-orange-50', label: 'OPS', desc: '运维专家' },
+        network_agent:  { icon: 'ri-global-line', color: '#3b82f6', textColor: 'text-blue-500', bg: 'bg-blue-50', label: 'Network', desc: '网络专家' },
+        vm_agent:       { icon: 'ri-cloud-line', color: '#22c55e', textColor: 'text-green-500', bg: 'bg-green-50', label: 'VM', desc: '虚拟化专家' },
+        dev_agent:      { icon: 'ri-code-s-slash-line', color: '#6b7280', textColor: 'text-gray-500', bg: 'bg-gray-100', label: 'Dev', desc: '开发助手' },
+        browser_agent:  { icon: 'ri-chrome-line', color: '#14b8a6', textColor: 'text-teal-500', bg: 'bg-teal-50', label: 'Browser', desc: '浏览器自动化' },
+        gcoc_agent:     { icon: 'ri-database-2-line', color: '#ec4899', textColor: 'text-pink-500', bg: 'bg-pink-50', label: 'GCOC', desc: 'GCOC 数据' },
+        kb_agent:       { icon: 'ri-book-open-line', color: '#6366f1', textColor: 'text-indigo-500', bg: 'bg-indigo-50', label: 'KB', desc: '知识库检索' },
+    };
+    
+    const onlineCount = Object.values(agents).filter(a => a.status === 'online').length;
+    const totalSkills = detail ? Object.values(detail.agents || {}).reduce((s, a) => s + (a.skills?.length || 0), 0) : 0;
+    
+    // 架构布局
+    const coreAgents = ['general_agent', 'ops_agent', 'network_agent', 'vm_agent'];
+    const extAgents = ['dev_agent', 'browser_agent', 'gcoc_agent', 'kb_agent'];
+    
+    // 调度关系定义
+    const routes = [
+        { from: 'orchestrator', to: 'general_agent', label: '通用问题' },
+        { from: 'orchestrator', to: 'ops_agent', label: '运维操作' },
+        { from: 'orchestrator', to: 'network_agent', label: '网络配置' },
+        { from: 'orchestrator', to: 'vm_agent', label: '虚拟化' },
+        { from: 'ops_agent', to: 'kb_agent', label: '知识查询' },
+        { from: 'ops_agent', to: 'gcoc_agent', label: 'GCOC数据' },
+        { from: 'dev_agent', to: 'kb_agent', label: '文档检索' },
+        { from: 'browser_agent', to: 'gcoc_agent', label: '数据采集' },
+    ];
+    
+    // 渲染 Agent 节点
+    const AgentNode = ({ name, info, isCenter, onClick }) => {
+        const m = meta[name] || { icon: 'ri-robot-line', color: '#6b7280', textColor: 'text-gray-500', bg: 'bg-gray-50', label: name, desc: '' };
+        const agentDetail = detail?.agents?.[name];
+        const isOnline = info?.status === 'online';
+        const isHovered = hoveredAgent === name;
+        
+        return (
+            <div 
+                onMouseEnter={() => setHoveredAgent(name)}
+                onMouseLeave={() => setHoveredAgent(null)}
+                onClick={onClick}
+                className={`
+                    relative flex flex-col items-center p-4 rounded-2xl cursor-pointer transition-all duration-300
+                    ${isCenter 
+                        ? 'bg-gradient-to-br from-purple-100 to-white border-2 border-purple-400 shadow-xl scale-110 z-20' 
+                        : 'bg-white border-2 hover:shadow-xl transition-all'
+                    }
+                    ${isHovered && !isCenter ? 'border-purple-300 shadow-lg scale-105' : 'border-gray-200'}
+                    ${!isOnline && !isCenter ? 'opacity-40' : ''}
+                `}
+                style={{ borderColor: isHovered && !isCenter ? m.color : undefined }}
+            >
+                {/* 状态指示灯 */}
+                <div className={`absolute -top-2 -right-2 w-4 h-4 rounded-full border-2 border-white shadow-md ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}>
+                    {isOnline && <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-75" />}
+                </div>
+                
+                {/* 图标 */}
+                <div 
+                    className={`rounded-2xl flex items-center justify-center mb-2 shadow-lg ${isCenter ? 'w-16 h-16' : 'w-14 h-14'}`}
+                    style={{ backgroundColor: m.color + '20' }}
+                >
+                    <i className={`${m.icon} ${isCenter ? 'text-4xl' : 'text-3xl'}`} style={{ color: m.color }} />
+                </div>
+                
+                {/* 名称 */}
+                <div className={`font-bold ${isCenter ? 'text-lg' : 'text-sm'} text-gray-800`}>{m.label}</div>
+                <div className="text-xs text-gray-400 text-center">{m.desc}</div>
+                
+                {/* Skills 数量 */}
+                {agentDetail?.skills?.length > 0 && (
+                    <div className="mt-2 px-2 py-1 rounded-full text-xs font-medium" style={{ backgroundColor: m.color + '15', color: m.color }}>
+                        {agentDetail.skills.length} skills
+                    </div>
+                )}
+            </div>
+        );
+    };
+    
+    // 架构流程图视图 - 简化版
+    const ArchitectureView = () => {
+        return (
+            <div className="h-full flex flex-col p-4 overflow-auto">
+                {/* 第一层：用户入口 */}
+                <div className="flex flex-col items-center mb-6">
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' }}>
+                        <i className="ri-user-3-line text-3xl text-white" />
+                    </div>
+                    <div className="mt-2 text-center">
+                        <div className="font-bold text-gray-800">用户请求</div>
+                        <div className="text-xs text-gray-400">HTTP / WebSocket</div>
+                    </div>
+                </div>
+                
+                {/* 连接线 */}
+                <div className="flex justify-center mb-4">
+                    <div className="w-0.5 h-6 bg-purple-400" />
+                </div>
+                
+                {/* 第二层：Orchestrator */}
+                <div className="flex flex-col items-center mb-6">
+                    <div 
+                        className="w-32 p-3 rounded-2xl border-2 border-purple-400 bg-gradient-to-b from-purple-50 to-white shadow-lg flex flex-col items-center"
+                        onClick={() => setExpandedAgent(expandedAgent === 'orchestrator' ? null : 'orchestrator')}
+                    >
+                        <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center mb-2">
+                            <i className="ri-brain-line text-2xl text-purple-500" />
+                        </div>
+                        <div className="font-bold text-sm text-gray-800">Orchestrator</div>
+                        <div className="text-[10px] text-gray-400">智能调度中枢</div>
+                        <div className="mt-1 px-2 py-0.5 bg-purple-100 text-purple-600 text-[10px] rounded-full">智能路由 · 任务分发</div>
+                    </div>
+                </div>
+                
+                {/* 连接线 */}
+                <div className="flex justify-center mb-4">
+                    <div className="w-16 h-0.5 bg-gray-300" />
+                </div>
+                
+                {/* 第三层：核心专家 Agent */}
+                <div className="mb-6">
+                    <div className="text-xs text-gray-500 text-center mb-3 font-medium">
+                        <i className="ri-star-s-fill text-yellow-500 mr-1" />核心专家 Agent
+                    </div>
+                    <div className="flex justify-center gap-4 flex-wrap">
+                        {coreAgents.map(name => {
+                            const m = meta[name];
+                            const isOnline = agents[name]?.status === 'online';
+                            return (
+                                <div 
+                                    key={name}
+                                    className={`w-24 p-3 rounded-xl border-2 cursor-pointer transition-all hover:shadow-lg flex flex-col items-center ${
+                                        expandedAgent === name ? 'border-blue-400 shadow-lg' : 'border-gray-200 hover:border-gray-300'
+                                    } ${!isOnline ? 'opacity-50' : ''}`}
+                                    onClick={() => setExpandedAgent(expandedAgent === name ? null : name)}
+                                    style={{ borderColor: expandedAgent === name ? m.color : undefined }}
+                                >
+                                    <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-2" style={{ backgroundColor: m.color + '20' }}>
+                                        <i className={`${m.icon} text-xl`} style={{ color: m.color }} />
+                                    </div>
+                                    <div className="font-medium text-xs text-gray-800">{m.label}</div>
+                                    <div className="text-[10px] text-gray-400">{m.desc}</div>
+                                    <div className={`mt-1 w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                
+                {/* 第四层：扩展能力 Agent */}
+                <div className="mb-6">
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                        <div className="h-px flex-1 bg-gray-200 max-w-20" />
+                        <span className="text-xs text-gray-500 font-medium">
+                            <i className="ri-external-link-line text-blue-400 mr-1" />扩展能力 Agent
+                        </span>
+                        <div className="h-px flex-1 bg-gray-200 max-w-20" />
+                    </div>
+                    <div className="flex justify-center gap-4 flex-wrap">
+                        {extAgents.map(name => {
+                            const m = meta[name];
+                            const isOnline = agents[name]?.status === 'online';
+                            return (
+                                <div 
+                                    key={name}
+                                    className={`w-24 p-3 rounded-xl border-2 cursor-pointer transition-all hover:shadow-lg flex flex-col items-center ${
+                                        expandedAgent === name ? 'border-blue-400 shadow-lg' : 'border-gray-200 hover:border-gray-300'
+                                    } ${!isOnline ? 'opacity-50' : ''}`}
+                                    onClick={() => setExpandedAgent(expandedAgent === name ? null : name)}
+                                    style={{ borderColor: expandedAgent === name ? m.color : undefined }}
+                                >
+                                    <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-2" style={{ backgroundColor: m.color + '20' }}>
+                                        <i className={`${m.icon} text-xl`} style={{ color: m.color }} />
+                                    </div>
+                                    <div className="font-medium text-xs text-gray-800">{m.label}</div>
+                                    <div className="text-[10px] text-gray-400">{m.desc}</div>
+                                    <div className={`mt-1 w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                
+                {/* 第五层：外部服务 */}
+                <div className="mt-auto pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                        <div className="h-px flex-1 bg-gray-300 max-w-32" />
+                        <span className="text-xs text-gray-500 font-medium">
+                            <i className="ri-cloud-line mr-1" />外部服务 & 数据源
+                        </span>
+                        <div className="h-px flex-1 bg-gray-300 max-w-32" />
+                    </div>
+                    <div className="flex justify-center gap-6 flex-wrap">
+                        {[
+                            { icon: 'ri-openai-line', label: 'LLM API', color: '#10b981' },
+                            { icon: 'ri-database-2-line', label: '向量数据库', color: '#6366f1' },
+                            { icon: 'ri-server-line', label: 'VMware', color: '#f97316' },
+                            { icon: 'ri-git-repository-line', label: '知识库', color: '#8b5cf6' },
+                            { icon: 'ri-node-tree', label: 'N8N', color: '#ec4899' },
+                        ].map((svc, i) => (
+                            <div key={i} className="flex flex-col items-center">
+                                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: svc.color + '15' }}>
+                                    <i className={`${svc.icon} text-lg`} style={{ color: svc.color }} />
+                                </div>
+                                <span className="text-[10px] text-gray-500 mt-1">{svc.label}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                
+                {/* 右侧：实时状态面板 */}
+                <div className="absolute top-4 right-4 bg-white rounded-lg shadow-md border border-gray-200 p-3 w-40">
+                    <div className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                        <i className="ri-pulse-line text-green-500" />
+                        实时状态
+                    </div>
+                    <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between">
+                            <span className="text-gray-500">Agent 在线</span>
+                            <span className="font-bold text-green-600">{onlineCount}/{Object.keys(agents).length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-500">Skills</span>
+                            <span className="font-bold text-blue-600">{totalSkills}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+    
+    // 卡片视图（原视图）
+    const CardsView = () => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(agents).map(([name, info]) => {
+                const m = meta[name] || { icon: 'ri-robot-line', textColor: 'text-gray-500', bg: 'bg-gray-50' };
+                const agentDetail = detail?.agents?.[name];
+                const isExpanded = expandedAgent === name;
+                return (
+                    <div key={name} onClick={() => setExpandedAgent(isExpanded ? null : name)}
+                        className={`bg-white border rounded-xl p-5 cursor-pointer transition-all ${isExpanded ? 'border-blue-300 shadow-md' : 'border-gray-200 hover:shadow-md hover:border-gray-300'}`}>
+                        <div className="flex items-start gap-3 mb-3">
+                            <div className={`w-10 h-10 ${m.bg} rounded-lg flex items-center justify-center flex-shrink-0`}><i className={`${m.icon} text-xl ${m.textColor}`} /></div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-gray-900 font-medium text-sm">{agentDetail?.name || m.label}</div>
+                                <div className="text-gray-400 text-xs truncate">{agentDetail?.description || m.desc || '-'}</div>
+                            </div>
+                            <StatusDot status={info.status} />
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                            {agentDetail?.skills?.length > 0 && <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full"><i className="ri-puzzle-line mr-0.5" />{agentDetail.skills.length} skills</span>}
+                            {agentDetail?.bindings_count > 0 && <span className="text-[10px] bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded-full"><i className="ri-route-line mr-0.5" />{agentDetail.bindings_count} 路由</span>}
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                            <span className={info.status === 'online' ? 'text-green-600 font-medium' : 'text-red-500'}>{info.status}</span>
+                            {info.last_heartbeat && <span className="text-gray-400">{new Date(info.last_heartbeat * 1000).toLocaleTimeString()}</span>}
+                        </div>
+                        {isExpanded && agentDetail && (
+                            <div className="mt-3 pt-3 border-t border-gray-100 space-y-2 text-xs" onClick={e => e.stopPropagation()}>
+                                <div className="flex items-start gap-2">
+                                    <span className="text-gray-400 w-14 flex-shrink-0">模型</span>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${info.status === 'online' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                                        {info.status === 'online' ? '已就绪' : '未连接'}
+                                    </span>
+                                </div>
+                                {agentDetail.skills?.length > 0 && <div className="flex items-start gap-2"><span className="text-gray-400 w-14 flex-shrink-0">Skills</span>
+                                    <div className="flex flex-wrap gap-1">{agentDetail.skills.map(s => <span key={s} className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px]">{s}</span>)}</div></div>}
+                                {agentDetail.bindings_keywords?.length > 0 && <div className="flex items-start gap-2"><span className="text-gray-400 w-14 flex-shrink-0">关键词</span>
+                                    <div className="flex flex-wrap gap-1">{agentDetail.bindings_keywords.slice(0, 12).map(k => <span key={k} className="bg-yellow-50 text-yellow-700 px-1.5 py-0.5 rounded text-[10px]">{k}</span>)}
+                                    {agentDetail.bindings_keywords.length > 12 && <span className="text-gray-400">+{agentDetail.bindings_keywords.length - 12}</span>}</div></div>}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+
+    return (
+        <div className="h-full flex flex-col">
+            {/* 顶部标题栏 */}
+            <div className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900">Agent 集群架构</h2>
+                        <p className="text-sm text-gray-400 mt-0.5">共 {Object.keys(agents).length} 个 Agent，{onlineCount} 个在线，{totalSkills} 个 Skills</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {/* 视图切换 */}
+                        <div className="flex bg-gray-100 rounded-lg p-0.5">
+                            <button 
+                                onClick={() => setViewMode('architecture')}
+                                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${viewMode === 'architecture' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <i className="ri-git-branch-line mr-1" />架构图
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('cards')}
+                                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${viewMode === 'cards' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            >
+                                <i className="ri-layout-grid-line mr-1" />卡片
+                            </button>
+                        </div>
+                        {/* 状态统计 */}
+                        <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-xs font-medium">
+                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /> {onlineCount} 在线
+                        </div>
+                        <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-xs font-medium">
+                            <i className="ri-puzzle-line" /> {totalSkills} Skills
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {/* 内容区域 */}
+            <div className="flex-1 overflow-auto bg-gray-50">
+                {viewMode === 'architecture' ? <ArchitectureView /> : <CardsView />}
+            </div>
+            
+            {/* 图例说明 */}
+            {viewMode === 'architecture' && (
+                <div className="bg-white border-t border-gray-200 px-6 py-3 flex-shrink-0">
+                    <div className="flex items-center justify-center gap-6 text-xs text-gray-500">
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+                            <span>在线</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-2.5 h-2.5 bg-gray-300 rounded-full" />
+                            <span>离线</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-4 h-0.5 bg-purple-400" />
+                            <span>调度路径</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-4 h-4 bg-purple-100 border border-purple-300 rounded" />
+                            <span>Orchestrator</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ═══ 日志 (按会话分组) ═══
+function LogsPanel() {
+    const [logs, setLogs] = useState([]); const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [filters, setFilters] = useState({ agents: [], levels: [], categories: [], sessions: [] });
+    const [sessionGroups, setSessionGroups] = useState([]);
+    const [fAgent, setFAgent] = useState(''); const [fLevel, setFLevel] = useState(''); const [fSession, setFSession] = useState('');
+    const [kw, setKw] = useState(''); const [autoR, setAutoR] = useState(true); const [total, setTotal] = useState(0);
+    const [viewMode, setViewMode] = useState('session'); // 'session' | 'list'
+
+    const fetch_ = useCallback(() => {
+        const p = new URLSearchParams({ date });
+        if (fAgent) p.set('agent', fAgent); if (fLevel) p.set('level', fLevel); if (fSession) p.set('session_id', fSession); if (kw) p.set('keyword', kw);
+        API.get(`/api/daily-log?${p}`).then(d => { setLogs(d.logs || []); setTotal(d.total || 0); if (d.filters) setFilters(d.filters); setSessionGroups(d.session_groups || []); }).catch(() => {});
+    }, [date, fAgent, fLevel, fSession, kw]);
+    useEffect(() => { fetch_(); }, [fetch_]);
+    useEffect(() => { if (!autoR) return; const t = setInterval(fetch_, 5000); return () => clearInterval(t); }, [autoR, fetch_]);
+
+    const lvlStyle = { info: 'border-blue-200 bg-blue-50 text-blue-700', success: 'border-green-200 bg-green-50 text-green-700', warn: 'border-yellow-200 bg-yellow-50 text-yellow-700', error: 'border-red-200 bg-red-50 text-red-700' };
+    const lvlIcon = { info: 'ri-information-line', success: 'ri-check-line', warn: 'ri-alert-line', error: 'ri-close-circle-line' };
+    const catIcon = { chat: 'ri-chat-3-line', llm: 'ri-brain-line', route: 'ri-route-line', system: 'ri-settings-3-line', kb: 'ri-book-open-line', sanitize: 'ri-shield-keyhole-line' };
+    const chip = (active) => `px-2.5 py-1 rounded-full text-xs cursor-pointer transition-all border ${active ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`;
+    const relTime = (ts) => { const d = Math.floor(Date.now()/1000 - ts); return d < 60 ? `${d}秒前` : d < 3600 ? `${Math.floor(d/60)}分钟前` : new Date(ts*1000).toLocaleTimeString(); };
+    const qaDetail = (log) => (log.question || log.answer) ? (
+        <details className="mt-1.5 ml-5 border-t border-dashed border-gray-200 pt-1.5">
+            <summary className="text-[10px] text-gray-400 cursor-pointer select-none hover:text-blue-500"><i className="ri-chat-quote-line mr-0.5" />完整问答记录</summary>
+            <div className="mt-1.5 space-y-1.5">
+                {log.question && <div className="text-xs bg-white/60 rounded-md px-2 py-1.5"><span className="font-semibold text-blue-600">问：</span><span className="text-gray-700 whitespace-pre-wrap break-words">{log.question}</span></div>}
+                {log.answer && <div className="text-xs bg-white/60 rounded-md px-2 py-1.5"><span className="font-semibold text-green-600">答：</span><span className="text-gray-700 whitespace-pre-wrap break-words">{log.answer}</span></div>}
+            </div>
+        </details>
+    ) : null;
+
+    return (
+        <div className="p-6 h-full flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+                <div><h2 className="text-gray-900 font-semibold text-lg">运维日志</h2>
+                    <p className="text-gray-400 text-sm">{logs.length}{total > logs.length ? ` / ${total}` : ''} 条记录，{sessionGroups.length} 个会话</p></div>
+                <div className="flex items-center gap-2.5">
+                    <div className="flex bg-gray-100 rounded-lg p-0.5">
+                        <button onClick={() => setViewMode('session')} className={`px-2.5 py-1 rounded-md text-xs transition-all ${viewMode==='session' ? 'bg-white text-gray-800 shadow-sm font-medium' : 'text-gray-500'}`}>会话</button>
+                        <button onClick={() => setViewMode('list')} className={`px-2.5 py-1 rounded-md text-xs transition-all ${viewMode==='list' ? 'bg-white text-gray-800 shadow-sm font-medium' : 'text-gray-500'}`}>列表</button>
+                    </div>
+                    <button onClick={() => setAutoR(!autoR)} className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${autoR ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${autoR ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />{autoR ? '自动刷新' : '已暂停'}
+                    </button>
+                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700" />
+                </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-4">
+                <div className="relative mr-2">
+                    <i className="ri-search-line absolute left-2.5 top-2 text-gray-400 text-xs" />
+                    <input type="text" placeholder="搜索..." value={kw} onChange={e => setKw(e.target.value)} className="bg-white border border-gray-200 rounded-lg pl-7 pr-3 py-1.5 text-xs text-gray-700 w-36 focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                </div>
+                <span onClick={() => setFAgent('')} className={chip(!fAgent)}>全部</span>
+                {filters.agents.map(a => <span key={a} onClick={() => setFAgent(fAgent===a?'':a)} className={chip(fAgent===a)}>{a.replace('_agent','')}</span>)}
+                <span className="text-gray-200 mx-0.5">|</span>
+                {['info','success','warn','error'].map(l => <span key={l} onClick={() => setFLevel(fLevel===l?'':l)} className={chip(fLevel===l)}><i className={`${lvlIcon[l]} mr-0.5`}/>{l}</span>)}
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-2">
+                {viewMode === 'session' ? (
+                    sessionGroups.length > 0 ? sessionGroups.map(sg => (
+                        <div key={sg.session_id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                            <div onClick={() => setFSession(fSession === sg.session_id ? '' : sg.session_id)}
+                                className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                                <i className={`ri-chat-3-line text-blue-400`} />
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-medium text-gray-800 truncate">{sg.preview}</div>
+                                    <div className="text-[10px] text-gray-400 mt-0.5">会话 {sg.session_id} · {sg.count} 条日志 · {sg.agents.join(', ')}</div>
+                                </div>
+                                <span className="text-xs text-gray-400">{relTime(sg.last_time)}</span>
+                                <i className={`ri-arrow-${fSession === sg.session_id ? 'up' : 'down'}-s-line text-gray-400`} />
+                            </div>
+                            {fSession === sg.session_id && (
+                                <div className="border-t border-gray-100 px-4 py-2 space-y-1.5 bg-gray-50">
+                                    {logs.filter(l => l.session_id === sg.session_id).map((log, i) => { const lv = log.level || 'info'; const cat = log.category || '';
+                                        return (<div key={i} className={`rounded-lg px-3 py-2 text-sm border ${lvlStyle[lv] || lvlStyle.info}`}>
+                                            <div className="flex items-center gap-2">
+                                                <i className={`${lvlIcon[lv]} text-xs`} /><span className="font-medium text-xs">{log.agent}</span>
+                                                {cat && <span className="text-[10px] bg-white/70 text-gray-500 px-1.5 py-0.5 rounded"><i className={`${catIcon[cat] || 'ri-folder-line'} mr-0.5`}/>{cat}</span>}
+                                                {log.model && <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded"><i className="ri-cpu-line mr-0.5" />{log.model}</span>}
+                                                {log.username && <span className="text-[10px] text-gray-400"><i className="ri-user-line mr-0.5" />{log.username}</span>}
+                                                <span className="text-[10px] text-gray-400 ml-auto">{relTime(log.timestamp)}</span>
+                                            </div>
+                                            <div className="text-gray-800 text-xs pl-5 mt-0.5">{log.content}</div>
+                                            {qaDetail(log)}
+                                        </div>); })}
+                                </div>
+                            )}
+                        </div>
+                    )) : (
+                        logs.filter(l => !l.session_id).length > 0 ? logs.filter(l => !l.session_id).map((log, i) => {
+                            const lv = log.level || 'info'; const cat = log.category || '';
+                            return (<div key={i} className={`rounded-lg px-4 py-3 text-sm border ${lvlStyle[lv] || lvlStyle.info}`}>
+                                <div className="flex items-center gap-2 mb-1"><i className={`${lvlIcon[lv]} text-xs`} /><span className="font-medium text-xs">{log.agent}</span>
+                                    {cat && <span className="text-[10px] bg-white/70 text-gray-500 px-1.5 py-0.5 rounded">{cat}</span>}
+                                    <span className="text-[10px] text-gray-400 ml-auto">{relTime(log.timestamp)}</span></div>
+                                <div className="text-gray-800 text-sm pl-5">{log.content}</div>
+                                {qaDetail(log)}
+                            </div>);
+                        }) : <div className="text-center text-gray-400 py-16"><i className="ri-file-list-3-line text-4xl block mb-3 text-gray-300" /><p>暂无日志记录</p></div>
+                    )
+                ) : (
+                    logs.map((log, i) => { const lv = log.level || 'info'; const cat = log.category || '';
+                        return (<div key={i} className={`rounded-lg px-4 py-3 text-sm border ${lvlStyle[lv] || lvlStyle.info}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                                <i className={`${lvlIcon[lv]} text-xs`} /><span className="font-medium text-xs">{log.agent}</span>
+                                {cat && <span className="text-[10px] bg-white/70 text-gray-500 px-1.5 py-0.5 rounded"><i className={`${catIcon[cat] || 'ri-folder-line'} mr-0.5`}/>{cat}</span>}
+                                {log.model && <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded"><i className="ri-cpu-line mr-0.5" />{log.model}</span>}
+                                {log.username && <span className="text-[10px] text-gray-400"><i className="ri-user-line mr-0.5" />{log.username}</span>}
+                                {log.session_id && <span className="text-[10px] bg-blue-50 text-blue-500 px-1.5 py-0.5 rounded"><i className="ri-chat-3-line mr-0.5" />{log.session_id.slice(0,8)}</span>}
+                                <span className="text-[10px] text-gray-400 ml-auto">{relTime(log.timestamp)}</span>
+                            </div>
+                            <div className="text-gray-800 text-sm pl-5">{log.content}</div>
+                            {qaDetail(log)}
+                        </div>); })
+                )}
+                {logs.length === 0 && viewMode === 'list' && <div className="text-center text-gray-400 py-16"><i className="ri-file-list-3-line text-4xl block mb-3 text-gray-300" /><p>暂无日志记录</p></div>}
+            </div>
+        </div>
+    );
+}
+
+// ═══ 用量 ═══
+function UsagePanel() {
+    const [usage, setUsage] = useState({ records: [], count: 0, total_elapsed: 0 });
+    useEffect(() => { API.get('/api/usage?limit=50').then(setUsage).catch(() => {}); }, []);
+    const stats = [
+        { label: '总调用', value: usage.count, color: 'text-blue-600', bg: 'bg-blue-50', icon: 'ri-chat-check-line' },
+        { label: '总耗时', value: `${usage.total_elapsed}s`, color: 'text-green-600', bg: 'bg-green-50', icon: 'ri-time-line' },
+        { label: '平均耗时', value: `${usage.count > 0 ? (usage.total_elapsed / usage.count).toFixed(1) : 0}s`, color: 'text-purple-600', bg: 'bg-purple-50', icon: 'ri-speed-line' },
+        { label: '脱敏次数', value: usage.records.reduce((s, r) => s + (r.sanitized || 0), 0), color: 'text-yellow-600', bg: 'bg-yellow-50', icon: 'ri-shield-keyhole-line' },
+    ];
+    return (
+        <div className="p-6">
+            <h2 className="text-gray-900 font-semibold text-lg mb-5">LLM 用量统计</h2>
+            <div className="grid grid-cols-4 gap-4 mb-6">
+                {stats.map((s, i) => (<div key={i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center`}><i className={`${s.icon} text-lg ${s.color}`} /></div>
+                        <div><div className={`text-xl font-bold ${s.color}`}>{s.value}</div><div className="text-xs text-gray-400">{s.label}</div></div>
+                    </div>
+                </div>))}
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 text-sm font-medium text-gray-700">调用记录</div>
+                <div className="divide-y divide-gray-50 max-h-[55vh] overflow-y-auto">
+                    {usage.records.slice().reverse().map((r, i) => (
+                        <div key={i} className="px-5 py-3 text-sm flex items-center gap-3 hover:bg-gray-50 transition-colors">
+                            <span className="font-medium text-gray-800 w-28 truncate">{r.agent}</span>
+                            <span className="text-gray-400 text-xs w-36 truncate">{r.provider}/{r.model}</span>
+                            <span className="text-xs text-gray-500 w-20 truncate">{r.username ? <><i className="ri-user-line mr-0.5" />{r.username}</> : <span className="text-gray-300">-</span>}</span>
+                            <div className="ml-auto flex items-center gap-4 text-xs text-gray-400">
+                                {r.sanitized > 0 && <span className="text-yellow-600"><i className="ri-shield-keyhole-line mr-0.5" />{r.sanitized}</span>}
+                                <span>{r.prompt_len}→{r.result_len}</span>
+                                <span className={r.elapsed > 5 ? 'text-red-500 font-medium' : r.elapsed > 2 ? 'text-yellow-600' : 'text-green-600'}>{r.elapsed}s</span>
+                                <span className="text-gray-300 w-20 text-right">{new Date(r.timestamp * 1000).toLocaleTimeString()}</span>
+                            </div>
+                        </div>
+                    ))}
+                    {usage.records.length === 0 && <div className="text-center text-gray-400 py-12">暂无调用记录</div>}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ═══ N8N 工作流管理面板 ═══
+function N8nPanel() {
+    const [n8nStatus, setN8nStatus] = useState(null);
+    const [workflows, setWorkflows] = useState([]);
+    const [executions, setExecutions] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState('workflows');
+
+    // 加载 N8N 状态
+    useEffect(() => {
+        const loadStatus = async () => {
+            try {
+                const status = await API.get('/api/n8n/status');
+                setN8nStatus(status);
+            } catch (e) {
+                console.error('加载 N8N 状态失败:', e);
+            }
+        };
+        loadStatus();
+    }, []);
+
+    // 加载工作流列表
+    useEffect(() => {
+        if (activeTab === 'workflows') {
+            setLoading(true);
+            // 模拟数据
+            setTimeout(() => {
+                setWorkflows([
+                    { id: '1', name: '定时备份检查', active: true, tags: ['backup', 'scheduled'] },
+                    { id: '2', name: '健康检查', active: true, tags: ['health', 'monitoring'] },
+                    { id: '3', name: '通知推送', active: false, tags: ['notification'] },
+                    { id: '4', name: '日报生成', active: true, tags: ['report', 'scheduled'] },
+                ]);
+                setLoading(false);
+            }, 500);
+        }
+    }, [activeTab]);
+
+    // 加载执行记录
+    useEffect(() => {
+        if (activeTab === 'executions') {
+            setLoading(true);
+            setTimeout(() => {
+                setExecutions([
+                    { id: '1', workflow: '定时备份检查', status: 'success', startedAt: new Date().toISOString(), duration: '2.5s' },
+                    { id: '2', workflow: '健康检查', status: 'success', startedAt: new Date().toISOString(), duration: '1.2s' },
+                    { id: '3', workflow: '通知推送', status: 'failed', startedAt: new Date().toISOString(), duration: '0.5s' },
+                ]);
+                setLoading(false);
+            }, 500);
+        }
+    }, [activeTab]);
+
+    const triggerWorkflow = async (workflowId) => {
+        try {
+            await API.post(`/api/n8n/trigger/${workflowId}`, { trigger: 'manual' });
+            alert('工作流已触发');
+        } catch (e) {
+            alert('触发失败：' + e.message);
+        }
+    };
+
+    const tabs = [
+        { id: 'workflows', icon: 'ri-node-tree', label: '工作流' },
+        { id: 'executions', icon: 'ri-history-line', label: '执行记录' },
+        { id: 'settings', icon: 'ri-settings-4-line', label: '配置' },
+    ];
+
+    return (
+        <div className="h-full flex flex-col bg-gray-50">
+            {/* 顶部状态栏 */}
+            <div className="bg-white border-b border-gray-200 px-6 py-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900">N8N 工作流管理</h2>
+                        <p className="text-sm text-gray-500 mt-1">自动化任务和工作流编排</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {n8nStatus ? (
+                            <div className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                n8nStatus.status === 'online' 
+                                    ? 'bg-green-50 text-green-700' 
+                                    : 'bg-red-50 text-red-700'
+                            }`}>
+                                <i className={`ri-${n8nStatus.status === 'online' ? 'check-double' : 'close-circle'}-line mr-1`} />
+                                {n8nStatus.status === 'online' ? 'N8N 在线' : 'N8N 离线'}
+                            </div>
+                        ) : (
+                            <div className="text-sm text-gray-400">加载中...</div>
+                        )}
+                        <a 
+                            href={n8nStatus?.url || 'http://localhost:5678'} 
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                            <i className="ri-external-link-line mr-1" />
+                            打开 N8N
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {/* 标签页切换 */}
+            <div className="bg-white border-b border-gray-200 px-6">
+                <div className="flex gap-2">
+                    {tabs.map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                                activeTab === tab.id
+                                    ? 'border-blue-600 text-blue-700'
+                                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <i className={`${tab.icon} mr-2`} />
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* 内容区域 */}
+            <div className="flex-1 overflow-auto p-6">
+                {loading ? (
+                    <div className="flex items-center justify-center h-full">
+                        <div className="text-center">
+                            <i className="ri-loader-4-line text-4xl text-blue-600 animate-spin" />
+                            <p className="text-gray-500 mt-3">加载中...</p>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {/* 工作流列表 */}
+                        {activeTab === 'workflows' && (
+                            <div className="space-y-3">
+                                {workflows.map(wf => (
+                                    <div key={wf.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-2 h-2 rounded-full ${wf.active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                                <h3 className="font-semibold text-gray-900">{wf.name}</h3>
+                                                <div className="flex gap-1">
+                                                    {wf.tags?.map(tag => (
+                                                        <span key={tag} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => triggerWorkflow(wf.id)}
+                                                    className="px-3 py-1.5 bg-blue-50 text-blue-600 text-sm font-medium rounded hover:bg-blue-100 transition-colors"
+                                                >
+                                                    <i className="ri-play-line mr-1" />
+                                                    触发
+                                                </button>
+                                                <button className="px-3 py-1.5 bg-gray-50 text-gray-600 text-sm font-medium rounded hover:bg-gray-100 transition-colors">
+                                                    <i className="ri-edit-line mr-1" />
+                                                    编辑
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* 执行记录 */}
+                        {activeTab === 'executions' && (
+                            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">工作流</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">开始时间</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">耗时</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {executions.map(ex => (
+                                            <tr key={ex.id} className="hover:bg-gray-50">
+                                                <td className="px-4 py-3 text-sm text-gray-900">#{ex.id}</td>
+                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">{ex.workflow}</td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                                        ex.status === 'success' 
+                                                            ? 'bg-green-50 text-green-700' 
+                                                            : 'bg-red-50 text-red-700'
+                                                    }`}>
+                                                        <i className={`ri-${ex.status === 'success' ? 'check' : 'close'}-line mr-1`} />
+                                                        {ex.status === 'success' ? '成功' : '失败'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-gray-600">{new Date(ex.startedAt).toLocaleString()}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-600">{ex.duration}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* 配置页面 */}
+                        {activeTab === 'settings' && (
+                            <div className="max-w-2xl">
+                                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">N8N 集成配置</h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">N8N 服务地址</label>
+                                            <input
+                                                type="text"
+                                                defaultValue={n8nStatus?.url || 'http://localhost:5678'}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">API Key</label>
+                                            <input
+                                                type="password"
+                                                placeholder="请输入 N8N API Key"
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2 pt-4">
+                                            <button className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                                                保存配置
+                                            </button>
+                                            <button className="px-4 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors">
+                                                测试连接
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ═══ 管理后台 (仅管理员) ═══
+function AdminPanel({ overview, user }) {
+    const [tab, setTab] = useState('users');
+    const adminTabs = [
+        { id: 'users', icon: 'ri-user-settings-line', label: '用户管理' },
+        { id: 'oneapi_keys', icon: 'ri-key-2-line', label: 'API Keys' },
+        { id: 'audit', icon: 'ri-file-shield-2-line', label: '审计日志' },
+        { id: 'user_ops', icon: 'ri-history-line', label: '用户操作' },
+        { id: 'llm', icon: 'ri-brain-line', label: '模型配置' },
+        { id: 'agent_models', icon: 'ri-robot-line', label: 'Agent 模型' },
+        { id: 'sanitize', icon: 'ri-shield-keyhole-line', label: '数据脱敏' },
+        { id: 'ldap', icon: 'ri-server-line', label: 'LDAP/AD' },
+        { id: 'system', icon: 'ri-information-line', label: '系统信息' },
+    ];
+
+    return (
+        <div className="flex h-full">
+            <div className="w-48 bg-white border-r border-gray-100 py-4 px-2 space-y-0.5">
+                <div className="px-3 pb-3 mb-2 border-b border-gray-100">
+                    <h2 className="text-gray-900 font-semibold text-sm flex items-center gap-2"><i className="ri-shield-user-line text-blue-500" />管理后台</h2>
+                </div>
+                {adminTabs.map(t => (
+                    <button key={t.id} onClick={() => setTab(t.id)}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-colors ${tab === t.id ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
+                        <i className={`${t.icon} text-sm`} />{t.label}
+                    </button>
+                ))}
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+                {tab === 'users' && <AdminUsers />}
+                {tab === 'oneapi_keys' && <AdminOneAPIKeys />}
+                {tab === 'audit' && <AdminAudit />}
+                {tab === 'user_ops' && <AdminUserOps />}
+                {tab === 'llm' && <AdminLLM />}
+                {tab === 'agent_models' && <AdminAgentModels />}
+                {tab === 'sanitize' && <AdminSanitize />}
+                {tab === 'ldap' && <AdminLDAP />}
+                {tab === 'system' && <AdminSystem overview={overview} />}
+            </div>
+        </div>
+    );
+}
+
+// ─── 审计日志 (v2.0.0 新增) ───
+function AdminAudit() {
+    const [entries, setEntries] = useState([]);
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [fAgent, setFAgent] = useState('');
+    const [agents, setAgents] = useState([]);
+    const [stats, setStats] = useState({ count: 0, errors: 0, success_rate: 100 });
+    const [autoR, setAutoR] = useState(true);
+
+    const load = useCallback(() => {
+        const p = new URLSearchParams({ date, count: '200' });
+        if (fAgent) p.set('agent', fAgent);
+        API.get(`/api/audit/recent?${p}`).then(d => {
+            setEntries(d.entries || []);
+            setAgents(d.agents || []);
+            setStats({ count: d.count || 0, errors: d.errors || 0, success_rate: d.success_rate || 100 });
+        }).catch(() => {});
+    }, [date, fAgent]);
+    useEffect(() => { load(); }, [load]);
+    useEffect(() => { if (!autoR) return; const t = setInterval(load, 8000); return () => clearInterval(t); }, [autoR, load]);
+
+    const fmtTime = (ts) => ts ? new Date(ts * 1000).toLocaleTimeString('zh-CN') : '-';
+    const chip = (active) => `px-2.5 py-1 rounded-full text-xs cursor-pointer transition-all border ${active ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`;
+
+    return (
+        <div className="max-w-4xl">
+            <div className="flex items-center justify-between mb-4">
+                <div><h3 className="text-gray-900 font-semibold text-base">审计日志</h3>
+                    <p className="text-gray-400 text-xs mt-0.5">{stats.count} 条记录，成功率 {stats.success_rate}%，{stats.errors} 个错误</p></div>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setAutoR(!autoR)} className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${autoR ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${autoR ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />{autoR ? '刷新中' : '已暂停'}
+                    </button>
+                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-700" />
+                </div>
+            </div>
+            {/* 统计卡片 */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm">
+                    <div className="flex items-center gap-2.5"><div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center"><i className="ri-file-list-3-line text-blue-500" /></div>
+                    <div><div className="text-lg font-bold text-blue-600">{stats.count}</div><div className="text-[10px] text-gray-400">总操作</div></div></div></div>
+                <div className="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm">
+                    <div className="flex items-center gap-2.5"><div className="w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center"><i className="ri-check-double-line text-green-500" /></div>
+                    <div><div className="text-lg font-bold text-green-600">{stats.success_rate}%</div><div className="text-[10px] text-gray-400">成功率</div></div></div></div>
+                <div className="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm">
+                    <div className="flex items-center gap-2.5"><div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center"><i className="ri-error-warning-line text-red-500" /></div>
+                    <div><div className="text-lg font-bold text-red-600">{stats.errors}</div><div className="text-[10px] text-gray-400">错误</div></div></div></div>
+            </div>
+            {/* Agent 过滤 */}
+            <div className="flex flex-wrap gap-1.5 mb-4">
+                <span onClick={() => setFAgent('')} className={chip(!fAgent)}>全部</span>
+                {agents.filter(a => a).map(a => <span key={a} onClick={() => setFAgent(fAgent === a ? '' : a)} className={chip(fAgent === a)}>{a.replace('_agent', '')}</span>)}
+            </div>
+            {/* 审计记录列表 */}
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="divide-y divide-gray-50 max-h-[55vh] overflow-y-auto">
+                    {entries.slice().reverse().map((e, i) => (
+                        <div key={i} className={`px-4 py-3 text-sm hover:bg-gray-50 transition-colors ${!e.success ? 'bg-red-50/50' : ''}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className={`w-1.5 h-1.5 rounded-full ${e.success ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className="font-medium text-gray-800 text-xs">{e.agent_id}</span>
+                                <span className="text-gray-400 text-[10px]">·</span>
+                                <span className="text-blue-600 text-xs font-mono">{e.action}</span>
+                                {e.tool_name && <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{e.tool_name}</span>}
+                                {e.model && <span className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded"><i className="ri-cpu-line mr-0.5" />{e.model}</span>}
+                                <span className="ml-auto text-[10px] text-gray-400">
+                                    <i className="ri-user-line mr-0.5" />{e.username}
+                                    <span className="mx-1">·</span>
+                                    <i className="ri-links-line mr-0.5" />{e.channel}
+                                    <span className="mx-1">·</span>
+                                    {e.duration_ms > 0 && <><span className={e.duration_ms > 3000 ? 'text-red-500' : 'text-gray-400'}>{(e.duration_ms/1000).toFixed(1)}s</span><span className="mx-1">·</span></>}
+                                    {fmtTime(e.timestamp)}
+                                </span>
+                            </div>
+                            {e.result_summary && <div className="text-gray-500 text-xs pl-4 truncate">{e.result_summary}</div>}
+                            {e.error && <div className="text-red-500 text-xs pl-4"><i className="ri-error-warning-line mr-0.5" />{e.error}</div>}
+                        </div>
+                    ))}
+                    {entries.length === 0 && <div className="text-center text-gray-400 py-16"><i className="ri-file-shield-2-line text-4xl block mb-3 text-gray-300" /><p>暂无审计记录</p><p className="text-xs mt-1">当 Agent 处理消息时会自动记录</p></div>}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── 用户管理 ───
+function AdminUsers() {
+    const [users, setUsers] = useState([]);
+    const [newUser, setNewUser] = useState({ username: '', password: '', display_name: '', role: 'user' });
+    const [adUser, setAdUser] = useState({ username: '', display_name: '', role: 'user' });
+    const [msg, setMsg] = useState('');
+    const [editingUser, setEditingUser] = useState(null);
+    const [resetPwd, setResetPwd] = useState({ username: '', password: '' });
+
+    const load = () => API.get('/api/auth/users').then(d => setUsers(d.users || [])).catch(() => {});
+    useEffect(() => { load(); }, []);
+
+    const addUser = async () => {
+        if (!newUser.username || !newUser.password) return;
+        try {
+            const r = await API.post('/api/auth/register', newUser);
+            if (r.ok) { setNewUser({ username: '', password: '', display_name: '', role: 'user' }); setMsg('用户已创建'); load(); }
+            else { const d = await r.json(); setMsg(d.detail || '创建失败'); }
+        } catch (e) { setMsg('创建失败'); }
+    };
+
+    const authorizeAd = async () => {
+        if (!adUser.username) return;
+        try {
+            const r = await API.post('/api/auth/authorize-ad', adUser);
+            const d = await r.json();
+            if (r.ok) {
+                setAdUser({ username: '', display_name: '', role: 'user' });
+                setMsg(d.action === 'updated' ? `${d.username} 已更新授权` : `${d.username} 已授权，可用 AD 域账号登录`);
+                load();
+            } else { setMsg(d.detail || '授权失败'); }
+        } catch (e) { setMsg('授权失败'); }
+    };
+
+    const updateRole = async (username, newRole) => {
+        try {
+            const r = await fetch(`/api/auth/users/${username}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API.token}` },
+                body: JSON.stringify({ role: newRole })
+            });
+            if (r.ok) { setMsg(`${username} 角色已更新`); load(); }
+            else { const d = await r.json(); setMsg(d.detail || '更新失败'); }
+        } catch (e) { setMsg('更新失败'); }
+    };
+
+    const deleteUser = async (username) => {
+        if (!confirm(`确认删除用户 ${username}?`)) return;
+        try {
+            const r = await fetch(`/api/auth/users/${username}`, {
+                method: 'DELETE', headers: { 'Authorization': `Bearer ${API.token}` }
+            });
+            if (r.ok) { setMsg(`${username} 已删除`); load(); }
+            else { const d = await r.json(); setMsg(d.detail || '删除失败'); }
+        } catch (e) { setMsg('删除失败'); }
+    };
+
+    const doResetPwd = async () => {
+        if (!resetPwd.username || !resetPwd.password || resetPwd.password.length < 4) { setMsg('密码至少4位'); return; }
+        try {
+            const r = await API.post(`/api/auth/users/${resetPwd.username}/reset-password`, { password: resetPwd.password });
+            if (r.ok) { setMsg(`${resetPwd.username} 密码已重置`); setResetPwd({ username: '', password: '' }); }
+            else { const d = await r.json(); setMsg(d.detail || '重置失败'); }
+        } catch (e) { setMsg('重置失败'); }
+    };
+
+    const inp = 'w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+    const fmtTime = (ts) => ts ? new Date(ts * 1000).toLocaleString('zh-CN') : '-';
+
+    return (
+        <div className="max-w-3xl">
+            <h3 className="text-gray-900 font-semibold text-base mb-4">用户管理</h3>
+            {msg && <div className="mb-3 px-3 py-2 rounded-lg bg-blue-50 text-blue-700 text-sm flex items-center justify-between">
+                <span>{msg}</span><button onClick={() => setMsg('')} className="text-blue-400 hover:text-blue-600"><i className="ri-close-line" /></button></div>}
+
+            {/* 用户列表 */}
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm mb-4 overflow-hidden">
+                <table className="w-full text-sm">
+                    <thead><tr className="bg-gray-50 border-b border-gray-200">
+                        <th className="text-left px-4 py-2.5 font-medium text-gray-600">用户</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-gray-600">角色</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-gray-600">来源</th>
+                        <th className="text-left px-4 py-2.5 font-medium text-gray-600">创建时间</th>
+                        <th className="text-right px-4 py-2.5 font-medium text-gray-600">操作</th>
+                    </tr></thead>
+                    <tbody>{users.map(u => (
+                        <tr key={u.username} className="border-b border-gray-50 hover:bg-gray-50/50">
+                            <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-7 h-7 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xs font-bold">{(u.display_name || u.username)[0].toUpperCase()}</div>
+                                    <div><div className="text-gray-800 font-medium">{u.display_name || u.username}</div><div className="text-gray-400 text-xs">@{u.username}{u.mail ? ` · ${u.mail}` : ''}</div></div>
+                                </div>
+                            </td>
+                            <td className="px-4 py-2.5">
+                                <select value={u.role} onChange={e => updateRole(u.username, e.target.value)}
+                                    className="text-xs border border-gray-200 rounded px-2 py-1 bg-white">
+                                    <option value="admin">管理员</option><option value="user">普通用户</option>
+                                </select>
+                            </td>
+                            <td className="px-4 py-2.5">
+                                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${u.auth_source === 'ldap' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                    <i className={u.auth_source === 'ldap' ? 'ri-shield-keyhole-line' : 'ri-user-line'} />
+                                    {u.auth_source === 'ldap' ? 'AD域' : '本地'}
+                                </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-gray-500 text-xs">{fmtTime(u.created_at)}</td>
+                            <td className="px-4 py-2.5 text-right">
+                                <button onClick={() => setResetPwd({ username: u.username, password: '' })} className="text-gray-400 hover:text-blue-500 mr-2" title="重置密码"><i className="ri-lock-password-line" /></button>
+                                <button onClick={() => deleteUser(u.username)} className="text-gray-400 hover:text-red-500" title="删除"><i className="ri-delete-bin-line" /></button>
+                            </td>
+                        </tr>
+                    ))}</tbody>
+                </table>
+            </div>
+
+            {/* 重置密码 */}
+            {resetPwd.username && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
+                    <h4 className="text-sm font-medium text-yellow-800 mb-2"><i className="ri-lock-password-line mr-1" />重置 {resetPwd.username} 的密码</h4>
+                    <div className="flex gap-2">
+                        <input type="password" placeholder="输入新密码 (至少4位)" value={resetPwd.password} onChange={e => setResetPwd(p => ({...p, password: e.target.value}))} className={inp + ' flex-1'} />
+                        <button onClick={doResetPwd} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium">重置</button>
+                        <button onClick={() => setResetPwd({username:'',password:''})} className="text-gray-400 hover:text-gray-600 px-2"><i className="ri-close-line" /></button>
+                    </div>
+                </div>
+            )}
+
+            {/* 授权 AD 用户 */}
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 shadow-sm mb-4">
+                <h4 className="text-sm font-medium text-gray-800 mb-1 flex items-center gap-1.5"><i className="ri-shield-keyhole-line text-green-500" />授权 AD 域用户</h4>
+                <p className="text-xs text-gray-400 mb-3">输入 AD 域账号名称即可授权，用户之后可用 AD 密码登录，无需设置本地密码</p>
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                    <input type="text" placeholder="AD 域账号 (如 zhangsan)" value={adUser.username} onChange={e => setAdUser(p => ({...p, username: e.target.value}))} className={inp} />
+                    <input type="text" placeholder="显示名 (可选，登录后自动同步)" value={adUser.display_name} onChange={e => setAdUser(p => ({...p, display_name: e.target.value}))} className={inp} />
+                    <select value={adUser.role} onChange={e => setAdUser(p => ({...p, role: e.target.value}))} className={inp}><option value="user">普通用户</option><option value="admin">管理员</option></select>
+                </div>
+                <button onClick={authorizeAd} disabled={!adUser.username.trim()} className="bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm">授权</button>
+            </div>
+
+            {/* 添加本地用户 */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <h4 className="text-sm font-medium text-gray-800 mb-3"><i className="ri-user-add-line mr-1 text-blue-500" />添加本地用户</h4>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                    <input type="text" placeholder="用户名" value={newUser.username} onChange={e => setNewUser(p => ({...p, username: e.target.value}))} className={inp} />
+                    <input type="password" placeholder="密码" value={newUser.password} onChange={e => setNewUser(p => ({...p, password: e.target.value}))} className={inp} />
+                    <input type="text" placeholder="显示名 (可选)" value={newUser.display_name} onChange={e => setNewUser(p => ({...p, display_name: e.target.value}))} className={inp} />
+                    <select value={newUser.role} onChange={e => setNewUser(p => ({...p, role: e.target.value}))} className={inp}><option value="user">普通用户</option><option value="admin">管理员</option></select>
+                </div>
+                <button onClick={addUser} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm">添加用户</button>
+            </div>
+        </div>
+    );
+}
+
+// ─── Agent 模型配置 (管理后台) ───
+function AdminAgentModels() {
+    const [detail, setDetail] = useState(null);
+    const [saving, setSaving] = useState('');
+    const [msg, setMsg] = useState('');
+    const load = useCallback(() => { API.get('/api/agents/detail').then(setDetail).catch(() => {}); }, []);
+    useEffect(() => { load(); }, [load]);
+    const providers = detail?.providers || [];
+    const globalModel = detail?.global_model || '';
+
+    const setModel = async (agentId, modelVal) => {
+        setSaving(agentId);
+        try {
+            const r = await API.post(`/api/agents/${agentId}/model`, { model: modelVal });
+            const d = await r.json();
+            if (d.status === 'ok') { setMsg(`${agentId}: 已保存`); load(); setTimeout(() => setMsg(''), 2000); }
+        } catch (e) { setMsg('保存失败'); }
+        setSaving('');
+    };
+
+    if (!detail) return React.createElement('div', { className: 'text-gray-400 text-center py-12' }, '加载中...');
+
+    return React.createElement('div', { className: 'max-w-3xl' },
+        React.createElement('div', { className: 'flex items-center justify-between mb-4' },
+            React.createElement('div', null,
+                React.createElement('h3', { className: 'text-gray-900 font-semibold text-base' }, 'Agent 模型配置'),
+                React.createElement('p', { className: 'text-gray-400 text-xs mt-1' }, '为每个 Agent 设置独立模型，或使用全局配置。全局: ', React.createElement('span', { className: 'font-mono text-gray-600' }, globalModel))),
+            msg && React.createElement('span', { className: 'text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full' }, msg)
+        ),
+        React.createElement('div', { className: 'bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm' },
+            React.createElement('table', { className: 'w-full text-sm' },
+                React.createElement('thead', null,
+                    React.createElement('tr', { className: 'bg-gray-50 border-b border-gray-200' },
+                        React.createElement('th', { className: 'text-left px-4 py-2.5 text-xs font-medium text-gray-500' }, 'Agent'),
+                        React.createElement('th', { className: 'text-left px-4 py-2.5 text-xs font-medium text-gray-500' }, '当前模型'),
+                        React.createElement('th', { className: 'text-left px-4 py-2.5 text-xs font-medium text-gray-500' }, '模型选择'))),
+                React.createElement('tbody', null,
+                    Object.entries(detail.agents || {}).map(([aid, ag]) =>
+                        React.createElement('tr', { key: aid, className: 'border-b border-gray-100 hover:bg-gray-50' },
+                            React.createElement('td', { className: 'px-4 py-3' },
+                                React.createElement('div', { className: 'font-medium text-gray-800 text-xs' }, ag.name || aid),
+                                React.createElement('div', { className: 'text-gray-400 text-[10px]' }, aid)),
+                            React.createElement('td', { className: 'px-4 py-3' },
+                                React.createElement('div', { className: 'flex items-center gap-1.5' },
+                                    React.createElement('span', { className: `text-[10px] px-1.5 py-0.5 rounded-full ${ag.model_source === 'override' ? 'bg-orange-50 text-orange-600' : 'bg-gray-100 text-gray-500'}` },
+                                        ag.model_source === 'override' ? '独立' : '全局'),
+                                    React.createElement('span', { className: 'text-gray-700 font-mono text-xs' }, ag.model))),
+                            React.createElement('td', { className: 'px-4 py-3' },
+                                React.createElement('select', {
+                                    value: ag.model_source === 'override' ? ag.model : '',
+                                    onChange: e => setModel(aid, e.target.value),
+                                    disabled: saving === aid,
+                                    className: 'w-full bg-gray-50 border border-gray-200 rounded px-2 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-400'
+                                },
+                                    React.createElement('option', { value: '' }, `使用全局 (${globalModel})`),
+                                    ...providers.map(p =>
+                                        React.createElement('optgroup', { key: p.id, label: p.name },
+                                            ...p.models.map(md =>
+                                                React.createElement('option', { key: `${p.id}/${md}`, value: `${p.id}/${md}` }, `${p.id}/${md}`))))))))
+            )
+        )
+    )
+    );
+}
+
+// ─── LLM 模型配置 ───
+function AdminLLM() {
+    const [cfg, setCfg] = useState(null);
+    const [form, setForm] = useState({ provider: '', model: '', api_key: '', base_url: '', anthropic_key: '', oneapi_key: '', oneapi_base_url: '', sanitize_enabled: true });
+    const [saving, setSaving] = useState(false);
+    const [msg, setMsg] = useState('');
+    const [showKey, setShowKey] = useState(false);
+    const [customModel, setCustomModel] = useState('');
+
+    useEffect(() => {
+        API.get('/api/llm/config').then(d => {
+            setCfg(d);
+            setForm({ provider: d.provider || 'deepseek', model: d.model || '', api_key: d.api_key || '', base_url: d.base_url || '', anthropic_key: d.anthropic_key || '', oneapi_key: d.oneapi_key || '', oneapi_base_url: d.oneapi_base_url || '', sanitize_enabled: d.sanitize_enabled !== false });
+        }).catch(() => {});
+    }, []);
+
+    const providers = cfg?.providers || [];
+    const curP = providers.find(p => p.id === form.provider);
+    const models = curP?.models || [];
+    const onP = (pid) => { const p = providers.find(x => x.id === pid); setForm(prev => ({ ...prev, provider: pid, model: p?.models?.[0] || '', base_url: (pid === 'custom' || pid === 'oneapi') ? prev.base_url : (p?.base_url || ''), oneapi_base_url: pid === 'oneapi' ? (prev.oneapi_base_url || p?.base_url || '') : prev.oneapi_base_url })); setCustomModel(''); };
+
+    const save = async () => {
+        setSaving(true); setMsg('');
+        try {
+            const payload = { ...form }; if (customModel) payload.model = customModel;
+            const r = await API.post('/api/llm/config', payload);
+            const d = await r.json();
+            setMsg(d.status === 'ok' ? '配置已保存' : '保存失败');
+        } catch (e) { setMsg('保存失败'); }
+        setSaving(false);
+    };
+
+    const inp = 'w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+    const lbl = 'block text-sm font-medium text-gray-700 mb-1.5';
+
+    return (
+        <div className="max-w-2xl">
+            <h3 className="text-gray-900 font-semibold text-base mb-4">LLM 模型配置</h3>
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                <div className="mb-4"><label className={lbl}>Provider</label>
+                    <div className="grid grid-cols-3 gap-2">{providers.map(p => (
+                        <button key={p.id} onClick={() => onP(p.id)} className={`px-3 py-2 rounded-lg text-sm border transition-all ${form.provider === p.id ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}>{p.name}</button>
+                    ))}</div></div>
+                <div className="mb-4"><label className={lbl}>Model</label>
+                    {models.length > 0 ? <div><select value={form.model} onChange={e => setForm(p => ({ ...p, model: e.target.value }))} className={inp + ' mb-2'}>{models.map(m => <option key={m} value={m}>{m}</option>)}</select>
+                        <input type="text" placeholder="或输入自定义模型名..." value={customModel} onChange={e => setCustomModel(e.target.value)} className={inp} /></div>
+                        : <input type="text" placeholder="输入模型名称" value={form.model} onChange={e => setForm(p => ({ ...p, model: e.target.value }))} className={inp} />}</div>
+                {form.provider !== 'anthropic' && form.provider !== 'oneapi' && <div className="mb-4"><label className={lbl}>API Key</label>
+                    <div className="relative"><input type={showKey ? 'text' : 'password'} placeholder={cfg?.has_env_key ? '已从环境变量加载' : '输入 API Key'} value={form.api_key} onChange={e => setForm(p => ({ ...p, api_key: e.target.value }))} className={inp + ' pr-10'} />
+                        <button onClick={() => setShowKey(!showKey)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"><i className={showKey ? 'ri-eye-off-line' : 'ri-eye-line'} /></button></div></div>}
+                {form.provider === 'anthropic' && <div className="mb-4"><label className={lbl}>Anthropic API Key</label><input type="password" placeholder="sk-ant-..." value={form.anthropic_key} onChange={e => setForm(p => ({ ...p, anthropic_key: e.target.value }))} className={inp} /></div>}
+                {form.provider === 'oneapi' && <div className="mb-4"><label className={lbl}>OneAPI Token</label>
+                    <div className="relative"><input type={showKey ? 'text' : 'password'} placeholder="sk-... (OneAPI 平台生成的 Token)" value={form.oneapi_key} onChange={e => setForm(p => ({ ...p, oneapi_key: e.target.value }))} className={inp + ' pr-10'} />
+                        <button onClick={() => setShowKey(!showKey)} className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"><i className={showKey ? 'ri-eye-off-line' : 'ri-eye-line'} /></button></div>
+                    <p className="text-xs text-gray-400 mt-1"><i className="ri-information-line mr-1" />登录 OneAPI 后台创建 Token，支持按 Token 分配模型和额度</p></div>}
+                {form.provider === 'oneapi' && <div className="mb-4"><label className={lbl}>OneAPI Base URL</label><input type="text" placeholder="http://127.0.0.1:3000/v1" value={form.oneapi_base_url} onChange={e => setForm(p => ({ ...p, oneapi_base_url: e.target.value }))} className={inp} />
+                    <p className="text-xs text-gray-400 mt-1">支持 new-api / one-api / chat-api 等 OpenAI 兼容网关</p></div>}
+                {(form.provider === 'custom' || form.provider === 'ollama') && <div className="mb-4"><label className={lbl}>Base URL</label><input type="text" placeholder="https://your-api.com/v1" value={form.base_url} onChange={e => setForm(p => ({ ...p, base_url: e.target.value }))} className={inp} /></div>}
+                <div className="mb-4 flex items-center gap-3 pt-3 border-t border-gray-100">
+                    <button onClick={() => setForm(p => ({ ...p, sanitize_enabled: !p.sanitize_enabled }))} className={`relative w-11 h-6 rounded-full transition-colors ${form.sanitize_enabled ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow ${form.sanitize_enabled ? 'left-[22px]' : 'left-0.5'}`} /></button>
+                    <div><span className="text-sm text-gray-800 font-medium">数据脱敏</span><span className="text-xs text-gray-400 ml-2">调用前自动掩码敏感信息</span></div></div>
+                <div className="flex items-center gap-3 mt-4">
+                    <button onClick={save} disabled={saving} className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">{saving ? '保存中...' : '保存配置'}</button>
+                    {msg && <span className={`text-sm ${msg.includes('失败') ? 'text-red-500' : 'text-green-600'}`}>{msg.includes('失败') ? '' : '✓ '}{msg}</span>}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── 数据脱敏配置 ───
+function AdminSanitize() {
+    const [mappings, setMappings] = useState({});
+    const [nmk, setNmk] = useState('');
+    const [nmv, setNmv] = useState('');
+    const [testText, setTestText] = useState('');
+    const [testResult, setTestResult] = useState(null);
+
+    useEffect(() => { API.get('/api/sanitize/mappings').then(d => setMappings(d.mappings || {})).catch(() => {}); }, []);
+
+    const addMap = () => { if (!nmk.trim() || !nmv.trim()) return; const u = { ...mappings, [nmk]: nmv }; setMappings(u); API.post('/api/sanitize/mappings', { mappings: u }); setNmk(''); setNmv(''); };
+    const rmMap = (k) => { const u = { ...mappings }; delete u[k]; setMappings(u); API.post('/api/sanitize/mappings', { mappings: u }); };
+    const runTest = async () => { if (!testText.trim()) return; try { const r = await API.post('/api/sanitize/test', { text: testText }); setTestResult(await r.json()); } catch (e) { setTestResult({ error: e.message }); } };
+
+    const inp = 'w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+    const lbl = 'block text-sm font-medium text-gray-700 mb-1.5';
+
+    return (
+        <div className="max-w-2xl">
+            <h3 className="text-gray-900 font-semibold text-base mb-4">数据脱敏配置</h3>
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm mb-4">
+                <p className="text-xs text-gray-400 mb-4">内置规则自动识别内网IP、MAC、密码、API Key、域名、邮箱、手机号等。</p>
+                <div className="mb-4"><label className={lbl}>自定义映射</label>
+                    <div className="space-y-2 mb-2">{Object.entries(mappings).map(([k, v]) => (
+                        <div key={k} className="flex items-center gap-2 text-sm bg-gray-50 rounded-lg px-3 py-2">
+                            <code className="text-red-600">{k}</code><span className="text-gray-300">→</span><code className="text-green-600">{v}</code>
+                            <button onClick={() => rmMap(k)} className="text-gray-300 hover:text-red-400 ml-auto"><i className="ri-close-line" /></button></div>))}</div>
+                    <div className="flex gap-2"><input type="text" placeholder="真实值" value={nmk} onChange={e => setNmk(e.target.value)} className={inp + ' flex-1'} />
+                        <input type="text" placeholder="替代值" value={nmv} onChange={e => setNmv(e.target.value)} className={inp + ' flex-1'} />
+                        <button onClick={addMap} className="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2 rounded-lg text-sm border border-gray-200"><i className="ri-add-line" /></button></div></div>
+                <div><label className={lbl}>脱敏测试</label>
+                    <div className="flex gap-2 mb-2"><textarea value={testText} onChange={e => setTestText(e.target.value)} placeholder="粘贴文本测试..." className={inp + ' flex-1'} rows={2} />
+                        <button onClick={runTest} className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm self-end shadow-sm font-medium">测试</button></div>
+                    {testResult && !testResult.error && <div className="bg-gray-50 rounded-lg p-3 text-sm border border-gray-200">
+                        <div className="text-green-600 font-medium mb-1 text-xs">{testResult.summary}</div>
+                        <div className="text-gray-700 font-mono text-xs whitespace-pre-wrap">{testResult.masked_text}</div></div>}</div>
+            </div>
+        </div>
+    );
+}
+
+// ─── API Keys ───
+function AdminOneAPIKeys() {
+    const [keys, setKeys] = useState([]);
+    const [newName, setNewName] = useState('');
+    const [creating, setCreating] = useState(false);
+    const [newKey, setNewKey] = useState(null);
+    const [copied, setCopied] = useState(false);
+
+    const load = () => API.get('/api/oneapi/keys').then(d => setKeys(d.keys || [])).catch(() => {});
+    useEffect(() => { load(); }, []);
+
+    const createKey = async () => {
+        if (!newName.trim()) return;
+        setCreating(true);
+        try {
+            const r = await API.post('/api/oneapi/keys', { name: newName.trim() });
+            const d = await r.json();
+            if (d.key) { setNewKey(d); setNewName(''); load(); }
+        } catch (e) { alert('创建失败: ' + (e.message || e)); }
+        setCreating(false);
+    };
+
+    const deleteKey = async (id) => {
+        if (!confirm('确认删除该 Key？删除后使用该 Key 的外部应用将无法访问。')) return;
+        try { await API.del('/api/oneapi/keys/' + encodeURIComponent(id)); load(); } catch (e) {}
+    };
+
+    const copyKey = () => { navigator.clipboard.writeText(newKey.key).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); };
+
+    const inp = 'w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+    const port = location.port || (location.protocol === 'https:' ? '443' : '80');
+    const baseUrl = `${location.protocol}//${location.hostname}:${port}/v1`;
+
+    return (
+        <div className="max-w-3xl">
+            <h3 className="text-gray-900 font-semibold text-base mb-1">API Keys</h3>
+            <p className="text-xs text-gray-400 mb-4">仅显示平台为你创建的 <code className="text-blue-500">oneapi:*</code> token。可用于外部 Chatbox / OpenWebUI 等直接调用。</p>
+
+            {newKey && <div className="mb-4 bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2"><i className="ri-check-line text-green-600" /><span className="text-sm font-medium text-green-800">Key 创建成功</span></div>
+                <p className="text-xs text-green-700 mb-2">请立即复制保存，关闭后将无法再次查看完整 Key。</p>
+                <div className="flex items-center gap-2 bg-white rounded-lg border border-green-200 px-3 py-2">
+                    <code className="flex-1 text-xs font-mono text-gray-800 break-all select-all">{newKey.key}</code>
+                    <button onClick={copyKey} className="shrink-0 text-green-600 hover:text-green-800 text-sm">
+                        <i className={copied ? 'ri-check-double-line' : 'ri-file-copy-line'} /> {copied ? '已复制' : '复制'}
+                    </button>
+                </div>
+                <div className="mt-2 text-xs text-gray-500">Label: <code>{newKey.label}</code> · Id: <code>{newKey.id}</code></div>
+            </div>}
+
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm mb-4">
+                <div className="flex gap-2 mb-4">
+                    <input type="text" placeholder="名称 (如: svc-gcoc)，生成 Label 为 oneapi:名称" value={newName} onChange={e => setNewName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && createKey()} className={inp + ' flex-1'} />
+                    <button onClick={createKey} disabled={creating || !newName.trim()}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap">
+                        <i className="ri-add-line mr-1" />{creating ? '创建中...' : '创建 Key'}
+                    </button>
+                </div>
+
+                {keys.length === 0 ? (
+                    <div className="text-center py-8 text-gray-300">
+                        <i className="ri-key-2-line text-3xl" />
+                        <p className="text-sm mt-2">暂无 Key，创建一个开始使用</p>
+                    </div>
+                ) : (
+                    <table className="w-full text-sm">
+                        <thead><tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                            <th className="py-2 font-medium">Label</th>
+                            <th className="py-2 font-medium">Key</th>
+                            <th className="py-2 font-medium">Id</th>
+                            <th className="py-2 w-10">Action</th>
+                        </tr></thead>
+                        <tbody>{keys.map(k => (
+                            <tr key={k.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                <td className="py-2.5"><code className="text-sm font-medium text-gray-800">{k.label}</code></td>
+                                <td className="py-2.5"><code className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded font-mono">{k.key}</code></td>
+                                <td className="py-2.5"><code className="text-xs text-gray-400 font-mono">{k.id}</code></td>
+                                <td className="py-2.5"><button onClick={() => deleteKey(k.id)} className="text-gray-300 hover:text-red-500 transition-colors" title="删除"><i className="ri-delete-bin-line" /></button></td>
+                            </tr>
+                        ))}</tbody>
+                    </table>
+                )}
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                <h4 className="text-xs font-medium text-gray-600 mb-2"><i className="ri-terminal-box-line mr-1" />外部工具配置</h4>
+                <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center gap-2"><span className="text-gray-400 w-16">API Base</span><code className="bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-700 font-mono">{baseUrl}</code></div>
+                    <div className="flex items-center gap-2"><span className="text-gray-400 w-16">API Key</span><code className="bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-700 font-mono">← 上方创建的 Key</code></div>
+                    <div className="flex items-center gap-2"><span className="text-gray-400 w-16">Model</span><code className="bg-white border border-gray-200 rounded px-2 py-0.5 text-gray-700 font-mono">zops-agent</code></div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">在 Chatbox / OpenWebUI / Cherry Studio 中配置以上信息即可直接调用 Z-OPS 智能体。</p>
+            </div>
+        </div>
+    );
+}
+
+// ─── 用户操作日志 (审计用) ───
+function AdminUserOps() {
+    const [entries, setEntries] = useState([]);
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [fUser, setFUser] = useState('');
+    const [autoR, setAutoR] = useState(true);
+
+    const load = useCallback(() => {
+        const p = new URLSearchParams({ date, count: '300' });
+        if (fUser) p.set('username', fUser);
+        API.get(`/api/user-ops?${p}`).then(d => setEntries(d.entries || [])).catch(() => {});
+    }, [date, fUser]);
+    useEffect(() => { load(); }, [load]);
+    useEffect(() => { if (!autoR) return; const t = setInterval(load, 8000); return () => clearInterval(t); }, [autoR, load]);
+
+    const fmtTime = (ts) => ts ? new Date(ts * 1000).toLocaleTimeString('zh-CN') : '-';
+    const allUsers = [...new Set(entries.map(e => e.username).filter(Boolean))];
+    const actionIcon = { login: 'ri-login-box-line', llm_config: 'ri-brain-line', create_api_key: 'ri-key-2-line', delete_api_key: 'ri-delete-bin-line', agent_model: 'ri-cpu-line' };
+    const actionColor = { login: 'text-green-600 bg-green-50', llm_config: 'text-purple-600 bg-purple-50', create_api_key: 'text-blue-600 bg-blue-50', delete_api_key: 'text-red-600 bg-red-50', agent_model: 'text-orange-600 bg-orange-50' };
+    const chip = (active) => `px-2.5 py-1 rounded-full text-xs cursor-pointer transition-all border ${active ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`;
+
+    return (
+        <div className="max-w-4xl">
+            <div className="flex items-center justify-between mb-4">
+                <div><h3 className="text-gray-900 font-semibold text-base">用户操作日志</h3>
+                    <p className="text-gray-400 text-xs mt-0.5">{entries.length} 条记录，登录/配置变更/Key管理等操作审计</p></div>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setAutoR(!autoR)} className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all ${autoR ? 'bg-green-50 border-green-200 text-green-700' : 'bg-white border-gray-200 text-gray-400'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${autoR ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />{autoR ? '刷新中' : '已暂停'}
+                    </button>
+                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs text-gray-700" />
+                </div>
+            </div>
+            {/* 用户过滤 */}
+            <div className="flex flex-wrap gap-1.5 mb-4">
+                <span onClick={() => setFUser('')} className={chip(!fUser)}>全部</span>
+                {allUsers.map(u => <span key={u} onClick={() => setFUser(fUser === u ? '' : u)} className={chip(fUser === u)}><i className="ri-user-line mr-0.5" />{u}</span>)}
+            </div>
+            {/* 操作列表 */}
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <div className="divide-y divide-gray-50 max-h-[60vh] overflow-y-auto">
+                    {entries.slice().reverse().map((e, i) => {
+                        const ac = actionColor[e.action] || 'text-gray-600 bg-gray-50';
+                        const ai = actionIcon[e.action] || 'ri-arrow-right-line';
+                        return (
+                            <div key={i} className="px-4 py-3 text-sm hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ac}`}><i className={ai} />{e.action}</span>
+                                    <span className="text-gray-800 font-medium text-xs"><i className="ri-user-line mr-0.5 text-gray-400" />{e.username}</span>
+                                    {e.ip && <span className="text-[10px] text-gray-400">{e.ip}</span>}
+                                    <span className="ml-auto text-[10px] text-gray-400">{fmtTime(e.timestamp)}</span>
+                                </div>
+                                {e.detail && <div className="text-gray-500 text-xs pl-4 mt-0.5 truncate">{e.detail}</div>}
+                            </div>
+                        );
+                    })}
+                    {entries.length === 0 && <div className="text-center text-gray-400 py-16"><i className="ri-history-line text-4xl block mb-3 text-gray-300" /><p>暂无操作记录</p></div>}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─── LDAP/AD 配置 ───
+function AdminLDAP() {
+    const [ldap, setLdap] = useState(null);
+    useEffect(() => { API.get('/api/admin/ldap-config').then(setLdap).catch(() => {}); }, []);
+
+    const items = ldap ? [
+        { label: '状态', value: ldap.ldap_enabled ? '已启用' : '未启用', color: ldap.ldap_enabled ? 'text-green-600' : 'text-red-500' },
+        { label: '服务器', value: ldap.server_uri },
+        { label: 'Bind DN', value: ldap.bind_dn },
+        { label: 'Bind 密码', value: ldap.bind_password },
+        { label: '搜索 Base', value: ldap.search_base },
+        { label: '搜索 Filter', value: ldap.search_filter },
+        { label: '默认角色', value: ldap.default_role },
+    ] : [];
+
+    return (
+        <div className="max-w-2xl">
+            <h3 className="text-gray-900 font-semibold text-base mb-4">LDAP / AD 认证配置</h3>
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                {!ldap ? <div className="text-gray-400 text-sm">加载中...</div> : (
+                    <div className="space-y-3">
+                        {items.map(it => (
+                            <div key={it.label} className="flex items-start gap-3">
+                                <div className="w-24 text-xs font-medium text-gray-500 pt-0.5 text-right flex-shrink-0">{it.label}</div>
+                                <div className={`text-sm font-mono ${it.color || 'text-gray-800'} break-all`}>{it.value}</div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                <p className="text-xs text-gray-400 mt-4 pt-3 border-t border-gray-100">
+                    <i className="ri-information-line mr-1" />LDAP 配置通过环境变量或 zops.env 文件修改，修改后需重启服务生效。
+                </p>
+            </div>
+        </div>
+    );
+}
+
+// ─── 系统信息 ───
+function AdminSystem({ overview }) {
+    const [detail, setDetail] = useState(null);
+    useEffect(() => { API.get('/api/agents/detail').then(setDetail).catch(() => {}); }, []);
+    const agentCount = detail?.count || Object.keys(overview?.agents || {}).length;
+    const totalSkills = detail ? Object.values(detail.agents || {}).reduce((s, a) => s + (a.skills?.length || 0), 0) : 0;
+    const features = [
+        { icon: 'ri-file-settings-line', label: '声明式 Agent (YAML)', color: 'text-blue-500' },
+        { icon: 'ri-puzzle-line', label: 'Skills 模块化注册', color: 'text-green-500' },
+        { icon: 'ri-route-line', label: '双层路由引擎', color: 'text-orange-500' },
+        { icon: 'ri-shield-check-line', label: '工具权限策略', color: 'text-red-500' },
+        { icon: 'ri-file-shield-2-line', label: '操作审计日志', color: 'text-purple-500' },
+        { icon: 'ri-inbox-unarchive-line', label: 'Per-Agent 隔离', color: 'text-teal-500' },
+        { icon: 'ri-terminal-box-line', label: 'CLI 工具 + 备份', color: 'text-gray-500' },
+        { icon: 'ri-compass-discover-line', label: 'Provenance 追踪', color: 'text-indigo-500' },
+    ];
+    return (
+        <div className="max-w-2xl">
+            <h3 className="text-gray-900 font-semibold text-base mb-4">系统信息</h3>
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm mb-4">
+                <div className="text-sm text-gray-500 space-y-2.5">
+                    <div className="flex justify-between"><span>版本</span><span className="text-blue-600 font-bold">智OC v2.1.0</span></div>
+                    <div className="flex justify-between"><span>Agent</span><span className="text-gray-700 font-medium">{agentCount} 个</span></div>
+                    <div className="flex justify-between"><span>Skills</span><span className="text-gray-700 font-medium">{totalSkills} 个</span></div>
+                    <div className="flex justify-between"><span>Redis 前缀</span><span className="text-gray-700 font-mono">zops:</span></div>
+                    <div className="flex justify-between"><span>Web 端口</span><span className="text-gray-700 font-mono">7789</span></div>
+                    <div className="flex justify-between"><span>LLM 调用</span><span className="text-gray-700 font-medium">{overview?.llm_usage_count || 0} 次</span></div>
+                    <div className="flex justify-between"><span>当前模型</span><span className="text-gray-700 font-medium">{overview?.llm_provider || '-'}/{overview?.llm_model || '-'}</span></div>
+                </div>
+            </div>
+            {/* v2.1 特性 */}
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm mb-4">
+                <h4 className="text-gray-800 font-medium text-sm mb-3"><i className="ri-sparkling-2-line text-blue-500 mr-1" />v2.1 特性</h4>
+                <div className="grid grid-cols-2 gap-2">
+                    {features.map(f => (
+                        <div key={f.label} className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+                            <i className={`${f.icon} ${f.color}`} />{f.label}
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                <h4 className="text-gray-800 font-medium text-sm mb-3"><i className="ri-links-line text-green-500 mr-1" />渠道状态</h4>
+                {overview?.channels && Object.entries(overview.channels).map(([n, info]) => (
+                    <div key={n} className="flex items-center gap-2 text-sm mb-2"><StatusDot status={info.status} /><span className="text-gray-700">{n}</span><span className="text-gray-400 text-xs">({info.status})</span></div>))}
+            </div>
+        </div>
+    );
+}
+
+// ═══ App ═══
+function App() {
+    const [user, setUser] = useState(null);
+    const [tab, setTab] = useState('chat');
+    const [overview, setOverview] = useState(null);
+
+    // 检查已有 token
+    useEffect(() => {
+        const stored = localStorage.getItem('zops_user');
+        if (stored && API.token) {
+            try {
+                setUser(JSON.parse(stored));
+                // 验证 token 有效性
+                API.get('/api/auth/me').then(d => setUser(d)).catch(() => { API.logout(); setUser(null); });
+            } catch(e) { API.logout(); }
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!user) return;
+        const f = () => API.get('/api/overview').then(setOverview).catch(() => {});
+        f(); const t = setInterval(f, 10000); return () => clearInterval(t);
+    }, [user]);
+
+    const handleLogin = (data) => { setUser({ username: data.username, display_name: data.display_name, role: data.role }); };
+    const handleLogout = () => { API.logout(); setUser(null); setOverview(null); };
+
+    if (!user) return <LoginPage onLogin={handleLogin} />;
+
+    return (
+        <div className="flex flex-col h-screen bg-gray-50">
+            <Header user={user} overview={overview} onLogout={handleLogout} />
+            <div className="flex flex-1 overflow-hidden">
+                <Sidebar user={user} activeTab={tab} setActiveTab={setTab} />
+                <main className="flex-1 overflow-hidden">
+                    {tab === 'chat' && <ChatPanel user={user} />}
+                    {tab === 'agents' && <AgentsPanel overview={overview} user={user} />}
+                    {tab === 'logs' && user?.role === 'admin' && <LogsPanel />}
+                    {tab === 'usage' && user?.role === 'admin' && <UsagePanel />}
+                    {tab === 'admin' && user?.role === 'admin' && <AdminPanel overview={overview} user={user} />}
+                    {tab === 'n8n' && user?.role === 'admin' && <N8nPanel />}
+                </main>
+            </div>
+        </div>
+    );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

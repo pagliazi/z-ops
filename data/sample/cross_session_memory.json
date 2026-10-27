@@ -1,0 +1,25 @@
+{
+  "sessions": {
+    "sample_session_001": {
+      "session_id": "sample_session_001",
+      "user_id": "demo_user_001",
+      "agent": "vm_agent",
+      "start_time": "2026-01-01T10:00:00",
+      "end_time": "2026-01-01T10:15:00",
+      "topics": ["示例主题：备份检查"],
+      "summary": "用户请求检查服务器 vm-demo 的备份状态，结果正常。",
+      "key_learnings": ["定期备份检查流程可复用"],
+      "assets": ["vm-demo"]
+    }
+  },
+  "users": {
+    "demo_user_001": {
+      "user_id": "demo_user_001",
+      "display_name": "演示用户",
+      "first_seen": "2026-01-01T10:00:00",
+      "last_seen": "2026-01-01T10:15:00",
+      "session_count": 1,
+      "preferred_agents": ["vm_agent"]
+    }
+  }
+}

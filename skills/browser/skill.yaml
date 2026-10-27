@@ -1,0 +1,16 @@
+name: web_screenshot
+description: "网页截图与自动化操作"
+summary: "对指定 URL/管理后台截图并执行自动化点击操作"
+domain: browser
+parameters:
+  - name: url
+    type: string
+    description: "目标 URL"
+    required: true
+  - name: action
+    type: string
+    description: "操作类型 (screenshot/click/fill)"
+    default: screenshot
+examples:
+  - "截图 https://monitor.example.com"
+  - "打开管理页面并截图"

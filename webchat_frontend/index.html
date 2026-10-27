@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智 OC - Operation Claw | 智能运维平台</title>
+    
+    <!-- 外部库 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.1.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+    
+    <!-- Z-OPS 样式 -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/markdown.css">
+</head>
+<body>
+    <div id="root"></div>
+    
+    <!-- Z-OPS 工具库 -->
+    <script src="/static/utils/helpers.js"></script>
+    <script src="/static/utils/api.js"></script>
+    
+    <!-- Z-OPS 组件 -->
+    <script src="/static/components/LoginPage.js"></script>
+    <script src="/static/components/ChatInterface.js"></script>
+    
+    <!-- 主应用 -->
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        function App() {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            
+            useEffect(() => {
+                // 检查登录状态
+                const savedUser = ZOPSUtils.storage.get('zops_user');
+                if (savedUser) {
+                    setUser(savedUser);
+                }
+                setLoading(false);
+            }, []);
+            
+            const handleLogin = (userData) => {
+                setUser(userData);
+            };
+            
+            const handleLogout = () => {
+                ZOPSUtils.storage.remove('zops_user');
+                ZOPSAPI.setToken(null);
+                setUser(null);
+            };
+            
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center animate-gradient">
+                        <div className="text-center">
+                            <div className="loading-spinner" style={{ 
+                                border: '3px solid #e5e7eb', 
+                                borderTopColor: '#3b82f6',
+                                width: '40px',
+                                height: '40px'
+                            }}></div>
+                            <div className="text-gray-600 mt-4">加载中...</div>
+                        </div>
+                    </div>
+                );
+            }
+            
+            return user ? (
+                <ChatInterface user={user} onLogout={handleLogout} />
+            ) : (
+                <LoginPage onLogin={handleLogin} />
+            );
+        }
+        
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>

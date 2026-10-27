@@ -1,0 +1,17 @@
+name: vm_list
+description: "虚拟机列表查询 (VMware/KVM/PVE)"
+summary: "跨平台 (vCenter/PVE/KVM) 列出/搜索虚拟机清单"
+domain: vm
+parameters:
+  - name: platform
+    type: string
+    description: "虚拟化平台 (vcenter/pve/kvm)"
+    default: vcenter
+  - name: search
+    type: string
+    description: "搜索关键词 (VM名/IP)"
+    required: false
+examples:
+  - "列出所有 VMware 虚拟机"
+  - "查看 PVE 上的虚拟机"
+  - "搜索 vm-web-01"

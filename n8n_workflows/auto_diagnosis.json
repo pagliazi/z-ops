@@ -1,0 +1,215 @@
+{
+  "name": "自动诊断 SOP v2 (Proactive)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auto-diagnosis",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "dx1",
+      "name": "诊断Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 解析诊断请求，构建 SOP 上下文\nconst input = $input.first().json;\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nconst target = input.target || input.host || '';\nconst symptom = input.symptom || input.alert || input.message || '未知问题';\nconst sopType = input.sop_type || 'general';\n\n// 根据 symptom 自动选择 SOP\nlet diagnosticSteps = [];\nconst lowerSymptom = symptom.toLowerCase();\n\nif (lowerSymptom.includes('网络') || lowerSymptom.includes('network') || lowerSymptom.includes('连不上')) {\n  diagnosticSteps = ['network_check', 'ping_test', 'dns_check', 'firewall_check'];\n} else if (lowerSymptom.includes('磁盘') || lowerSymptom.includes('disk') || lowerSymptom.includes('空间')) {\n  diagnosticSteps = ['disk_check', 'log_cleanup', 'large_file_scan'];\n} else if (lowerSymptom.includes('CPU') || lowerSymptom.includes('负载') || lowerSymptom.includes('慢')) {\n  diagnosticSteps = ['cpu_check', 'process_list', 'top_consumers'];\n} else if (lowerSymptom.includes('内存') || lowerSymptom.includes('memory') || lowerSymptom.includes('OOM')) {\n  diagnosticSteps = ['memory_check', 'swap_usage', 'process_memory'];\n} else if (lowerSymptom.includes('备份') || lowerSymptom.includes('backup')) {\n  diagnosticSteps = ['backup_status', 'backup_schedule', 'storage_check'];\n} else {\n  diagnosticSteps = ['health_check', 'service_status', 'log_analyze'];\n}\n\nreturn {\n  target,\n  symptom,\n  sop_type: sopType,\n  diagnostic_steps: diagnosticSteps,\n  timestamp: cstTime,\n  triggered_by: input.triggered_by || 'n8n_alert',\n};"
+      },
+      "id": "dx2",
+      "name": "SOP路由",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/webhook/n8n_callback",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ callback_type: 'alert', alert_type: `auto_diagnosis_${$json.sop_type}`, data: { target: $json.target, symptom: $json.symptom, sop_type: $json.sop_type, diagnostic_steps: $json.diagnostic_steps, timestamp: $json.timestamp } }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "dx3",
+      "name": "请求Agent诊断",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        750,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\nconst sopData = $('SOP路由').first().json;\nlet agentResult = {};\ntry { agentResult = $('请求Agent诊断').first().json || {}; } catch(e) {}\n\nreturn {\n  target: sopData.target,\n  symptom: sopData.symptom,\n  sop_type: sopData.sop_type,\n  steps_executed: sopData.diagnostic_steps,\n  agent_forwarded: agentResult.success || agentResult.forwarded || false,\n  timestamp: cstTime,\n  summary: `SOP诊断已触发: ${sopData.sop_type} → ${sopData.diagnostic_steps.join(' → ')}`,\n};"
+      },
+      "id": "dx4",
+      "name": "汇总结果",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'workflow_result', workflow_id: 'auto_diagnosis', target: $json.target, symptom: $json.symptom, sop_type: $json.sop_type, summary: $json.summary, timestamp: $json.timestamp }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "dx5",
+      "name": "结果回调",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1200,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, target: $json.target, sop_type: $json.sop_type, summary: $json.summary }) }}"
+      },
+      "id": "dx6",
+      "name": "响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Z-OPS 签名节点模板 (task-c17 P0)\n部署本工作流前: 启用下方「Z-OPS签名」Code 节点并接入 httpRequest 前;\nsecret 取 zops.env N8N_CALLBACK_SECRET; httpRequest 改 Send Raw JSON body={{ $json.__body }} 并引用 __sig/__ts/__nonce 三个头。\n算法: HMAC-SHA256 over 'POST\\n/api/webhook/n8n_callback\\n<body>\\n<ts>\\n<nonce>'。"
+      },
+      "name": "Z-OPS签名说明",
+      "type':": "n8n-nodes-base.stickyNote",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -100
+      ],
+      "width": 380,
+      "height": 260
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Z-OPS n8n_callback HMAC 签名 (task-c17; secret=zops.env N8N_CALLBACK_SECRET)\nconst crypto = require('crypto');\nconst secret = process.env.ZOPS_N8N_CALLBACK_SECRET || '<部署时填 zops.env 的 N8N_CALLBACK_SECRET>';\nconst body = JSON.stringify($input.first().json);  // 与 httpRequest raw body 完全一致\nconst ts = String(Math.floor(Date.now()/1000));\nconst nonce = crypto.randomBytes(8).toString('hex');\nconst payload = ['POST','/api/webhook/n8n_callback',body,ts,nonce].join('\\n');\nreturn [{ json: { __body: body, __sig: crypto.createHmac('sha256', secret).update(payload).digest('hex'), __ts: ts, __nonce: nonce } }];"
+      },
+      "name": "Z-OPS签名",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        0
+      ],
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "诊断Webhook": {
+      "main": [
+        [
+          {
+            "node": "SOP路由",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SOP路由": {
+      "main": [
+        [
+          {
+            "node": "请求Agent诊断",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "请求Agent诊断": {
+      "main": [
+        [
+          {
+            "node": "汇总结果",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "汇总结果",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "汇总结果": {
+      "main": [
+        [
+          {
+            "node": "结果回调",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "结果回调": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "event",
+    "诊断",
+    "SOP",
+    "主动运维",
+    "AI"
+  ]
+}

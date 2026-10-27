@@ -1,0 +1,13 @@
+name: host_check
+description: "主机巡检: 采集 CPU/内存/磁盘/进程"
+summary: "采集主机 CPU/内存/磁盘/进程指标生成巡检结论"
+domain: ops
+parameters:
+  - name: host
+    type: string
+    description: "目标主机 (逗号分隔多台)"
+    required: false
+    default: localhost
+examples:
+  - "检查 localhost 主机状态"
+  - "巡检 192.168.1.10,192.168.1.11"

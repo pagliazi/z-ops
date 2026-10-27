@@ -1,0 +1,5 @@
+id: session_recap
+version: "1.0.0"
+description: 会话摘要事件的结构化观测 (日志留痕 + Redis 最近动态, 供运维回溯)
+entry: plugins.session_recap.plugin:SessionRecapPlugin
+inject: []

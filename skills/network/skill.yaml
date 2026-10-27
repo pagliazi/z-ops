@@ -1,0 +1,16 @@
+name: ping_sweep
+description: "批量 Ping 检测: 检查多个目标的连通性"
+summary: "批量 ping 检测主机连通性并汇总丢包率"
+domain: network
+parameters:
+  - name: targets
+    type: string
+    description: "目标地址 (逗号分隔)"
+    required: true
+  - name: count
+    type: int
+    description: "每个目标 ping 次数"
+    default: 3
+examples:
+  - "ping 10.0.0.1,10.0.0.2"
+  - "检测网关 192.168.1.1 连通性"

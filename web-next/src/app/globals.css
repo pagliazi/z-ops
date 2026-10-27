@@ -1,0 +1,435 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* ═══════════════════════════════════════════════════
+   Z-OPS Design System — Unified & Standardized
+   Style reference: ChatGPT / Claude Code
+   Principles: 克制、专业、统一
+   ═══════════════════════════════════════════════════ */
+
+:root {
+  /* ── Brand Accent (Blue) ── */
+  --cf-orange: #2563EB;
+  --cf-orange-hover: #3B82F6;
+  --cf-orange-dark: #1D4ED8;
+
+  /* ── Neutrals ── */
+  --bg-primary: #ffffff;
+  --bg-secondary: #F7F7F8;
+  --bg-tertiary: #ECECF1;
+  --bg-sidebar: #1B1B1F;
+  --bg-sidebar-hover: #2A2A2F;
+  --bg-sidebar-active: #363639;
+
+  /* ── Text ── */
+  --text-primary: #0D0D0D;
+  --text-secondary: #565869;
+  --text-tertiary: #8E8EA0;
+  --text-sidebar: #C5C5D2;
+  --text-sidebar-active: #FFFFFF;
+
+  /* ── Borders ── */
+  --border-light: #E5E5E7;
+  --border-medium: #D9D9E3;
+
+  /* ── Status Accents ── */
+  --accent-blue: #2563EB;
+  --accent-green: #10B981;
+  --accent-red: #EF4444;
+  --accent-purple: #8B5CF6;
+  --accent-yellow: #F59E0B;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+
+  --background: #ffffff;
+  --foreground: #0D0D0D;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  /* P1 构建修复: next/font 移除后提供同名本地字体栈回退 (内网不可达 Google Fonts) */
+  --font-geist-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, 'JetBrains Mono', Menlo, Consolas,
+    'Noto Sans Mono CJK SC', monospace;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ═══════ Body ═══════ */
+body {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════ Sidebar Dark Theme ═══════ */
+.zops-sidebar {
+  background: var(--bg-sidebar);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+.zops-sidebar::-webkit-scrollbar { width: 4px; }
+.zops-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+/* ═══════ Think Block ═══════ */
+.think-block {
+  margin: 8px 0;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+.think-block summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85em;
+}
+.think-block summary:hover { background: var(--bg-tertiary); }
+.think-content {
+  padding: 12px;
+  font-size: 0.85em;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-light);
+  font-family: var(--font-geist-mono), monospace;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════════════
+   Prose / Markdown — ChatGPT-style clean typography
+   ═══════════════════════════════════════════════════ */
+.prose { color: var(--text-primary); }
+
+/* 聊天正文排版：更大字号与行高（对齐 ChatGPT 阅读体验） */
+.chat-prose {
+  font-size: 16px;
+  line-height: 1.75;
+}
+.chat-prose p { line-height: 1.75; }
+.chat-prose li { line-height: 1.75; }
+
+.prose p {
+  margin: 0.6em 0;
+  line-height: 1.75;
+  color: var(--text-primary);
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin: 1.2em 0 0.5em;
+  letter-spacing: -0.01em;
+}
+.prose h1 { font-size: 1.5em; }
+.prose h2 { font-size: 1.25em; }
+.prose h3 { font-size: 1.1em; }
+.prose h4 { font-size: 1em; }
+
+.prose ul, .prose ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+  color: var(--text-primary);
+}
+.prose li {
+  margin: 0.25em 0;
+  color: var(--text-primary);
+  line-height: 1.7;
+}
+
+.prose strong { color: var(--text-primary); font-weight: 600; }
+.prose em { font-style: italic; }
+.prose del, .prose s { text-decoration: line-through; color: var(--text-tertiary); }
+.prose u { text-decoration: underline; }
+
+/* Definition lists */
+.prose dl { margin: 0.75em 0; }
+.prose dt { font-weight: 600; margin-top: 0.5em; }
+.prose dd { margin-left: 1.5em; margin-bottom: 0.5em; }
+
+/* Links */
+.prose a {
+  color: var(--cf-orange);
+  text-decoration: none;
+  font-weight: 500;
+}
+.prose a:hover {
+  color: var(--cf-orange-dark);
+  text-decoration: underline;
+}
+
+/* Blockquote */
+.prose blockquote {
+  border-left: 3px solid var(--cf-orange);
+  padding-left: 1em;
+  margin: 0.75em 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* HR */
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: 1.5em 0;
+}
+
+/* Images */
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 0.75em 0;
+}
+
+/* Inline code */
+.prose code {
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.875em;
+  font-family: var(--font-geist-mono), monospace;
+  color: var(--text-primary);
+}
+
+/* Code blocks */
+.prose pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  padding: 16px;
+  border-radius: 10px;
+  overflow-x: auto;
+  position: relative;
+  font-size: 0.875em;
+  line-height: 1.6;
+  margin: 0.75em 0;
+}
+.prose pre .language-label {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 4px 10px;
+  font-size: 0.75em;
+  color: #6c7086;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0 10px 0 6px;
+}
+.prose pre .line-numbers { counter-reset: line; }
+.prose pre .line-numbers .line::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 2em;
+  margin-right: 1em;
+  text-align: right;
+  color: #6c7086;
+  font-size: 0.875em;
+}
+.prose pre code {
+  background: transparent;
+  padding: 0;
+  color: #cdd6f4;
+}
+
+/* Tables */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75em 0;
+  font-size: 0.9em;
+}
+.prose thead { border-bottom: 2px solid var(--border-medium); }
+.prose tbody tr:last-child { border-bottom: 1px solid var(--border-light); }
+.prose th, .prose td {
+  border: 1px solid var(--border-light);
+  padding: 8px 12px;
+  text-align: left;
+}
+.prose th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.prose tr:nth-child(even) { background: var(--bg-secondary); }
+.prose .table-container { overflow-x: auto; margin: 12px 0; }
+
+/* Misc elements */
+.prose kbd {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-medium);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.875em;
+  font-family: monospace;
+}
+.prose mark {
+  background: #FEF3C7;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+.prose details {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0.75em 0;
+}
+.prose summary { font-weight: 600; cursor: pointer; }
+.prose summary:hover { color: var(--text-primary); }
+.prose iframe, .prose svg, .prose .mermaid {
+  max-width: 100%;
+  margin: 0.75em 0;
+}
+
+/* Checkboxes in markdown */
+.prose input[type="checkbox"] {
+  margin-right: 0.5em;
+  vertical-align: middle;
+}
+
+/* Math */
+.prose .math { font-family: 'KaTeX_Math', 'Times New Roman', serif; }
+.prose .math-inline { display: inline; }
+.prose .math-block { display: block; text-align: center; margin: 1em 0; }
+
+/* Sup/Sub */
+.prose sup, .prose sub {
+  font-size: 0.75em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+.prose sup { top: -0.5em; }
+.prose sub { bottom: -0.25em; }
+
+/* ═══════ Inverted prose (legacy — for dark backgrounds) ═══════ */
+.prose-invert { color: #ffffff; }
+.prose-invert p { color: #ffffff; }
+.prose-invert h1, .prose-invert h2, .prose-invert h3, .prose-invert h4 { color: #ffffff; }
+.prose-invert strong {
+  color: #ffffff;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.prose-invert code { background: rgba(255, 255, 255, 0.15); color: #ffffff; }
+.prose-invert ul, .prose-invert ol, .prose-invert li { color: #ffffff; }
+.prose-invert pre { background: rgba(0, 0, 0, 0.25); color: #f0f0f0; }
+.prose-invert pre code { color: #f0f0f0; }
+
+/* ═══════ Global Form Elements ═══════
+   注意：必须保留在 @layer base 内！
+   无层（unlayered）规则在 CSS Cascade Layers 中永远压过 @layer utilities，
+   会把深色按钮上的 text-white 等 Tailwind 文字颜色类全部覆盖成近黑色，
+   导致深底按钮黑字压深底看不见。详见按钮对比度规范。 */
+@layer base {
+  input, textarea, select, button { color: var(--text-primary); }
+  input::placeholder, textarea::placeholder { color: var(--text-tertiary); }
+  input:focus, textarea:focus, select:focus { color: var(--text-primary); }
+
+  a { color: inherit; }
+  option { color: var(--text-primary); background: #ffffff; }
+}
+
+/* ═══════ Animations ═══════ */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+.animate-fade-in { animation: fadeIn 0.2s ease-out; }
+.animate-slide-up { animation: slideUp 0.25s ease-out; }
+.animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.animate-spin { animation: spin 1s linear infinite; }
+
+/* ═══════ Responsive ═══════ */
+@media (max-width: 640px) {
+  .prose { font-size: 0.875rem; }
+  .prose h1 { font-size: 1.25em; }
+  .prose h2 { font-size: 1.125em; }
+  .prose h3 { font-size: 1em; }
+}
+
+/* ═══════ Print ═══════ */
+@media print {
+  .prose { color: #000; }
+  .prose a { text-decoration: underline; }
+  .prose a[href]::after { content: " (" attr(href) ")"; }
+}
+
+/* ═══════════════════════════════════════════════════
+   Unified Page Layout Helpers
+   统一各板块的页面结构 / 容器宽度 / 滚动区域
+   ═══════════════════════════════════════════════════ */
+
+/* 页面根容器：竖向排列，占满高度，头部固定、内容滚动 */
+.zops-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg-secondary);
+}
+
+/* 页面滚动区域：承载主内容，独立滚动 */
+.zops-page-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 统一内容宽度容器（居中，左右留白） */
+.zops-container {
+  width: 100%;
+  max-width: 80rem; /* 1280px, 加宽主内容区域 */
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+/* 宽内容容器（表格 / 大盘等需要更多横向空间） */
+.zops-container-wide {
+  width: 100%;
+  max-width: 90rem; /* 1440px */
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+/* 知识库文档内不可外联的附件图占位卡片 */
+.kb-img-ph {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.kb-img-ph em {
+  margin-left: auto;
+  font-style: normal;
+  color: #9ca3af;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ╹ Z-OPS 滚动条策略 (10-19): 隐藏原生滚动条, 消息区用视口右缘的浮动指示条 (EdgeScrollbar) */
+.zops-hide-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.zops-hide-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }

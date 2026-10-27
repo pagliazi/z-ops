@@ -1,0 +1,5 @@
+id: wiki_compile
+version: "1.0.0"
+description: 会话摘要落盘后增量编译进 LLM-Wiki (原 cross_session_memory 内联逻辑, 插件化)
+entry: plugins.wiki_compile.plugin:WikiCompilePlugin
+inject: []

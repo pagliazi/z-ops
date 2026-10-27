@@ -1,0 +1,171 @@
+# Z-OPS v4.0 Phase 5.1 — RCA 评测集 (借鉴 OpenSRE synthetic RCA suite)
+# 来源: experiences/ 常见故障 + NMS 告警历史 + Checklist 场景构造
+# 判定: RootCauseAnalyzer.analyze(symptom).category == expect_category (根因命中)
+#       + description 含 required_evidence (证据引用完整度)
+# 红鲱鱼: 干扰信息已嵌入 symptom, 分析不应被带偏到其他类别
+# 规则: 改动 _ERROR_PATTERNS / RootCauseAnalyzer 后必须跑 python tests/rca/run_rca_eval.py
+
+cases:
+  # ── timeout ──
+  - id: rca-001
+    source: experiences
+    skill: batch_exec
+    symptom: "SSH 批量执行: 3 台主机命令 timeout after 60s, 其余正常返回"
+    expect_category: timeout
+    required_evidence: ["timeout"]
+  - id: rca-002
+    source: experiences
+    skill: gcoc_api
+    symptom: "调用 GCOC 接口查询备份状态超时, 客户端 deadline exceeded after 30s"
+    expect_category: timeout
+    required_evidence: ["超时"]
+  - id: rca-003
+    source: nms
+    skill: nms_alarm_now
+    symptom: "NMS 抓取页面加载 timed out, 网关探测同期正常 (疑似无关)"
+    expect_category: timeout
+    required_evidence: ["timed out"]
+
+  # ── connection ──
+  - id: rca-011
+    source: experiences
+    skill: vm_power
+    symptom: "vCenter API 连接失败: Connection refused (此时段另有 DNS 变更工单, 经查无关)"
+    expect_category: connection
+    required_evidence: ["connection refused"]
+  - id: rca-012
+    source: experiences
+    skill: host_check
+    symptom: "巡检到 app-01 主机 network unreachable, ping 不通, 但同网段其他主机正常"
+    expect_category: connection
+    required_evidence: ["unreachable"]
+  - id: rca-013
+    source: checklist
+    skill: dns_query
+    symptom: "socket 连接 GCOC 网关被拒: ECONNREFUSED 10.0.0.8:443"
+    expect_category: connection
+    required_evidence: ["econnrefused"]
+
+  # ── auth ──
+  - id: rca-021
+    source: experiences
+    skill: ssh_exec
+    symptom: "SSH 登录跳板机返回 Permission denied (publickey), 密码方式未启用"
+    expect_category: auth
+    required_evidence: ["permission denied"]
+  - id: rca-022
+    source: experiences
+    skill: gcoc_api
+    symptom: "GCOC 接口 401 unauthorized: token 已过期 (客户反馈界面打不开为表象)"
+    expect_category: auth
+    required_evidence: ["unauthorized"]
+  - id: rca-023
+    source: checklist
+    skill: vcenter_api
+    symptom: "vCenter 会话失效 403 forbidden, 重新认证后恢复"
+    expect_category: auth
+    required_evidence: ["forbidden"]
+
+  # ── param_invalid ──
+  - id: rca-031
+    source: experiences
+    skill: vm_snapshot
+    symptom: "创建快照报 invalid parameter: snapshot name 含非法字符, validation failed"
+    expect_category: param_invalid
+    required_evidence: ["invalid"]
+  - id: rca-032
+    source: experiences
+    skill: backup_status
+    symptom: "查询备份缺少 required 参数 gid, 接口返回 missing field"
+    expect_category: param_invalid
+    required_evidence: ["required"]
+
+  # ── resource ──
+  - id: rca-041
+    source: experiences
+    skill: vm_list
+    symptom: "查询虚拟机 vm-not-exist-99 返回 404 not found (CMDB 中亦无此设备记录)"
+    expect_category: resource
+    required_evidence: ["not found"]
+  - id: rca-042
+    source: nms
+    skill: config_backup
+    symptom: "配置备份任务失败: no such host sw-core-02, 设备清单需更新"
+    expect_category: resource
+    required_evidence: ["no such"]
+
+  # ── dependency ──
+  - id: rca-051
+    source: experiences
+    skill: n8n_workflow
+    symptom: "N8N 工作流执行失败: 上游 service unavailable 503, Webhook 网关抖动"
+    expect_category: dependency
+    required_evidence: ["503"]
+  - id: rca-052
+    source: experiences
+    skill: smartops_vms
+    symptom: "Smart-Ops 数据同步失败: 502 bad gateway, 上游依赖平台重启中"
+    expect_category: dependency
+    required_evidence: ["502"]
+  - id: rca-053
+    source: nms
+    skill: m365_status
+    symptom: "M365 备份状态接口 upstream 服务不可用, 疑似上游依赖故障而非本地网络"
+    expect_category: dependency
+    required_evidence: ["依赖"]
+
+  # ── rate_limit ──
+  - id: rca-061
+    source: experiences
+    skill: cmdb_query
+    symptom: "批量查询 CMDB 触发限流: 429 too many requests, 已自动退避"
+    expect_category: rate_limit
+    required_evidence: ["429"]
+  - id: rca-062
+    source: experiences
+    skill: aria_ops
+    symptom: "Aria 容量接口 rate limit exceeded, 每分钟配额用尽"
+    expect_category: rate_limit
+    required_evidence: ["rate limit"]
+
+  # ── data ──
+  - id: rca-071
+    source: experiences
+    skill: backup_sessions
+    symptom: "备份会话数据解析失败: json decode error at offset 128"
+    expect_category: data
+    required_evidence: ["decode"]
+  - id: rca-072
+    source: experiences
+    skill: ha_query
+    symptom: "HA 事件列表返回数据异常, parse 后字段缺失 (非网络问题)"
+    expect_category: data
+    required_evidence: ["parse"]
+
+  # ── logic (规则外负例: 未匹配应归 unknown) ──
+  - id: rca-081
+    source: experiences
+    skill: health_report
+    symptom: "健康报告生成的业务结论与预期不符, 无任何网络或接口报错"
+    expect_category: unknown
+    required_evidence: []
+
+  # ── 红鲱鱼对抗: 干扰词密集但正确类别应胜出 ──
+  - id: rca-091
+    source: checklist
+    skill: batch_exec
+    symptom: "批量重启服务超时 timeout; 注: 备份窗口同时有大量数据传输 (历史误判为带宽问题)"
+    expect_category: timeout
+    required_evidence: ["timeout"]
+  - id: rca-092
+    source: checklist
+    skill: dns_query
+    symptom: "域名解析接口 401 unauthorized; 同期 NMS 有磁盘告警 (无关干扰)"
+    expect_category: auth
+    required_evidence: ["unauthorized"]
+  - id: rca-093
+    source: checklist
+    skill: vm_migrate
+    symptom: "vMotion 迁移失败 connection 拒绝目标主机; 源主机负载高只是伴随现象"
+    expect_category: connection
+    required_evidence: ["connection"]

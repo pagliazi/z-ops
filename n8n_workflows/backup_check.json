@@ -1,0 +1,269 @@
+{
+  "name": "备份状态检查 v2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "backup-check",
+        "responseMode": "responseNode",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "Content-Type": "application/json"
+          }
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook 触发",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/gcoc/backup/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "gid",
+              "value": "={{ $json.params?.gid || $json.gid || '' }}"
+            },
+            {
+              "name": "site",
+              "value": "={{ $json.params?.site || $json.site || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "gcoc-api",
+      "name": "查询GCOC备份",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        450,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": ""
+          },
+          "conditions": [
+            {
+              "id": "check-success",
+              "leftValue": "={{ $json.status || $json.body?.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-status",
+      "name": "检查备份状态",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 格式化成功通知\nconst input = $input.first().json;\nconst gid = input.params?.gid || input.gid || 'unknown';\nconst site = input.params?.site || input.site || '';\nconst backupTime = input.backup_time || input.body?.backup_time || '';\nconst now = new Date();\nconst cstTime = now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nreturn {\n  title: `✅ GID ${gid} 备份正常`,\n  message: `站点: ${site}\\n备份时间: ${backupTime}\\n检查时间: ${cstTime}`,\n  level: 'success'\n};"
+      },
+      "id": "format-success",
+      "name": "格式化-成功",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 格式化失败通知\nconst input = $input.first().json;\nconst gid = input.params?.gid || input.gid || 'unknown';\nconst site = input.params?.site || input.site || '';\nconst error = input.error || input.body?.error || '未知错误';\nconst now = new Date();\nconst cstTime = now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nreturn {\n  title: `⚠️ GID ${gid} 备份失败`,\n  message: `站点: ${site}\\n错误: ${error}\\n检查时间: ${cstTime}\\n请立即检查！`,\n  level: 'error'\n};"
+      },
+      "id": "format-fail",
+      "name": "格式化-失败",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'backup_result', gid: $json.gid, site: $json.site, status: $json.level, title: $json.title, message: $json.message }) }}"
+      },
+      "id": "callback-zops",
+      "name": "回调Z-OPS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1050,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, title: $json.title, level: $json.level }) }}"
+      },
+      "id": "respond",
+      "name": "响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook 触发": {
+      "main": [
+        [
+          {
+            "node": "查询GCOC备份",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "查询GCOC备份": {
+      "main": [
+        [
+          {
+            "node": "检查备份状态",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "格式化-失败",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查备份状态": {
+      "main": [
+        [
+          {
+            "node": "格式化-成功",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "格式化-失败",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "格式化-成功": {
+      "main": [
+        [
+          {
+            "node": "回调Z-OPS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "格式化-失败": {
+      "main": [
+        [
+          {
+            "node": "回调Z-OPS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "回调Z-OPS": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "tags": [
+    "gcoc",
+    "backup",
+    "自动化"
+  ],
+  "pinData": {}
+}

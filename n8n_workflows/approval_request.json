@@ -1,0 +1,117 @@
+{
+  "name": "审批请求流程 v2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "approval-request",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 构建审批卡片内容\nconst input = $input.first().json;\nconst approvalId = input.approval_id || `apr_${Date.now()}`;\nconst reqType = input.request_type || input.workflow || 'unknown';\nconst title = input.title || input.workflow_name || '运维操作审批';\nconst content = input.content || JSON.stringify(input.params || {}, null, 2);\nconst callbackUrl = input.callback_url || 'http://localhost:7789/api/webhook/n8n_callback';\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nreturn {\n  approval_id: approvalId,\n  request_type: reqType,\n  title: `🔐 审批请求: ${title}`,\n  content: `类型: ${reqType}\\n\\n${content}\\n\\n时间: ${cstTime}`,\n  callback_url: callbackUrl,\n  require_role: input.require_role || 'admin',\n  timestamp: cstTime,\n  expires_in: 3600,\n};"
+      },
+      "id": "a2",
+      "name": "构建审批",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'approval_request', approval_id: $json.approval_id, title: $json.title, content: $json.content, require_role: $json.require_role, callback_url: $json.callback_url }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "a3",
+      "name": "通知审批人",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        650,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, approval_id: $json.approval_id, status: 'pending', message: `审批请求已发送: ${$json.approval_id}`, expires_in: $json.expires_in }) }}"
+      },
+      "id": "a4",
+      "name": "响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "构建审批",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "构建审批": {
+      "main": [
+        [
+          {
+            "node": "通知审批人",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "通知审批人": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "approval",
+    "审批"
+  ]
+}

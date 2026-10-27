@@ -1,0 +1,337 @@
+# ═══ Z-OPS v2.0.0 — 声明式 Agent 配置 ═══
+# 所有 Agent 的配置在此声明，支持热加载
+# v4.0 (Phase 2.2): capability_summary = LLM 路由 tool 描述 (能力边界三句话，
+#   具体误判 case 已移入 tests/routing/eval_cases.yaml 评测集守护);
+#   routing_hints = 高置信快速路由关键词 (orchestrator 内置规则后的补充层，
+#   改动后必须跑 python tests/routing/run_eval.py --mode keyword)
+
+agents:
+  - id: orchestrator
+    name: 调度中枢
+    description: Z-OPS 核心编排器 — 意图识别 & 任务路由
+    workspace: ./workspaces/orchestrator
+    model: ""
+    skills: []
+    tools:
+      allow: ["*"]
+      deny: []
+    soul: ./workspaces/orchestrator/SOUL.md
+    bindings:
+      - action: route
+        priority: 0
+
+  - id: general_agent
+    name: 通用助手
+    description: 通用问答 / 知识库检索 / 文档生成
+    capability_summary: |
+      通用问答 Agent。能力: 一般性对话、运维常识问答、概念解释、帮助信息。
+      适用: 日常对话、模糊问题、无法明确归类的问题。
+      边界: 当其他 Agent 都不合适时使用此 Agent 作为兜底。
+    routing_hints: []
+    workspace: ./workspaces/general_agent
+    model: ""
+    skills:
+      - chat
+      - doc_gen
+      - summarize
+    tools:
+      allow: ["*"]
+      deny: []
+    soul: ./workspaces/general_agent/SOUL.md
+    bindings:
+      - action: chat
+        keywords: ["帮助", "什么是", "问答", "解释"]
+
+  - id: ops_agent
+    name: 系统运维
+    description: 系统巡检 / 资源监控 / 故障诊断 + N8N 工作流 + 主动运维
+    capability_summary: |
+      系统运维 Agent。能力: 主机巡检、资源监控、日志分析、批量命令执行、健康报告生成。
+      适用: 检查主机 CPU/内存/磁盘、分析系统日志、执行健康检查、生成健康报告;
+      对现网主机批量执行运维命令 (如"批量执行命令重启服务")、
+      用户描述具体故障现象请求排查分析时发此 Agent。
+      边界: 仅执行运维操作与巡检; 询问排查方法/处理指南是知识问题应发 kb_agent。
+    routing_hints: [巡检, 健康检查, 健康报告, 批量执行, 日志分析]
+    workspace: ./workspaces/ops_agent
+    model: ""
+    skills:
+      - host_check
+      - log_analyze
+      - batch_exec
+      - health_report
+      # N8N 集成技能
+      - n8n_health_check
+      - n8n_notification
+    tools:
+      allow: [ssh_exec, gcoc_api, shell_exec, n8n_workflow]
+      deny: [script_exec]
+    soul: ./workspaces/ops_agent/SOUL.md
+    bindings:
+      - action: host_check
+        keywords: ["巡检", "主机检查", "CPU", "内存", "磁盘"]
+      - action: log_analyze
+        keywords: ["日志分析", "日志查看", "syslog"]
+      - action: batch_exec
+        keywords: ["批量执行", "批量命令"]
+      - action: health_report
+        keywords: ["健康报告", "健康检查"]
+      - action: n8n_health_check
+        keywords: ["N8N健康检查", "通过工作流巡检"]
+      - action: n8n_notification
+        keywords: ["发送通知", "推送消息"]
+
+  - id: network_agent
+    name: 网络运维
+    description: 网络拓扑 / 连通性检测 / 配置审计 + GCOC DNS/网络数据查询
+    capability_summary: |
+      网络运维 Agent。能力: 网络连通性检测、端口扫描、路由追踪、DNS 解析测试、交换机/路由器配置审计。
+      适用: ping 检测、端口扫描、traceroute、链路分析、设备配置备份与审计。
+      边界: DNS 记录数据查询属 gcoc_agent; DNS 原理/配置方法问题属 kb_agent。
+    routing_hints: [连通性测试, 交换机配置备份, 路由追踪]
+    workspace: ./workspaces/network_agent
+    model: ""
+    skills:
+      - ping_sweep
+      - port_scan
+      - config_backup
+      - route_trace
+    tools:
+      allow: [ssh_exec, gcoc_api, nmap, ping]
+      deny: []
+    soul: ./workspaces/network_agent/SOUL.md
+    bindings:
+      - action: ping_sweep
+        keywords: ["ping", "连通性", "网络检测"]
+      - action: port_scan
+        keywords: ["端口扫描", "端口检测", "nmap"]
+      - action: config_backup
+        keywords: ["配置备份", "设备配置"]
+      - action: route_trace
+        keywords: ["路由追踪", "traceroute", "链路"]
+
+  - id: vm_agent
+    name: 虚拟化
+    description: VMware/KVM/PVE 虚拟化管理 + GCOC 虚拟机数据查询 + N8N 工作流
+    capability_summary: |
+      虚拟化直接操作 Agent。能力: 对具体已知 VM 名称执行开机/关机/重启/快照/迁移。
+      适用: 对某台具名 VM 下达操作指令 (重启/开关机/创建快照/迁移到某宿主机);
+      「能关掉吗/可以重启吗/帮我开机」等动作确认/请求类消息即使未写具体名称也发本 Agent (由它反问确认目标)。
+      边界: 查询/列出/搜索虚拟机信息应使用 gcoc_agent;
+      "怎么/如何给某台VM做快照/操作"及"为什么不建议关机/有什么风险/原因"类请教原因/方法的提问属知识问题应发 kb_agent。
+    routing_hints: [能关掉吗, 能关机吗, 可以关掉吗, 可以关机吗, 能重启吗, 可以重启吗, 能开机吗, 可以开机吗, 帮我开机, 帮我关机]
+    workspace: ./workspaces/vm_agent
+    model: ""
+    skills:
+      - vm_list
+      - vm_power
+      - vm_snapshot
+      - vm_migrate
+      - host_status
+      # N8N 工具集成
+      - n8n_vm_power
+      - n8n_vm_snapshot
+    tools:
+      allow: [vcenter_api, pve_api, kvm_exec, gcoc_api, n8n_workflow]
+      deny: []
+    soul: ./workspaces/vm_agent/SOUL.md
+    bindings:
+      - action: vm_power
+        keywords: ["开机", "关机", "重启虚拟机"]
+      - action: vm_snapshot
+        keywords: ["创建快照", "快照管理"]
+      - action: vm_migrate
+        keywords: ["vMotion", "迁移VM到", "迁移虚拟机到"]
+      - action: n8n_vm_power
+        keywords: ["N8N关机", "N8N重启VM", "通过工作流开关机"]
+      - action: n8n_vm_snapshot
+        keywords: ["N8N快照", "通过工作流创建快照"]
+
+  - id: dev_agent
+    name: 脚本开发
+    description: 脚本开发 / SSH 批量执行 / 配置变更
+    capability_summary: |
+      脚本开发 Agent。能力: 编写运维脚本、执行 Ansible Playbook、开发环境排障、配置自动化。
+      适用: 请求编写或起草产出物的任务 — "XX脚本怎么写"、写代码、Python/Shell 自动化、
+      Ansible Playbook、起草变更方案/实施方案文档、修复开发环境 ("python环境坏了怎么修")。
+      边界: 对现网主机的巡检/日志分析/批量执行运维命令属 ops_agent;
+      "批量执行命令重启服务"这类现网运维动作是 ops_agent 而非此 Agent。
+    routing_hints: [脚本开发, 写代码, ansible, playbook]
+    workspace: ./workspaces/dev_agent
+    model: ""
+    skills:
+      - script_gen
+      - script_exec
+      - ansible_run
+    tools:
+      allow: [shell_exec, ssh_exec]
+      deny: []
+    soul: ./workspaces/dev_agent/SOUL.md
+    bindings:
+      - action: script_gen
+        keywords: ["写脚本", "生成脚本", "编写代码"]
+      - action: script_exec
+        keywords: ["执行脚本", "运行脚本"]
+      - action: ansible_run
+        keywords: ["Ansible", "Playbook"]
+
+  - id: browser_agent
+    name: 浏览器
+    description: Web 管理页面自动化操作
+    capability_summary: |
+      浏览器自动化 Agent。能力: Web 管理页面截图、自动登录、页面操作。
+      适用: 截图管理后台、打开/进入某管理页面、自动登录系统、页面点击操作等
+      需要真实浏览器执行的动作性请求。
+      边界: 仅处理需要真实浏览器交互的任务; 查询平台数据属 gcoc_agent。
+    routing_hints: [截图, 自动登录, 网页操作]
+    workspace: ./workspaces/browser_agent
+    model: ""
+    skills:
+      - web_screenshot
+      - web_action
+    tools:
+      allow: [playwright]
+      deny: [shell_exec]
+    soul: ./workspaces/browser_agent/SOUL.md
+  - id: computer_agent
+    name: computer_agent
+    description: Computer Use 网页任务代理 — 浏览器自动操作与信息采集 (DOM 快照 agent 循环)
+    enabled: true
+    workspace: ./workspaces/computer_agent
+    routing_hints: ["打开网页", "访问网站", "浏览器上", "网页上操作", "computer use", "帮我截图网页", "用浏览器打开"]
+    soul: ./workspaces/computer_agent/SOUL.md
+    bindings:
+      - action: web_screenshot
+        keywords: ["截图", "网页截图"]
+      - action: web_action
+        keywords: ["网页操作", "浏览器"]
+
+  - id: nms_agent
+    name: NMS监控
+    description: IBM Netcool NMS 告警监控与分析 + 告警驱动自动化检查
+    capability_summary: |
+      IBM Netcool NMS 告警 Agent。能力: NMS/网管告警查询、分析、立即抓取、告警监控报告。
+      适用: NMS 告警怎么样、查网管告警、立即抓取 NMS 告警、告警分析报告。
+      边界: 仅限 NMS/网管告警; GCOC 平台监控告警记录查询属 gcoc_agent。
+    routing_hints: []
+    workspace: ./workspaces/nms_agent
+    model: ""
+    skills:
+      - nms_alarm_query
+      - nms_alarm_now
+    tools:
+      allow: [playwright]
+      deny: [shell_exec]
+    soul: ./workspaces/nms_agent/SOUL.md
+    bindings:
+      - action: nms_alarm_query
+        keywords: ["NMS告警", "IBM告警", "网管告警", "NMS分析", "告警监控", "NMS报告"]
+        priority: 5
+      - action: nms_alarm_now
+        keywords: ["立即抓取NMS", "马上查告警", "刷新NMS告警"]
+        priority: 6
+
+  - id: gcoc_agent
+    name: GCOC
+    description: GCOC 信息管理系统 + 资源管理平台数据查询 + N8N 工作流
+    capability_summary: |
+      GCOC 平台数据查询 Agent。能力: CMDB 主机/服务器信息、备份作业(BRR/Veeam)状态、
+      快照管理、VCD 云平台资源、Smart-Ops 虚拟机、运维事件/迁移记录、DNS 记录、
+      Aria Ops 容量/性能、M365 备份、HA 高可用事件、监控告警、CRM 客户信息、
+      机柜/IDC/数据中心、vCenter 集群资源概览、资源池使用情况。
+      适用: 任何数据查询类请求 — 备份状态、GID/客户/站点信息、虚拟机列表、
+      事件/告警记录、平台/集群资源、存储/datastore、容量使用。
+      用户列出具体对象清单(VM名/主机名/IP)要求查询状态/备份/覆盖情况属于数据查询;
+      以 IP 地址开头问"上面有什么"的查询 (该IP上有哪些备份/虚拟机/快照)、
+      G+数字格式的 GID (如 G123456) 查 DNS 记录、4-6 位纯数字站点/客户编号
+      (如 88381、47141) 的资源查询、"找到/列出某虚拟机列表"均发此 Agent。
+      消息中出现具体编号值且为资源询问措辞 (如 "47141 是什么"/"g12345"/"查一下 88381")
+      时即使无其他关键词也发此 Agent — "是什么"即查该编号对应的资源信息。
+      边界: 查询/列出/搜索/找到虚拟机、平台资源/集群资源/资源池查询发此 Agent;
+      但"这个数字/编号什么意思"、"解释一下编号规则"等把编号当概念提问的
+      概念解释措辞 (如 "3103 这个数字什么意思") 及不含编号值的概念提问
+      (如 "什么是站点编号"/"GID 是什么意思") 均属 general_agent。
+    routing_hints: [cmdb, veeam, brr, vcd, smart-ops, smartops, aria, m365, crm, 机柜, 数据中心, 高可用]
+    workspace: ./workspaces/gcoc_agent
+    model: ""
+    skills:
+      - cmdb_query
+      - rack_query
+      - monitor_query
+      - alert_query
+      - case_query
+      - dns_query
+      - datacenter_info
+      - login_info
+      - backup_status
+      - backup_objects
+      - backup_repos
+      - backup_sessions
+      - snapshot_check
+      - vcd_resources
+      - aria_ops
+      - m365_status
+      - smartops_vms
+      - smartops_events
+      - smartops_status
+      - ha_query
+      - overview
+      # CRM 客户信息
+      - crm_query
+      # N8N 集成技能
+      - n8n_backup_check
+      - n8n_cmdb_sync
+    tools:
+      allow: [gcoc_api, n8n_workflow]
+      deny: [shell_exec, ssh_exec]
+    soul: ./workspaces/gcoc_agent/SOUL.md
+    bindings:
+      - action: backup_status
+        keywords: ["备份", "Veeam", "BRR", "备份作业"]
+      - action: cmdb_query
+        keywords: ["CMDB", "主机信息", "设备信息"]
+      - action: dns_query
+        keywords: ["DNS", "域名", "SPF", "DMARC"]
+      - action: smartops_vms
+        keywords: ["虚拟机列表", "VM列表"]
+      - action: ha_query
+        keywords: ["HA", "高可用", "HA重启", "HA VM", "HA事件", "HA虚拟机", "vSphere HA"]
+        priority: 5
+      - action: smartops_events
+        keywords: ["迁移过", "迁移记录", "迁移历史", "vMotion记录", "运维事件"]
+        priority: 6
+      - action: overview
+        keywords: ["平台概览", "全局概览"]
+      - action: crm_query
+        keywords: ["CRM", "客户信息", "客户查询", "GID客户"]
+      # N8N 触发绑定
+      - action: n8n_backup_check
+        keywords: ["N8N备份检查", "通过工作流查备份"]
+      - action: n8n_cmdb_sync
+        keywords: ["同步CMDB", "同步主机信息"]
+
+  - id: kb_agent
+    name: 知识库
+    description: 知识库查询 / RAG 知识增强
+    capability_summary: |
+      知识库搜索和 RAG 问答 Agent。能力: 搜索内部知识库文档、运维流程规范、
+      故障排查方法、最佳实践。
+      适用: 用户问'XX 怎么处理/排查'、查运维手册/流程/规范、搜索文档资料、
+      问 VPN/网络/系统故障的处理方法。
+      边界: 问'怎么做/怎么处理/排查方法/操作指南'且不要求编写产出物时发此 Agent;
+      要求编写脚本/起草变更方案/修开发环境是 dev_agent 的任务;
+      长篇故障现象描述请求排查分析是 ops_agent 的任务;
+      问'有哪些故障事件/告警记录'是数据查询应发 gcoc_agent;
+      用户列出对象清单查询实时状态/备份结果是数据查询应发 gcoc_agent。
+    routing_hints: [知识库, 查文档, 运维手册, 操作指南, 最佳实践]
+    workspace: ./workspaces/kb_agent
+    model: ""
+    skills:
+      - search
+      - chat
+    tools:
+      allow: [kb_api]
+      deny: []
+    soul: ./workspaces/kb_agent/SOUL.md
+    bindings:
+      - action: chat
+        keywords: ["知识库", "查文档", "查资料", "KB", "故障处理", "排查方法", "怎么处理"]

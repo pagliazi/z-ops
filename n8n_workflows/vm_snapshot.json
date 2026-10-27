@@ -1,0 +1,254 @@
+{
+  "name": "VM快照管理 v2 (审批流)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vm-snapshot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "vs1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst params = input.params || input;\nconst vmId = params.vm_id || '';\nconst action = params.action || 'create';\nconst snapshotName = params.snapshot_name || `snap_${Date.now()}`;\nconst needApproval = ['revert', 'delete'].includes(action);\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nreturn {\n  vm_id: vmId,\n  action,\n  snapshot_name: snapshotName,\n  need_approval: needApproval,\n  triggered_by: input.triggered_by || 'zops_api',\n  timestamp: cstTime,\n};"
+      },
+      "id": "vs2",
+      "name": "解析参数",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "need-approval",
+              "leftValue": "={{ $json.need_approval }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "vs3",
+      "name": "需审批?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'approval_request', request_type: 'vm_snapshot', title: `VM快照 ${$json.action}: ${$json.snapshot_name}`, content: `VM: ${$json.vm_id}\\n操作: ${$json.action}\\n快照: ${$json.snapshot_name}\\n时间: ${$json.timestamp}`, callback_url: 'http://localhost:7789/api/webhook/n8n_callback' }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "vs4",
+      "name": "发送审批",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        850,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/gcoc/vm/snapshot",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ vm_id: $json.vm_id, action: $json.action, snapshot_name: $json.snapshot_name }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "vs5",
+      "name": "执行快照操作",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        850,
+        400
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'workflow_result', workflow_id: 'vm_snapshot', vm_id: $json.vm_id, snapshot_action: $json.action, snapshot_name: $json.snapshot_name, status: 'completed', timestamp: $json.timestamp }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "vs6",
+      "name": "结果回调",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1050,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, vm_id: $json.vm_id, action: $json.action, snapshot_name: $json.snapshot_name, status: $json.need_approval ? 'pending_approval' : 'executed' }) }}"
+      },
+      "id": "vs7",
+      "name": "响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "解析参数",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析参数": {
+      "main": [
+        [
+          {
+            "node": "需审批?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "需审批?": {
+      "main": [
+        [
+          {
+            "node": "发送审批",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "执行快照操作",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "发送审批": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "执行快照操作": {
+      "main": [
+        [
+          {
+            "node": "结果回调",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "结果回调": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "vm",
+    "快照",
+    "审批",
+    "高危操作"
+  ]
+}

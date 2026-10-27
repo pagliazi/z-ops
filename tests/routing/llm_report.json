@@ -1,0 +1,1080 @@
+{
+  "mode": "llm",
+  "total": 119,
+  "passed": 103,
+  "failed": 16,
+  "errors": 0,
+  "results": [
+    {
+      "id": "kw-001",
+      "text": "你好",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "greeting"
+    },
+    {
+      "id": "kw-002",
+      "text": "hello",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "greeting"
+    },
+    {
+      "id": "kw-003",
+      "text": "hi",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "greeting"
+    },
+    {
+      "id": "kw-004",
+      "text": "在吗",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "greeting"
+    },
+    {
+      "id": "kw-005",
+      "text": "早上好",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "greeting"
+    },
+    {
+      "id": "kw-006",
+      "text": "晚上好",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "greeting"
+    },
+    {
+      "id": "kw-007",
+      "text": "test",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "greeting"
+    },
+    {
+      "id": "kw-008",
+      "text": "有人吗",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "greeting"
+    },
+    {
+      "id": "kw-101",
+      "text": "测试一下到10.0.0.1的连通性",
+      "expect": "network_agent",
+      "got": "network_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_network_agent",
+      "source": "greeting-guard"
+    },
+    {
+      "id": "kw-102",
+      "text": "帮帮我重启vm-web-01",
+      "expect": "vm_agent",
+      "got": "vm_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_vm_agent",
+      "source": "greeting-guard"
+    },
+    {
+      "id": "kw-103",
+      "text": "你好，请查一下GID 47141 的虚拟机",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "greeting-guard"
+    },
+    {
+      "id": "kw-201",
+      "text": "GID 47141 有哪些虚拟机",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-202",
+      "text": "查一下g12345的备份状态",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-203",
+      "text": "47141 这个站点的监控告警",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-204",
+      "text": "gid88381 的存储空间",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-205",
+      "text": "G123456 的DNS记录",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-206",
+      "text": "88381 站点上有什么资源",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-207",
+      "text": "GID 30021 的虚拟机列表",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-208",
+      "text": "45210 的快照情况",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-209",
+      "text": "gid 47141 迁移记录",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-210",
+      "text": "G88412 的HA事件",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid+resource"
+    },
+    {
+      "id": "kw-301",
+      "text": "47141 是什么",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid-guard"
+    },
+    {
+      "id": "kw-302",
+      "text": "g12345",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid-guard"
+    },
+    {
+      "id": "kw-303",
+      "text": "3103 这个数字什么意思",
+      "expect": "general_agent",
+      "got": "gcoc_agent",
+      "ok": false,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gid-guard"
+    },
+    {
+      "id": "kw-401",
+      "text": "找到ESXI-03的虚拟机列表",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "vm-hostname"
+    },
+    {
+      "id": "kw-402",
+      "text": "ESXI-03 这台虚拟机在哪",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "vm-hostname"
+    },
+    {
+      "id": "kw-403",
+      "text": "hkpkgal8001ht 的vm信息",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "vm-hostname"
+    },
+    {
+      "id": "kw-404",
+      "text": "VM-BJ-2001 云主机在哪",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "vm-hostname"
+    },
+    {
+      "id": "kw-405",
+      "text": "NODE-SH-028 vm 是哪台",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "vm-hostname"
+    },
+    {
+      "id": "kw-406",
+      "text": "查vm-web-01在哪个集群",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "vm-hostname"
+    },
+    {
+      "id": "kw-501",
+      "text": "帮我重启vm-web-01",
+      "expect": "vm_agent",
+      "got": "vm_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_vm_agent",
+      "source": "vm-power"
+    },
+    {
+      "id": "kw-502",
+      "text": "vm-web-01 开机",
+      "expect": "vm_agent",
+      "got": "vm_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_vm_agent",
+      "source": "vm-power"
+    },
+    {
+      "id": "kw-503",
+      "text": "给test-server创建快照",
+      "expect": "vm_agent",
+      "got": "vm_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_vm_agent",
+      "source": "vm-power"
+    },
+    {
+      "id": "kw-504",
+      "text": "迁移db-vm到host3",
+      "expect": "vm_agent",
+      "got": "vm_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_vm_agent",
+      "source": "vm-power"
+    },
+    {
+      "id": "kw-505",
+      "text": "关机 vm-prod-02",
+      "expect": "vm_agent",
+      "got": "vm_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_vm_agent",
+      "source": "vm-power"
+    },
+    {
+      "id": "kw-506",
+      "text": "怎么给vm-web-01做快照",
+      "expect": "kb_agent",
+      "got": "vm_agent",
+      "ok": false,
+      "reasoning": "tool_call=dispatch_vm_agent",
+      "source": "vm-power-guard"
+    },
+    {
+      "id": "kw-601",
+      "text": "平台资源概览",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-602",
+      "text": "集群资源使用情况",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-603",
+      "text": "资源池还剩多少",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-604",
+      "text": "vcenter资源情况",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-605",
+      "text": "存储空间还剩多少",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-606",
+      "text": "datastore 使用率",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-607",
+      "text": "容量规划报告",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-608",
+      "text": "查一下真实资源",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-609",
+      "text": "vcd资源列表",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-610",
+      "text": "宿主机资源分配",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-611",
+      "text": "nimble 存储健康",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-612",
+      "text": "netapp 卷列表",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "platform-resource"
+    },
+    {
+      "id": "kw-701",
+      "text": "198.18.96.169上有哪些备份",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "ip+resource"
+    },
+    {
+      "id": "kw-702",
+      "text": "192.168.1.100 这台虚拟机是谁的",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "ip+resource"
+    },
+    {
+      "id": "kw-703",
+      "text": "172.16.0.5 的vm列表",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "ip+resource"
+    },
+    {
+      "id": "kw-704",
+      "text": "10.0.0.8 上的快照有哪些",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "ip+resource"
+    },
+    {
+      "id": "kw-705",
+      "text": "192.168.100.200 的存储使用",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "ip+resource"
+    },
+    {
+      "id": "kw-801",
+      "text": "有哪些备份任务",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "backup-query"
+    },
+    {
+      "id": "kw-802",
+      "text": "备份作业列表",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "backup-query"
+    },
+    {
+      "id": "kw-803",
+      "text": "昨天有多少备份成功",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "backup-query"
+    },
+    {
+      "id": "kw-804",
+      "text": "备份文件占了多大空间",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "backup-query"
+    },
+    {
+      "id": "kw-805",
+      "text": "哪些备份失败了",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "backup-query"
+    },
+    {
+      "id": "kw-806",
+      "text": "查看备份任务状态",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "backup-query"
+    },
+    {
+      "id": "kw-807",
+      "text": "查PROD数据库的备份Job状态",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "backup-query"
+    },
+    {
+      "id": "kw-808",
+      "text": "检查PRODDB01是否在备份作业中",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "backup-query"
+    },
+    {
+      "id": "kw-809",
+      "text": "上周备份失败统计",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "backup-query"
+    },
+    {
+      "id": "kw-901",
+      "text": "查询这22台VM的备份任务状态: ESXI-HK-8025, ESXI-HK-8031, ESXI-HK-8040, ESXI-HK-8055, ESXI-HK-8066, ESXI-HK-8071, ESXI-HK-8082, ESXI-HK-8093, ESXI-HK-8104, ESXI-HK-8115, ESXI-HK-8126, ESXI-HK-8137, 上周的备份Job有没有失败的",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "vm-list-query"
+    },
+    {
+      "id": "kw-902",
+      "text": "这批虚拟机的快照情况帮我确认一下: ESXI-03, ESXI-04, ESXI-05, ESXI-06, ESXI-07, ESXI-08, ESXI-09, ESXI-10, ESXI-11, ESXI-12, 看看哪台没做快照，回复我一份清单",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "vm-list-query"
+    },
+    {
+      "id": "kw-903",
+      "text": "以下是监控有问题的机器请查一下状态: VM-BJ-2001, VM-BJ-2002, VM-BJ-2003, VM-BJ-2004, VM-BJ-2005, VM-BJ-2006, VM-BJ-2007, VM-BJ-2008, 各自的CPU和内存现在占用多少，帮我汇总成表格",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "vm-list-query"
+    },
+    {
+      "id": "kw-951",
+      "text": "我们最近遇到一个奇怪的问题：业务系统每天凌晨三点左右会出现短暂的连接超时，数据库团队说是网络抖动，网络团队说是应用连接池配置不当，应用团队又怀疑是防火墙会话数达到上限。这个问题已经持续了两周，重启过三次应用服务器也没有解决，故障窗口越来越频繁，业务方已经正式投诉了两次。我需要一份系统性的排查思路和优先级建议，最好包含每一步的检查命令和预期的判断依据，方便我们团队分工排查，尽快定位到底应该由哪个团队来主导解决",
+      "expect": "ops_agent",
+      "got": "kb_agent",
+      "ok": false,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "long-text-guard"
+    },
+    {
+      "id": "kw-952",
+      "text": "请根据以下背景帮我写一份变更方案：我们计划在下个月把核心业务从A机房整体迁移到B机房，涉及约四十台虚拟机、八套数据库和两条专线，需要完整的割接步骤、回滚预案和风险评估表格，格式按照公司的变更管理规范来",
+      "expect": "dev_agent",
+      "got": "kb_agent",
+      "ok": false,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "long-text-guard"
+    },
+    {
+      "id": "kw-1001",
+      "text": "帮我写脚本清理日志",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_dev_agent",
+      "source": "dev"
+    },
+    {
+      "id": "kw-1002",
+      "text": "用python写个巡检脚本",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_dev_agent",
+      "source": "dev"
+    },
+    {
+      "id": "kw-1003",
+      "text": "写代码实现自动发布",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_dev_agent",
+      "source": "dev"
+    },
+    {
+      "id": "kw-1004",
+      "text": "shell 脚本怎么写",
+      "expect": "dev_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "dev"
+    },
+    {
+      "id": "kw-1005",
+      "text": "bash 一键部署",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_dev_agent",
+      "source": "dev"
+    },
+    {
+      "id": "kw-1006",
+      "text": "脚本开发需求：批量改密码",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_dev_agent",
+      "source": "dev"
+    },
+    {
+      "id": "kw-1101",
+      "text": "powershell 常用命令有哪些",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "dev-guard"
+    },
+    {
+      "id": "kw-1102",
+      "text": "我的python环境坏了怎么修",
+      "expect": "dev_agent",
+      "got": "kb_agent",
+      "ok": false,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "dev-guard"
+    },
+    {
+      "id": "kw-1103",
+      "text": "code review 一下这个脚本",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_dev_agent",
+      "source": "dev-guard"
+    },
+    {
+      "id": "kw-1201",
+      "text": "VPN 连不上怎么排查",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "ops-knowledge"
+    },
+    {
+      "id": "kw-1202",
+      "text": "dns解析失败如何处理",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "ops-knowledge"
+    },
+    {
+      "id": "kw-1203",
+      "text": "服务器负载高怎么办",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "ops-knowledge"
+    },
+    {
+      "id": "kw-1204",
+      "text": "linux 磁盘满了怎么清理",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "ops-knowledge"
+    },
+    {
+      "id": "kw-1205",
+      "text": "windows 补丁怎么部署",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "ops-knowledge"
+    },
+    {
+      "id": "kw-1206",
+      "text": "交换机配置怎么备份",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "ops-knowledge"
+    },
+    {
+      "id": "kw-1207",
+      "text": "防火墙策略怎么查",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "ops-knowledge"
+    },
+    {
+      "id": "kw-1208",
+      "text": "证书快过期了怎么续期",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "ops-knowledge"
+    },
+    {
+      "id": "kw-1209",
+      "text": "zonefile 怎么导出",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "ops-knowledge"
+    },
+    {
+      "id": "kw-1210",
+      "text": "cname 记录怎么配置",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "ops-knowledge"
+    },
+    {
+      "id": "kw-1301",
+      "text": "分析一下系统日志",
+      "expect": "ops_agent",
+      "got": "ops_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_ops_agent",
+      "source": "ops-action"
+    },
+    {
+      "id": "kw-1302",
+      "text": "批量执行命令重启服务",
+      "expect": "ops_agent",
+      "got": "dev_agent",
+      "ok": false,
+      "reasoning": "tool_call=dispatch_dev_agent",
+      "source": "ops-action"
+    },
+    {
+      "id": "kw-1303",
+      "text": "对10台服务器执行健康检查",
+      "expect": "ops_agent",
+      "got": "ops_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_ops_agent",
+      "source": "ops-action"
+    },
+    {
+      "id": "kw-1304",
+      "text": "检查主机CPU使用率",
+      "expect": "ops_agent",
+      "got": "ops_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_ops_agent",
+      "source": "ops-action"
+    },
+    {
+      "id": "kw-1305",
+      "text": "生成健康报告",
+      "expect": "ops_agent",
+      "got": "ops_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_ops_agent",
+      "source": "ops-action"
+    },
+    {
+      "id": "kw-1401",
+      "text": "备份失败有哪些故障事件",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gcoc-events"
+    },
+    {
+      "id": "kw-1402",
+      "text": "上周有哪些运维事件",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gcoc-events"
+    },
+    {
+      "id": "kw-1403",
+      "text": "查一下最近的告警记录",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gcoc-events"
+    },
+    {
+      "id": "kw-1404",
+      "text": "有哪些故障事件的排查方法",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "gcoc-events-guard"
+    },
+    {
+      "id": "kw-1501",
+      "text": "NMS告警现在怎么样",
+      "expect": "nms_agent",
+      "got": "nms_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_nms_agent",
+      "source": "nms"
+    },
+    {
+      "id": "kw-1502",
+      "text": "立即抓取NMS告警",
+      "expect": "nms_agent",
+      "got": "nms_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_nms_agent",
+      "source": "nms"
+    },
+    {
+      "id": "kw-1503",
+      "text": "nms 有什么新告警",
+      "expect": "nms_agent",
+      "got": "nms_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_nms_agent",
+      "source": "nms"
+    },
+    {
+      "id": "kw-1504",
+      "text": "netcool 告警拉一下",
+      "expect": "nms_agent",
+      "got": "nms_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_nms_agent",
+      "source": "nms"
+    },
+    {
+      "id": "kw-1505",
+      "text": "网管今天有啥告警",
+      "expect": "nms_agent",
+      "got": "nms_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_nms_agent",
+      "source": "nms"
+    },
+    {
+      "id": "kw-1601",
+      "text": "ping 一下 10.0.0.1",
+      "expect": "network_agent",
+      "got": "network_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_network_agent",
+      "source": "network"
+    },
+    {
+      "id": "kw-1602",
+      "text": "traceroute 到 8.8.8.8",
+      "expect": "network_agent",
+      "got": "network_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_network_agent",
+      "source": "network"
+    },
+    {
+      "id": "kw-1603",
+      "text": "扫描 80端口",
+      "expect": "network_agent",
+      "got": "network_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_network_agent",
+      "source": "network"
+    },
+    {
+      "id": "kw-1604",
+      "text": "交换机配置审计",
+      "expect": "network_agent",
+      "got": "network_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_network_agent",
+      "source": "network"
+    },
+    {
+      "id": "llm-0501",
+      "text": "截图管理后台",
+      "expect": "browser_agent",
+      "got": "browser_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_browser_agent",
+      "source": "browser"
+    },
+    {
+      "id": "llm-0502",
+      "text": "打开XX管理页面自动登录",
+      "expect": "browser_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "browser"
+    },
+    {
+      "id": "llm-0601",
+      "text": "今天天气怎么样",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "general"
+    },
+    {
+      "id": "llm-0602",
+      "text": "你能做什么",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "general"
+    },
+    {
+      "id": "llm-0603",
+      "text": "解释一下什么是容器",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "general"
+    },
+    {
+      "id": "llm-0604",
+      "text": "谢谢",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "general"
+    },
+    {
+      "id": "llm-0605",
+      "text": "k8s 是什么",
+      "expect": "general_agent",
+      "got": "general_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_general_agent",
+      "source": "general"
+    },
+    {
+      "id": "llm-0101",
+      "text": "列出所有虚拟机",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gcoc-vs-vm"
+    },
+    {
+      "id": "llm-0102",
+      "text": "查询虚拟机列表",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gcoc-vs-vm"
+    },
+    {
+      "id": "llm-0103",
+      "text": "搜索叫abc的虚拟机",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "gcoc-vs-vm"
+    },
+    {
+      "id": "llm-0104",
+      "text": "这台测试虚拟机能关掉吗",
+      "expect": "vm_agent",
+      "got": "vm_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_vm_agent",
+      "source": "gcoc-vs-vm"
+    },
+    {
+      "id": "llm-0105",
+      "text": "生产虚拟机不建议直接关机的原因",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "gcoc-vs-vm"
+    },
+    {
+      "id": "hist-001",
+      "text": "有几台？",
+      "expect": "gcoc_agent",
+      "got": "general_agent",
+      "ok": false,
+      "reasoning": "no_tool_call_fallback",
+      "source": "followup"
+    },
+    {
+      "id": "hist-002",
+      "text": "那备份状态呢",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_gcoc_agent",
+      "source": "followup"
+    },
+    {
+      "id": "hist-003",
+      "text": "第一步展开讲讲",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "reasoning": "tool_call=dispatch_kb_agent",
+      "source": "followup"
+    }
+  ]
+}

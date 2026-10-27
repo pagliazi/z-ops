@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Companion 本机状态</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 340px; padding: 16px; background: #fff; color: #374151; font: 12px/1.65 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
+  h1 { margin: 0 0 12px; color: #111827; font-size: 15px; font-weight: 600; }
+  section { padding: 12px; margin: 10px 0; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb; }
+  p { margin: 6px 0; }
+  button { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; color: #374151; cursor: pointer; }
+  button:hover { background: #f3f4f6; }
+  button:disabled { opacity: .5; cursor: default; }
+  .muted { color: #6b7280; font-size: 11px; }
+</style>
+</head>
+<body>
+<h1>Companion · 电脑操作 2.0</h1>
+<section aria-live="polite">
+  <strong id="status">正在检查本机状态…</strong>
+  <p id="message"></p>
+  <p id="tasks" class="muted"></p>
+</section>
+<button id="refresh">重新检查本机连接</button>
+<section>
+  <strong>复用当前 Chrome 登录态（可选）</strong>
+  <p class="muted">只在明确点击后，把当前站点的 Cookie 交给本机 Companion，用于一次任务浏览器；5 分钟内有效、单次使用。不经过 Z-OPS 服务器，不导出账号密码，不读取其他站点；不保证一定免登录。</p>
+  <button id="handoff">授权当前站点登录态</button>
+  <p id="handoff-status" class="muted" aria-live="polite"></p>
+</section>
+<section>
+  <p>需安装 Companion 并注册 Native Host：net.zops.companion。</p>
+  <p>原生客户端尚未完整可用，Windows 构建尚未签名。请向管理员获取经核验的安装步骤，不要将此扩展视为执行器安装包。</p>
+  <p>在网页“设置 → 电脑操作”生成配对码，在 Companion 输入并明确选择设备。</p>
+</section>
+<p class="muted">本弹窗只显示本机状态，不授予桌面同意。本机权限与安全继续必须在 Companion 确认。</p>
+<p class="muted">任务新窗口不聚焦，但不保证完整后台；关闭任务窗口即暂停，不自动重建。截图暂不可用，不切换标签截屏；个人标签不受接管。</p>
+<p class="muted">旧 token 和服务器直连已禁用，不会回退旧 WSS。</p>
+<script src="popup.js"></script>
+</body>
+</html>

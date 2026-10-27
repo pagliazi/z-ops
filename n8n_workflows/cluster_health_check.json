@@ -1,0 +1,274 @@
+{
+  "name": "集群健康检查 v2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "value": "0 */2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "ch1",
+      "name": "每2小时",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cluster-health-check",
+        "options": {}
+      },
+      "id": "ch0",
+      "name": "手动Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst clusterName = input.params?.cluster_name || input.cluster_name || 'default';\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\nreturn { cluster_name: clusterName, timestamp: cstTime };"
+      },
+      "id": "ch2",
+      "name": "解析参数",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/agents/status",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "ch3",
+      "name": "检查Agent集群",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        700,
+        200
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/health",
+        "method": "GET",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "ch4",
+      "name": "检查API健康",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        700,
+        400
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\nlet agents = [];\nlet apiOk = false;\n\ntry { const ad = $('检查Agent集群').first().json; agents = ad?.agents || ad?.data?.agents || []; } catch(e) {}\ntry { const h = $('检查API健康').first().json; apiOk = h?.status === 'ok' || h?.status === 'healthy'; } catch(e) {}\n\nconst online = agents.filter(a => a.status === 'online');\nconst offline = agents.filter(a => a.status !== 'online');\nconst hasIssue = offline.length > 0 || !apiOk;\n\nreturn {\n  cluster_name: $('解析参数').first().json.cluster_name,\n  has_issue: hasIssue,\n  agents_total: agents.length,\n  agents_online: online.length,\n  agents_offline: offline.map(a => a.name || a.agent_id),\n  api_ok: apiOk,\n  timestamp: cstTime,\n  summary: hasIssue\n    ? `⚠️ 集群异常: 离线${offline.length}个Agent ${!apiOk ? '| API异常' : ''}`\n    : `✅ 集群正常: ${online.length}/${agents.length} Agent在线`\n};"
+      },
+      "id": "ch5",
+      "name": "集群评估",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        950,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "has-issue",
+              "leftValue": "={{ $json.has_issue }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "ch6",
+      "name": "有异常?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1150,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'alert', level: 'warning', message: $json.summary, source: 'cluster_health_check', cluster: $json.cluster_name, agents_offline: $json.agents_offline, timestamp: $json.timestamp }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "ch7",
+      "name": "告警回调",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1350,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "每2小时": {
+      "main": [
+        [
+          {
+            "node": "解析参数",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "手动Webhook": {
+      "main": [
+        [
+          {
+            "node": "解析参数",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析参数": {
+      "main": [
+        [
+          {
+            "node": "检查Agent集群",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "检查API健康",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查Agent集群": {
+      "main": [
+        [
+          {
+            "node": "集群评估",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "集群评估",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查API健康": {
+      "main": [
+        [
+          {
+            "node": "集群评估",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "集群评估",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "集群评估": {
+      "main": [
+        [
+          {
+            "node": "有异常?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "有异常?": {
+      "main": [
+        [
+          {
+            "node": "告警回调",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "ops",
+    "集群",
+    "健康",
+    "定时"
+  ]
+}

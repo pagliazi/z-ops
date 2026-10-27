@@ -1,0 +1,118 @@
+{
+  "name": "添加AD组成员 v2 (审批流)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ad-group-add",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ag1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst params = input.params || input;\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nreturn {\n  username: params.username || '',\n  group_name: params.group_name || '',\n  triggered_by: input.triggered_by || 'zops_api',\n  timestamp: cstTime,\n};"
+      },
+      "id": "ag2",
+      "name": "解析参数",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'approval_request', request_type: 'ad_group_add', title: `添加AD组成员: ${$json.username} → ${$json.group_name}`, content: `用户: ${$json.username}\\n安全组: ${$json.group_name}\\n请求人: ${$json.triggered_by}\\n时间: ${$json.timestamp}`, callback_url: 'http://localhost:7789/api/webhook/n8n_callback' }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "ag3",
+      "name": "发送审批",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        650,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, username: $json.username, group_name: $json.group_name, status: 'pending_approval' }) }}"
+      },
+      "id": "ag4",
+      "name": "响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "解析参数",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析参数": {
+      "main": [
+        [
+          {
+            "node": "发送审批",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "发送审批": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "ad",
+    "组管理",
+    "审批"
+  ]
+}

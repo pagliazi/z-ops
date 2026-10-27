@@ -1,0 +1,254 @@
+{
+  "name": "健康检查 v2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "value": "0 */2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "h1",
+      "name": "每2小时",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "health-check",
+        "options": {}
+      },
+      "id": "h0",
+      "name": "手动Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/agents/status",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "h2",
+      "name": "检查Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        500,
+        200
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/health",
+        "method": "GET",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "h2b",
+      "name": "检查API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        500,
+        350
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 健康判定 (UTC+8)\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nlet agents = [];\nlet apiOk = false;\n\ntry {\n  const ad = $('检查Agent').first().json;\n  agents = ad?.agents || ad?.data?.agents || [];\n} catch(e) {}\n\ntry {\n  const health = $('检查API').first().json;\n  apiOk = health?.status === 'ok' || health?.status === 'healthy';\n} catch(e) {}\n\nconst online = agents.filter(a => a.status === 'online').length;\nconst offline = agents.filter(a => a.status !== 'online');\nconst hasIssue = offline.length > 0 || !apiOk;\n\nreturn {\n  has_issue: hasIssue,\n  api_ok: apiOk,\n  agents_online: online,\n  agents_offline: offline.map(a => a.name || a.agent_id),\n  timestamp: cstTime,\n  summary: hasIssue\n    ? `⚠️ 异常: ${offline.length > 0 ? '离线Agent:' + offline.map(a=>a.name).join(',') : ''} ${!apiOk ? '| API异常' : ''}`\n    : `✅ 正常: ${online} Agent在线, API正常`\n};"
+      },
+      "id": "h3",
+      "name": "健康判定",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        750,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "has-issue",
+              "leftValue": "={{ $json.has_issue }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "h4",
+      "name": "有异常?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        950,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'alert', level: 'warning', message: $json.summary, source: 'health_check', timestamp: $json.timestamp }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "h5",
+      "name": "告警回调",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1150,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "每2小时": {
+      "main": [
+        [
+          {
+            "node": "检查Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "检查API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "手动Webhook": {
+      "main": [
+        [
+          {
+            "node": "检查Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "检查API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查Agent": {
+      "main": [
+        [
+          {
+            "node": "健康判定",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "健康判定",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查API": {
+      "main": [
+        [
+          {
+            "node": "健康判定",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "健康判定",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "健康判定": {
+      "main": [
+        [
+          {
+            "node": "有异常?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "有异常?": {
+      "main": [
+        [
+          {
+            "node": "告警回调",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "health",
+    "定时",
+    "告警"
+  ]
+}

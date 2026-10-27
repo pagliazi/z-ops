@@ -1,0 +1,5 @@
+id: maintenance_guard
+version: "1.0.0"
+description: 维护窗口守卫 — 窗口期内拒绝高风险能力执行与聊天任务 (策略缝演示, 默认停用)
+entry: plugins.maintenance_guard.plugin:MaintenanceGuardPlugin
+inject: []

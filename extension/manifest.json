@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Z-OPS Companion 浏览器扩展",
+  "version": "2.0.0",
+  "description": "仅通过本机 Companion 执行协议 2 任务绑定的浏览器操作；不接管个人标签，不读取密码，不提供后台截屏。需单独安装 Native Host。",
+  "permissions": ["nativeMessaging", "storage", "scripting", "cookies"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Companion 本机状态",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}

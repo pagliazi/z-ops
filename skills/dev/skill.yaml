@@ -1,0 +1,17 @@
+name: script_gen
+description: "LLM 生成运维脚本 (Shell/Python/Ansible)"
+summary: "按需求生成 Shell/Python/Ansible 运维脚本 (只写不执行)"
+domain: dev
+parameters:
+  - name: requirement
+    type: string
+    description: "脚本需求描述"
+    required: true
+  - name: type
+    type: string
+    description: "脚本类型 (shell/python/ansible)"
+    default: shell
+examples:
+  - "写一个检查磁盘空间的 shell 脚本"
+  - "生成批量重启服务的 Ansible Playbook"
+  - "写一个 Python 脚本监控 Nginx 日志"

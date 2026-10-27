@@ -1,0 +1,23 @@
+{
+  "feedbacks": {
+    "demo_skill": [
+      {
+        "skill": "demo_skill",
+        "timestamp": "2026-01-01T10:00:00",
+        "status": "success",
+        "duration_ms": 1200,
+        "params": {"target": "demo-target"},
+        "result_summary": "示例：技能执行成功"
+      },
+      {
+        "skill": "demo_skill",
+        "timestamp": "2026-01-01T11:00:00",
+        "status": "failure",
+        "duration_ms": 30000,
+        "params": {"target": "demo-target"},
+        "error": "示例：连接超时",
+        "error_type": "timeout"
+      }
+    ]
+  }
+}

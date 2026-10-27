@@ -1,0 +1,153 @@
+{
+  "mode": "action",
+  "total": 18,
+  "passed": 18,
+  "failed": 0,
+  "errors": 0,
+  "results": [
+    {
+      "id": "cmd-001",
+      "text": "action=vm_power",
+      "expect": "vm_agent",
+      "got": "vm_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-002",
+      "text": "action=vm_snapshot",
+      "expect": "vm_agent",
+      "got": "vm_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-003",
+      "text": "action=vm_migrate",
+      "expect": "vm_agent",
+      "got": "vm_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-004",
+      "text": "action=backup_status",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-005",
+      "text": "action=backup_sessions",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-006",
+      "text": "action=snapshot_check",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-007",
+      "text": "action=nms_alarm_query",
+      "expect": "nms_agent",
+      "got": "nms_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-008",
+      "text": "action=nms_alarm_now",
+      "expect": "nms_agent",
+      "got": "nms_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-009",
+      "text": "action=kb_search",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-010",
+      "text": "action=kb_chat",
+      "expect": "kb_agent",
+      "got": "kb_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-011",
+      "text": "action=host_check",
+      "expect": "ops_agent",
+      "got": "ops_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-012",
+      "text": "action=batch_exec",
+      "expect": "ops_agent",
+      "got": "ops_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-013",
+      "text": "action=ping_sweep",
+      "expect": "network_agent",
+      "got": "network_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-014",
+      "text": "action=port_scan",
+      "expect": "network_agent",
+      "got": "network_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-015",
+      "text": "action=script_gen",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-016",
+      "text": "action=ansible_run",
+      "expect": "dev_agent",
+      "got": "dev_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-017",
+      "text": "action=web_screenshot",
+      "expect": "browser_agent",
+      "got": "browser_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    },
+    {
+      "id": "cmd-018",
+      "text": "action=cmdb_query",
+      "expect": "gcoc_agent",
+      "got": "gcoc_agent",
+      "ok": true,
+      "source": "COMMAND_ROUTES"
+    }
+  ]
+}

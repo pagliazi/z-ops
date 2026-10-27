@@ -1,0 +1,17 @@
+[
+  {
+    "name": "echo_smoke",
+    "file": "echo_smoke.sh",
+    "type": "shell",
+    "hosts": ["localhost"],
+    "timeout_s": 10,
+    "risk": "read",
+    "params_schema": ["--msg"],
+    "platform": ["linux"],
+    "permissions": ["read"],
+    "target_dirs": [],
+    "version": 1,
+    "sha256": "107abf91376890970418188aa55aa15a47f9da3d5a2728af650b1d3073376d52",
+    "cancel": {"grace_s": 5}
+  }
+]

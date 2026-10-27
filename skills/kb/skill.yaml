@@ -1,0 +1,17 @@
+name: search
+description: "知识库搜索与 RAG 问答"
+summary: "检索内部 wiki/知识库并做 RAG 问答"
+domain: kb
+parameters:
+  - name: query
+    type: string
+    description: "搜索关键词或问题"
+    required: true
+  - name: limit
+    type: int
+    description: "返回结果数"
+    default: 5
+examples:
+  - "搜索 VPN 故障处理流程"
+  - "查找 Nginx 配置最佳实践"
+  - "KB 查询防火墙规则变更流程"

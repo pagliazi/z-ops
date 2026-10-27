@@ -1,0 +1,118 @@
+{
+  "name": "创建AD用户 v2 (审批流)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ad-user-create",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ac1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst params = input.params || input;\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nreturn {\n  username: params.username || '',\n  display_name: params.display_name || '',\n  ou: params.ou || 'OU=Users,DC=corp,DC=local',\n  email: params.email || '',\n  phone: params.phone || '',\n  triggered_by: input.triggered_by || 'zops_api',\n  timestamp: cstTime,\n};"
+      },
+      "id": "ac2",
+      "name": "解析参数",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'approval_request', request_type: 'ad_user_create', title: `创建AD用户: ${$json.username}`, content: `用户名: ${$json.username}\\n显示名: ${$json.display_name}\\nOU: ${$json.ou}\\n邮箱: ${$json.email}\\n电话: ${$json.phone}\\n请求人: ${$json.triggered_by}\\n时间: ${$json.timestamp}`, callback_url: 'http://localhost:7789/api/webhook/n8n_callback' }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "ac3",
+      "name": "发送审批",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        650,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, username: $json.username, status: 'pending_approval', message: `AD用户创建请求已提交审批 (${$json.username})` }) }}"
+      },
+      "id": "ac4",
+      "name": "响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        850,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "解析参数",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析参数": {
+      "main": [
+        [
+          {
+            "node": "发送审批",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "发送审批": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "ad",
+    "用户",
+    "审批"
+  ]
+}

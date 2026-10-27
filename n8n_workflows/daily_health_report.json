@@ -1,0 +1,278 @@
+{
+  "name": "每日健康报告 v2",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "value": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "每日9点触发",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        250,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "daily-health-report",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "手动Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/agents/status",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "check-agents",
+      "name": "检查Agent状态",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        500,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/health",
+        "method": "GET",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "check-system",
+      "name": "检查系统状态",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        500,
+        450
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/usage/current",
+        "method": "GET",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "check-usage",
+      "name": "检查用量统计",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        500,
+        600
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "wait",
+        "resume": "timeInterval",
+        "amount": 3,
+        "unit": "seconds"
+      },
+      "id": "wait-all",
+      "name": "等待全部完成",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 汇总健康报告 (UTC+8)\nconst now = new Date();\nconst cstDate = now.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });\nconst cstTime = now.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\nlet agents = [];\nlet system = { status: 'unknown', redis: 'unknown' };\nlet usage = { total_calls: 0, total_tokens: 0 };\n\ntry {\n  const agentData = $('检查Agent状态').first().json;\n  agents = agentData?.agents || agentData?.data?.agents || [];\n} catch(e) { agents = []; }\n\ntry {\n  system = $('检查系统状态').first().json || system;\n} catch(e) {}\n\ntry {\n  usage = $('检查用量统计').first().json || usage;\n} catch(e) {}\n\nconst onlineAgents = agents.filter(a => a.status === 'online').length;\nconst offlineAgents = agents.filter(a => a.status !== 'online').length;\nconst overallStatus = offlineAgents > 0 ? (onlineAgents === 0 ? 'critical' : 'warning') : 'healthy';\n\nconst statusEmoji = { healthy: '✅', warning: '⚠️', critical: '🔴' };\n\nconst report = {\n  title: `📊 Z-OPS 每日健康报告 - ${cstDate}`,\n  overall_status: overallStatus,\n  sections: [\n    `${statusEmoji[overallStatus] || '❓'} 整体状态: ${overallStatus.toUpperCase()}`,\n    `🤖 Agent: 在线 ${onlineAgents} / 离线 ${offlineAgents}`,\n    `🔗 系统: Redis=${system.redis || system.status || 'N/A'} | API=${system.status || 'N/A'}`,\n    `📈 LLM: 调用 ${usage.total_calls || 0} 次 | Token ${usage.total_tokens || 0}`,\n  ],\n  timestamp: cstTime,\n  issues: []\n};\n\nif (offlineAgents > 0) {\n  const offNames = agents.filter(a => a.status !== 'online').map(a => a.name).join(', ');\n  report.issues.push(`离线Agent: ${offNames}`);\n}\nif (system.status !== 'ok' && system.status !== 'healthy') {\n  report.issues.push(`系统状态异常: ${system.status}`);\n}\n\nreturn report;"
+      },
+      "id": "aggregate",
+      "name": "汇总报告",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'health_report', report: $json }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "callback-zops",
+      "name": "回调Z-OPS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1100,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "每日9点触发": {
+      "main": [
+        [
+          {
+            "node": "检查Agent状态",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "检查系统状态",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "检查用量统计",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "手动Webhook": {
+      "main": [
+        [
+          {
+            "node": "检查Agent状态",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "检查系统状态",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "检查用量统计",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查Agent状态": {
+      "main": [
+        [
+          {
+            "node": "汇总报告",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "汇总报告",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查系统状态": {
+      "main": [
+        [
+          {
+            "node": "汇总报告",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "汇总报告",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "检查用量统计": {
+      "main": [
+        [
+          {
+            "node": "汇总报告",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "汇总报告",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "汇总报告": {
+      "main": [
+        [
+          {
+            "node": "回调Z-OPS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "report",
+    "health",
+    "每日",
+    "定时"
+  ]
+}

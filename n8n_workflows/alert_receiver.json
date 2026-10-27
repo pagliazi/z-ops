@@ -1,0 +1,234 @@
+{
+  "name": "告警接收器 v2 (Proactive)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alert-receiver",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ar1",
+      "name": "告警Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 统一告警格式化 (支持 Zabbix/Prometheus/自定义)\nconst input = $input.first().json;\nconst cstTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });\n\n// 统一解析不同来源的告警\nlet alert = {\n  source: 'unknown',\n  level: 'warning',\n  title: '',\n  message: '',\n  host: '',\n  metric: '',\n  value: '',\n  timestamp: cstTime,\n};\n\n// Zabbix 格式\nif (input.host || input.trigger) {\n  alert.source = 'zabbix';\n  alert.level = input.severity || input.priority || 'warning';\n  alert.title = input.trigger || input.subject || '未知告警';\n  alert.message = input.message || input.description || '';\n  alert.host = input.host || input.hostname || '';\n}\n// Prometheus/Alertmanager 格式\nelse if (input.alerts || input.commonLabels) {\n  const a = (input.alerts || [{}])[0];\n  alert.source = 'prometheus';\n  alert.level = a.labels?.severity || input.commonLabels?.severity || 'warning';\n  alert.title = a.labels?.alertname || input.commonLabels?.alertname || '未知告警';\n  alert.message = a.annotations?.description || a.annotations?.summary || '';\n  alert.host = a.labels?.instance || '';\n}\n// 自定义格式\nelse {\n  alert.source = input.source || 'custom';\n  alert.level = input.level || input.severity || 'warning';\n  alert.title = input.title || input.alert_name || '未知告警';\n  alert.message = input.message || input.description || JSON.stringify(input).slice(0, 500);\n  alert.host = input.host || input.target || '';\n}\n\n// 判断是否需要 AI 诊断\nconst needDiagnosis = ['critical', 'error', 'high', '3', '4', '5'].includes(String(alert.level).toLowerCase());\nalert.need_diagnosis = needDiagnosis;\n\nreturn alert;"
+      },
+      "id": "ar2",
+      "name": "统一格式化",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "need-diagnosis",
+              "leftValue": "={{ $json.need_diagnosis }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "ar3",
+      "name": "需AI诊断?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/webhook/n8n_callback",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ callback_type: 'alert', alert_type: $json.title, data: { source: $json.source, level: $json.level, title: $json.title, message: $json.message, host: $json.host, timestamp: $json.timestamp } }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "ar4",
+      "name": "转发Agent诊断",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1000,
+        200
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:7789/api/n8n/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: 'alert', level: $json.level, message: `[${$json.source}] ${$json.title}: ${$json.message}`, source: `alert_receiver_${$json.source}`, host: $json.host, timestamp: $json.timestamp }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Key",
+              "value": "n8n_webhook_secret_2024"
+            }
+          ]
+        }
+      },
+      "id": "ar5",
+      "name": "记录告警",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1000,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, source: $json.source, level: $json.level, title: $json.title, diagnosed: $json.need_diagnosis }) }}"
+      },
+      "id": "ar6",
+      "name": "响应",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Z-OPS 签名节点模板 (task-c17 P0)\n部署本工作流前: 启用下方「Z-OPS签名」Code 节点并接入 httpRequest 前;\nsecret 取 zops.env N8N_CALLBACK_SECRET; httpRequest 改 Send Raw JSON body={{ $json.__body }} 并引用 __sig/__ts/__nonce 三个头。\n算法: HMAC-SHA256 over 'POST\\n/api/webhook/n8n_callback\\n<body>\\n<ts>\\n<nonce>'。"
+      },
+      "name": "Z-OPS签名说明",
+      "type':": "n8n-nodes-base.stickyNote",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -100
+      ],
+      "width": 380,
+      "height": 260
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Z-OPS n8n_callback HMAC 签名 (task-c17; secret=zops.env N8N_CALLBACK_SECRET)\nconst crypto = require('crypto');\nconst secret = process.env.ZOPS_N8N_CALLBACK_SECRET || '<部署时填 zops.env 的 N8N_CALLBACK_SECRET>';\nconst body = JSON.stringify($input.first().json);  // 与 httpRequest raw body 完全一致\nconst ts = String(Math.floor(Date.now()/1000));\nconst nonce = crypto.randomBytes(8).toString('hex');\nconst payload = ['POST','/api/webhook/n8n_callback',body,ts,nonce].join('\\n');\nreturn [{ json: { __body: body, __sig: crypto.createHmac('sha256', secret).update(payload).digest('hex'), __ts: ts, __nonce: nonce } }];"
+      },
+      "name": "Z-OPS签名",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        0
+      ],
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "告警Webhook": {
+      "main": [
+        [
+          {
+            "node": "统一格式化",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "统一格式化": {
+      "main": [
+        [
+          {
+            "node": "需AI诊断?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "需AI诊断?": {
+      "main": [
+        [
+          {
+            "node": "转发Agent诊断",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "记录告警",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "转发Agent诊断": {
+      "main": [
+        [
+          {
+            "node": "记录告警",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "记录告警",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "记录告警": {
+      "main": [
+        [
+          {
+            "node": "响应",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "timezone": "Asia/Shanghai"
+  },
+  "tags": [
+    "event",
+    "告警",
+    "Zabbix",
+    "Prometheus",
+    "主动运维"
+  ]
+}
