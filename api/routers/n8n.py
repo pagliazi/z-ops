@@ -34,6 +34,10 @@ async def n8n_webhook(request: Request):
     P0 (全面体检补漏): trigger 端点鉴权 — X-Webhook-Key 必须匹配 N8N_WEBHOOK_KEY
     (n8n 侧节点 header 配置); 未配置密钥则暂停 (fail-closed, 不裸奔)。
     驱动审批/动作的 n8n_callback 走完整 HMAC (core/n8n_callback_auth)。
+
+    P1 (收尾): 回调可靠登记 + 去重 — n8n 是 at-least-once, 重发会重复发布通知/重复告警;
+    同一 execution_id (或 payload 摘要) 前次已 succeeded 则判重复跳过副作用,
+    登记异常一律降级为原处理链路 (可用性优先, 详见 core/task_runtime/entry_guard)。
     """
     _wk = (getattr(config, "N8N_WEBHOOK_KEY", "") or "").strip()
     if not _wk:
@@ -46,12 +50,31 @@ async def n8n_webhook(request: Request):
     try:
         body = await request.json()
         logger.info(f"[N8N] 收到 Webhook: {body.get('action', 'unknown')}")
-        
-        from core.n8n_integration import get_n8n_integration
-        n8n = await get_n8n_integration()
-        result = await n8n.process_webhook(body)
-        
-        return {"success": True, "result": result}
+
+        from core.task_runtime import entry_guard
+        _guard = await entry_guard.register(body)
+        if _guard.get("duplicate"):
+            return {"success": True, "duplicate": True,
+                    "task_id": _guard.get("task_id", ""),
+                    "result": {"processed": False, "reason": "duplicate_callback"}}
+
+        try:
+            from core.n8n_integration import get_n8n_integration
+            n8n = await get_n8n_integration()
+            result = await n8n.process_webhook(body)
+        except Exception as pe:
+            await entry_guard.finish(_guard, "failed", {"error": str(pe)[:500]})
+            raise
+        # 仅 processed 为真才留 succeeded 终态 (unknown_action/失败不产生历史去重)
+        await entry_guard.finish(_guard, "succeeded" if result.get("processed") else "failed",
+                                 result)
+
+        out = {"success": True, "result": result}
+        if _guard.get("registered"):
+            out["task_id"] = _guard.get("task_id", "")
+        return out
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"[N8N] Webhook 处理失败：{e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

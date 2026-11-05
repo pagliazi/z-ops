@@ -49,6 +49,56 @@ def _mcp_headers() -> Dict[str, str]:
     return {}
 
 
+def _ssl_param():
+    """aiohttp 的 ssl 参数: True 走系统默认 CA 库 (与 httpx/certifi 不一致,
+    对中间链不完整的网关会 CERTIFICATE_VERIFY_FAILED) → 显式用 certifi 证书库。
+    验证关闭时返回 False (与旧行为一致)。"""
+    if not MCP_CONFIG.get("verify_ssl", True):
+        return False
+    try:
+        import ssl as _ssl
+        import certifi
+        ctx = _ssl.create_default_context(cafile=certifi.where())
+        return ctx
+    except Exception:
+        return True   # certifi 不可用时保持旧行为 (宁可误拒, 不自默降级)
+
+
+def normalize_tools(payload) -> List[Dict]:
+    """工具清单归一化 (MCP REST 网关实测返回 {"tools": [...]} 包装 + params 名称列表)
+
+    - 兼容 list / {"tools": list} / {"data": list} 三种形状;
+    - 缺 input_schema 时由 params 名称列表合成宽容 schema (否则工具注册后 LLM 无法调用)。
+    """
+    if isinstance(payload, dict):
+        tools = payload.get("tools")
+        if tools is None:
+            data = payload.get("data")
+            tools = data if isinstance(data, list) else []
+    elif isinstance(payload, list):
+        tools = payload
+    else:
+        tools = []
+    out: List[Dict] = []
+    for t in tools or []:
+        if not isinstance(t, dict):
+            continue
+        name = t.get("name") or ""
+        if not name:
+            continue
+        schema = t.get("input_schema") or t.get("inputSchema") or t.get("schema")
+        if not schema:
+            props = {p: {"type": "string"} for p in (t.get("params") or [])}
+            schema = {"type": "object", "properties": props}
+        out.append({
+            "name": name,
+            "description": t.get("description") or f"MCP 工具 ({t.get('module') or 'remote'})",
+            "input_schema": schema,
+            "module": t.get("module") or "",
+        })
+    return out
+
+
 # ═══ MCP 工具包装器 ═══
 
 class MCPToolWrapper(BaseTool):
@@ -110,7 +160,7 @@ class MCPToolWrapper(BaseTool):
                         "trace_id": ctx.trace_id,
                     },
                     timeout=aiohttp.ClientTimeout(total=MCP_CONFIG["timeout"]),
-                    ssl=MCP_CONFIG["verify_ssl"],
+                    ssl=_ssl_param(),
                 ) as response:
                     duration_ms = (time.time() - start_time) * 1000
                     
@@ -185,51 +235,47 @@ class MCPToolAdapter:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                     self.config["sse_endpoint"],
+                    headers=_mcp_headers(),
                     timeout=aiohttp.ClientTimeout(total=self.config["timeout"]),
-                    ssl=self.config["verify_ssl"],
+                    ssl=_ssl_param(),
                 ) as response:
                     if response.status != 200:
-                        logger.error(f"[mcp_adapter] SSE 端点返回 HTTP {response.status}")
-                        return []
-                    
-                    # SSE 端点返回工具列表 (JSON 格式)
-                    # 注意: 实际可能是 SSE 流，需要解析 event: tools_listened 等
-                    # 这里假设有一个 /tools 的 REST 端点
-                    # 如果没有，需要通过 SSE 连接后发送 initialize + tools/list
+                        # 旧行为直接返回空→SSE 不可用时 REST 白名单 server 永远休眠。
+                        # 实际网关仅提供 REST 清单时, 必须降级到 REST 发现路径。
+                        logger.warning(f"[mcp_adapter] SSE 端点返回 HTTP {response.status}, 降级 REST 发现")
+                        return await self._discover_via_rest(session)
                     
                     content_type = response.headers.get("Content-Type", "")
                     if "application/json" in content_type:
-                        tools = await response.json()
-                        self._discovered_tools = tools
-                        logger.info(f"[mcp_adapter] 发现 {len(tools)} 个 MCP 工具")
-                        return tools
+                        self._discovered_tools = normalize_tools(await response.json())
+                        logger.info(f"[mcp_adapter] 发现 {len(self._discovered_tools)} 个 MCP 工具")
+                        return self._discovered_tools
                     else:
                         # SSE 流 - 需要特殊处理
                         logger.warning("[mcp_adapter] SSE 端点需要流式解析，使用 REST API 备选方案")
                         return await self._discover_via_rest(session)
         
         except Exception as e:
-            logger.error(f"[mcp_adapter] 发现工具失败: {e}")
-            return []
+            # SSE 不可达 (连接失败/超时) 同样降级 REST, 不废弃整个发现流程
+            logger.warning(f"[mcp_adapter] SSE 发现异常: {e} — 降级 REST 发现")
+            return await self._discover_via_rest(None)
     
-    async def _discover_via_rest(self, session: aiohttp.ClientSession) -> List[Dict]:
-        """通过 REST API 发现工具 (备选方案)"""
-        # 假设有一个 /tools 列表端点
-        tools_url = self.config["rest_base"].rsplit("/", 1)[0] + "/tools"
-        
+    async def _discover_via_rest(self, session=None) -> List[Dict]:
+        """通过 REST 清单端点发现工具 (白名单已在 discover_and_register 处门控)"""
+        tools_url = self.config["rest_base"].rstrip("/") + "/"
         try:
-            async with session.get(
-                tools_url,
-                headers=_mcp_headers(),
-                timeout=aiohttp.ClientTimeout(total=self.config["timeout"]),
-                ssl=self.config["verify_ssl"],
-            ) as response:
-                if response.status == 200:
-                    tools = await response.json()
-                    self._discovered_tools = tools
-                    logger.info(f"[mcp_adapter] 通过 REST 发现 {len(tools)} 个工具")
-                    return tools
-                else:
+            # 统一自建 session (传入的 SSE session 与本请求无关, 复用反而受其超时影响)
+            async with aiohttp.ClientSession() as own:
+                async with own.get(
+                    tools_url,
+                    headers=_mcp_headers(),
+                    timeout=aiohttp.ClientTimeout(total=self.config["timeout"]),
+                    ssl=_ssl_param(),
+                ) as response:
+                    if response.status == 200:
+                        self._discovered_tools = normalize_tools(await response.json())
+                        logger.info(f"[mcp_adapter] 通过 REST 发现 {len(self._discovered_tools)} 个工具")
+                        return self._discovered_tools
                     logger.error(f"[mcp_adapter] REST 端点返回 HTTP {response.status}")
                     return []
         except Exception as e:

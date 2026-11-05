@@ -1150,7 +1150,10 @@ class OpscoreAgent(BaseAgent):
         # 创建带进度报告的 executor
         _call_count = [0]
         async def executor_with_progress(name, args):
+            # 开始时锁定本次 seq: 并行工具调用下完成事件必须携带同一 seq,
+            # 否则前端按 seq+tool 匹配合并失败, 一次查询裂成两条记录 (实测故障)
             _call_count[0] += 1
+            _seq = _call_count[0]
             tool_label = {
                 "query_backup_jobs": "备份作业", "query_backup_objects": "备份对象",
                 "query_backup_objects_batch": "批量备份对象",
@@ -1162,8 +1165,31 @@ class OpscoreAgent(BaseAgent):
                 "query_aria_ops": "Aria", "query_m365": "M365",
                 "query_backup_sessions": "备份会话", "query_backup_repos": "备份仓库",
             }.get(name, name)
-            await self.send_progress(msg, f"[{_call_count[0]}] 正在查询 {tool_label}...")
-            return await self._tool_executor(name, args)
+            # 结构化详情 (右侧调用详情卡片折叠展示): 参数截断 + 结果摘要
+            args_brief = {}
+            for _k, _v in (args or {}).items():
+                if isinstance(_v, (int, float, bool)) or _v is None:
+                    args_brief[_k] = _v
+                else:
+                    _s = str(_v)
+                    args_brief[_k] = _s[:120] + ('…' if len(_s) > 120 else '')
+            await self.send_progress(msg, f"[{_seq}] 正在查询 {tool_label}...", detail={
+                "seq": _seq, "tool": name, "label": tool_label, "args": args_brief})
+            _exec_result = await self._tool_executor(name, args)
+            # 完成事件: 带结果摘要, 前端按 seq 合并到对应步骤
+            try:
+                _result_text = _exec_result.output if hasattr(_exec_result, "output") else str(_exec_result)
+                _ok = getattr(_exec_result, "success", True)
+                _secs = getattr(_exec_result, "execution_time", 0.0)
+            except Exception:
+                _result_text, _ok, _secs = str(_exec_result), True, 0.0
+            _result_text = _result_text or ""
+            await self.send_progress(msg, f"[{_seq}] {tool_label} 完成", detail={
+                "seq": _seq, "tool": name, "label": tool_label, "args": args_brief,
+                "ok": bool(_ok), "secs": round(float(_secs or 0), 1),
+                "result": _result_text[:800] + ('…' if len(_result_text) > 800 else ''),
+                "result_len": len(_result_text)})
+            return _exec_result
 
         result = await self.llm_query(
             prompt=prompt,

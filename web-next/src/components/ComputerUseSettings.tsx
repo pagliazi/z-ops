@@ -174,7 +174,7 @@ export function ComputerUseSettings() {
       <section className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2">
         <h3 className="text-sm font-medium text-gray-900">在已选设备上执行</h3>
         <p>无法可靠绑定当前浏览器与电脑，请明确选择设备；不会自动选择唯一在线设备。已保存的选择也不代表这台浏览器所在的电脑。</p>
-        <p>后台优先：浏览器任务在 Companion 的独立无头浏览器中执行，不占用你的鼠标键盘；真实桌面接管默认关闭，即使开启也需本机桌面验收（Windows UIA / Linux X11）和每次本机原生批准。Linux 上不提供控件树与窗口截图，且没有 _NET_WM_PID 的窗口不可接管；Wayland 会话一律拒绝。设备离线、拒绝授权或结果未知时任务暂停，不会改用服务器执行。</p>
+        <p>后台优先：浏览器任务在 Companion 的独立无头浏览器中执行，不占用你的鼠标键盘；真实桌面接管默认关闭，即使开启也需本机桌面验收（Windows UIA / macOS AX / Linux X11）和每次本机原生批准。macOS 由 AX 读控件树并只采集被接管窗口（需辅助功能与屏幕录制授权）；Linux 上不提供控件树与窗口截图，且没有 _NET_WM_PID 的窗口不可接管；Wayland 会话一律拒绝（portal 与 EIS 只给整屏授权与屏幕区域，没有窗口对象）。设备离线、拒绝授权或结果未知时任务暂停，不会改用服务器执行。</p>
       </section>
       <section className="rounded-xl border border-gray-200 p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
@@ -233,7 +233,7 @@ export function ComputerUseSettings() {
         <p>初期动作受 admin/runtime action allowlist 与本地 config 共同限制，云端不能默默扩大本机授权。目录、站点、应用与脚本授权以各设备 Companion 上报为准，本页只读；新增或扩大授权必须在本机 CLI 显式完成，本页不会伪造已保存权限。覆盖、移动、删除需本机 manage 授权，且每次由你单独回复「确认」。桌面接管还需本机按进程名授权应用（--allow-desktop-app），未列出的应用不可操作。</p>
         <p>目录/站点/应用/脚本四类授权均可在此核对，但仅展示已上报的摘要。</p>
         <div className="flex items-center justify-between gap-3 pt-2">
-          <div><p className="text-gray-900">桌面接管申请</p><p className="mt-1">默认禁止。开启后仍须设备完成本机桌面验收（Windows UIA / Linux X11）；每次接管由 Companion 本机弹窗批准，60 秒租约不可续期，对话框 30 秒无人操作自动拒绝。</p></div>
+          <div><p className="text-gray-900">桌面接管申请</p><p className="mt-1">默认禁止。开启后仍须设备完成本机桌面验收（Windows UIA / macOS AX / Linux X11）；每次接管由 Companion 本机弹窗批准，60 秒租约不可续期，对话框 30 秒无人操作自动拒绝。</p></div>
           <button className={button} role="switch" aria-checked={desktopOptin === true} aria-label="桌面接管申请" disabled={!!busy || desktopOptin === null} onClick={saveDesktopOptin}>{desktopOptin === null ? '未获取' : desktopOptin ? '已允许申请' : '已禁止'}</button>
         </div>
         <div className="flex items-center justify-between gap-3 pt-2">

@@ -17,6 +17,11 @@ STAGING = "companion-unsigned-test"
 # 这两个可执行文件都要签名；任何一个验签失败都不产出生产包。
 EXECUTABLES = (("companion-unsigned-test", "companion"),
                ("companion-native-unsigned-test", "companion-native"))
+# 构建后的自检必须跑齐这些步骤（与 `companion/selfcheck.py` 的 STEPS 一致）；
+# 这里不 import 待验的源码，因为要验的恰好是它——写死名单才能发现“少跑了步”。
+SELCHECK_STEPS = ("handshake", "seat", "device", "gate_not_emulating", "inject",
+                  "window_scope_false", "gate_paused", "absolute_needs_interface_and_region")
+SELCHECK_TIMEOUT = 90
 
 
 def pinned_chromium():
@@ -66,6 +71,15 @@ def digest(path):
         while chunk := stream.read(1 << 20):
             sha.update(chunk)
     return sha.hexdigest()
+
+
+def read_test_flag(path):
+    """只取回执里的 test_only 标记：核验通过不等于可以发布，两者必须分开说。"""
+    try:
+        record = json.loads((Path(path) / "build-receipt.json").read_text())
+    except (OSError, ValueError):
+        return None
+    return bool(record.get("test_only")) if isinstance(record, dict) else None
 
 
 def receipt(plan, version, files, verified, created=None):
@@ -122,6 +136,40 @@ def _run(argv):
     return subprocess.run(argv, check=False).returncode
 
 
+def run_selfcheck(artifact, timeout=SELCHECK_TIMEOUT):
+    """让刚构出来的二进制自己跑一遍原生协议自检，返回 (是否通过, 问题列表)。
+
+    为什么要在构建环节做：冻结包交付到别人机器上时，仓库源码与单测都不在包里，“模块
+    被 collect_submodules 收进去了”不等于“能跑”（缺 C 依赖、字节码损坏、名字被剔
+    除都可能）。只有包自己能给出证据；这一步不能假定成功，读不到结果就当不通过。
+    """
+    artifact = Path(artifact)
+    if not artifact.is_file():
+        return False, ["selfcheck_artifact_missing"]
+    try:
+        proc = subprocess.run([str(artifact), "--eis-selfcheck"], capture_output=True,
+                              text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return False, ["selfcheck_timeout"]
+    except OSError as error:
+        return False, ["selfcheck_exec_failed_%s" % (type(error).__name__.lower(),)]
+    if proc.returncode != 0:
+        return False, ["selfcheck_rc_%d" % proc.returncode]
+    try:
+        payload = json.loads(proc.stdout)
+    except ValueError:
+        return False, ["selfcheck_unparsable_output"]
+    problems = []
+    if payload.get("failed"):
+        problems.append("selfcheck_failed")
+    if len(payload.get("passed") or ()) != len(SELCHECK_STEPS):
+        problems.append("selfcheck_incomplete")
+    if payload.get("window_scoped"):
+        # 自检声称拿到窗口作用域：EI 协议里没这个对象，只能是实现错了。
+        problems.append("selfcheck_claims_window_scope")
+    return not problems, problems
+
+
 def _sign_and_verify(files, plan):
     for name, path in files.items():
         if _run(sign_command(path, plan["thumbprint"])) != 0:
@@ -152,12 +200,21 @@ def publish(files, target, version):
     return final
 
 
-def finish(root, plan, version, platform):
-    """构建完成后的收尾：验签→改名→回执。返回产物目录；失败返回 None。"""
+def finish(root, plan, version, platform, skip_selfcheck=False):
+    """构建完成后的收尾：验签→改名→回执。返回产物目录；失败返回 None。
+
+    自检跑在“改名成生产名”之前：测试包与生产包都必须自证能跑，否则不写回执。
+    """
     files, staged = staged_files(Path(root) / "dist", platform)
     for name, path in files.items():
         if not path.is_file():
             print(f"产物缺失：{path}", file=sys.stderr)
+            return None
+    if not skip_selfcheck:
+        ok, problems = run_selfcheck(files.get("companion") or staged)
+        if not ok:
+            print("包内自检未通过：" + ", ".join(problems) + "；不写回执、不交付。",
+                  file=sys.stderr)
             return None
     if plan["signed"]:
         if not _sign_and_verify(files, plan):
@@ -189,10 +246,18 @@ def main(argv=None):
                         help=f"RFC3161 时间戳服务（默认 {TIMESTAMP_URL}）")
     parser.add_argument("--allow-test-package", action="store_true",
                         help="核验时允许明确标注的未签名测试包（不用于发布）")
+    parser.add_argument("--skip-native-selfcheck", action="store_true",
+                        help="不跑包内 EI 自检（无显示环境/交叉构建时才用，产物因此不算已预检）")
     args = parser.parse_args(argv)
     if args.verify_release:
         ok, problems = verify_release(args.verify_release, not args.allow_test_package)
-        print(("产物可发布：" if ok else "产物不可发布：") + args.verify_release)
+        if ok and read_test_flag(args.verify_release):
+            # 带着 --allow-test-package 才能走到这里；绝不能报“可发布”。
+            print("产物核验通过（未签名测试包）：" + args.verify_release)
+            print("  - 仅限本机功能测试：不得发布、不得作为更新源、不得安装给他人；"
+                  "桌面能力仍需按平台实机验收。")
+        else:
+            print(("产物可发布：" if ok else "产物不可发布：") + args.verify_release)
         for problem in problems:
             print("  - " + problem)
         return 0 if ok else 1
@@ -214,7 +279,8 @@ def main(argv=None):
         str(root / "companion.spec")], cwd=root, env=env, check=False).returncode
     if code != 0:
         return code
-    if finish(root, plan, __version__, os.name) is None:
+    if finish(root, plan, __version__, os.name,
+              skip_selfcheck=args.skip_native_selfcheck) is None:
         return 1
     revision = pinned_chromium()
     print("浏览器运行时不在包内：操作端须按锁定的 Playwright 版本安装 Chromium Headless Shell"

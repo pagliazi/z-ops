@@ -85,13 +85,15 @@ def authorize(cfg, args):
 def accept_desktop(cfg):
     """本机验收：全部预检通过 + 实机可读 + 原生确认后才写本机记录。
 
-    Windows 走 UIA，Linux 走 X11；两个平台的验收项不同，记录不能互相冒充。
+    Windows 走 UIA，Linux 走 X11，macOS 走 AX；三个平台的验收项不同，记录不能互相冒充。
     """
     require(bool(cfg.device_id), "pairing_required")
-    from .desktop import X11Driver, WindowsDriver, acceptance_platform, write_acceptance
+    from .desktop import (MacDriver, X11Driver, WindowsDriver, acceptance_platform,
+                          write_acceptance)
 
     name, expected = acceptance_platform()
-    driver = WindowsDriver() if name == "windows" else X11Driver()
+    drivers = {"windows": WindowsDriver, "linux": X11Driver, "macos": MacDriver}
+    driver = drivers[name]()
     report = {}
     try:
         checks = driver.prepare()
@@ -107,6 +109,20 @@ def accept_desktop(cfg):
                     "全局热键和托盘均已就绪。\n\nUIA 实测（只读取控件数量，不读取内容）：\n"
                     + summary +
                     "\n\n选择“是”只写入本机验收记录；"
+                    "不会开放远程控制，每次接管仍需你在本机原生批准。")
+        elif name == "macos":
+            # 权限位为真不等于能拿到像素：采集与控件树都必须实测。
+            require(bool(driver.capture_probe()), "macos_capture_unavailable")
+            report = driver.ax_app_report(cfg.desktop_apps)
+            require(bool(report), "macos_no_target_window")
+            require(all(item["readable"] for item in report.values()), "macos_ax_unreadable")
+            summary = "\n".join(f"- {app}: {item['elements']} 个可激活控件"
+                                for app, item in sorted(report.items()))
+            body = ("本机桌面能力预检已完成：辅助功能授权、窗口枚举、焦点查询、锁屏查询、"
+                    "输入探测、全局热键、原生对话框与窗口采集均已就绪。\n\n"
+                    "AX 实测（只读取控件数量，不读取内容）：\n" + summary +
+                    "\n\nmacOS 上没有 Pause/Break 键，停止热键是 Ctrl+Option+Cmd+S。\n\n"
+                    "选“写入验收记录”只记录本机验收结果；"
                     "不会开放远程控制，每次接管仍需你在本机原生批准。")
         else:
             body = ("本机桌面能力预检已完成：X11 窗口枚举、焦点查询、屏保/锁屏查询、"
@@ -195,8 +211,14 @@ def main():
                         dest="local_desktop_test",
                         help="仅本机原生确认/热键探针；不开放桌面")
     parser.add_argument("--accept-desktop", action="store_true",
-                        help="本机验收（Windows UIA / Linux X11）并写入绑定设备的验收记录")
+                        help="本机验收（Windows UIA / macOS AX / Linux X11）并写入绑定设备的验收记录")
     parser.add_argument("--native-manifest", metavar="HOST_EXECUTABLE", help="输出 Native Messaging 注册 JSON，不自动注册")
+    parser.add_argument("--eis-selfcheck", action="store_true",
+                        help="离线跑一遍 EI(libei) 协议自检（假合成器，不连 D-Bus、不接管窗口、不开放桌面能力）")
+    parser.add_argument("--windows-acceptance", action="store_true",
+                        help="在 Windows 实机上跑 13 项验收清单并写出报告（随包自带，不需要另装 Python）")
+    parser.add_argument("--acceptance-output", metavar="PATH",
+                        help="--windows-acceptance 的报告路径，默认 ~/zops-windows-acceptance.json")
     parser.add_argument("--internal-worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     try:
@@ -209,6 +231,16 @@ def main():
             from .desktop import local_desktop_probe
             print(json.dumps(local_desktop_probe(), ensure_ascii=False))
             return 0
+        if args.windows_acceptance:
+            from .winaccept import run as windows_acceptance
+            # 必须在 Windows 实机上跑；其他平台 winaccept.run 会直接拒绝，不产出任何报告。
+            return windows_acceptance(output=args.acceptance_output)
+        if args.eis_selfcheck:
+            from .selfcheck import STEPS, run as eis_selfcheck
+            result = eis_selfcheck()
+            print(json.dumps(result, ensure_ascii=False))
+            # 自检不通过就不能假装“通过”：步步跑齐且零失败才回 0，交付时可当预检用。
+            return 0 if not result["failed"] and len(result["passed"]) == len(STEPS) else 1
         path = args.config.absolute()
         if path.exists():
             cfg = Config.load(path)

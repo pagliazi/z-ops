@@ -52,6 +52,9 @@ REDIS_PREFIX = "zops"  # Redis 键前缀
 
 # ═══ Redis ═══
 REDIS_URL = get("REDIS_URL", "redis://127.0.0.1:6379/0")
+# Agent 常驻进程共用 Redis 客户端的连接池上限。早期固定 10 会在"长驻 pubsub +
+# 并发采集 + 130s 级 LLM 调用"重叠时耗尽, 表现为心跳失败与写入静默报错。
+REDIS_POOL_MAX = get_int("REDIS_POOL_MAX", 50)
 
 # ═══ LLM ═══
 # 默认使用 OneAPI 网关 + deepseek-v3-0324 (别名，真实模型: glm5-pg1 智谱GLM5)
@@ -113,6 +116,12 @@ N8N_WEBHOOK_KEY = (get("N8N_WEBHOOK_KEY") or "").strip()   # P0 体检补漏: tr
 # ═══ P1: 任务运行时 Streams 消费开关 (readiness 达标 Redis>=6.2 才实际生效) ═══
 # OPS-CORE 多对象只读试点: 开启后 route=opscore_agent 的 chat 任务经队列消费派发。
 TR_STREAMS_ENABLED = get_bool("ZOPS_TR_STREAMS", False)
+# 飞书入口可靠任务登记: message_id 幂等 + 永久事件归档 (闭合飞书仅 Redis 截断缺口)。
+# 登记失败自动降级为纯对话 (可用性优先), 设 ZOPS_TR_FEISHU=false 可整体关闭。
+TR_FEISHU_ENABLED = get_bool("ZOPS_TR_FEISHU", True)
+# n8n 回调可靠登记: 同一回调重试不重复处理 (仅在已 succeed 时判定重复),
+# 并留下永久事件审计。设 ZOPS_TR_N8N=false 可关。
+TR_N8N_ENABLED = get_bool("ZOPS_TR_N8N", True)
 
 # P2 收尾: 用户画像 (Hermes Honcho) — 默认关闭; 开启后仅显式记忆写入, 推断不转授权
 USER_PROFILE_ENABLED = get_bool("ZOPS_USER_PROFILE", False)
@@ -380,7 +389,9 @@ NMS_SEEN_TTL = get_int("NMS_SEEN_TTL", 7 * 86400)
 NMS_HISTORY_MAX = get_int("NMS_HISTORY_MAX", 2000)              # 老版 list 历史最大条数 (兼容过渡)
 # Phase H ZSET 历史条数保险丝 (内存兜底; 保留期由 NMS_HISTORY_RETENTION_DAYS 决定)
 NMS_HISTORY_ZSET_MAX = get_int("NMS_HISTORY_ZSET_MAX", 100000)
-# 历史告警保留天数 (按 ZSET score = 首见时间老化); 0 = 仅按条数兜底
+# 每轮历史覆盖修复的补写上限 (防首次空库时大批量写入阻塞采集; 剩余下轮继续)
+NMS_HISTORY_REPAIR_MAX = get_int("NMS_HISTORY_REPAIR_MAX", 8000)
+# 历史告警保留天数 (按 ZSET score = 首见时间老化, 当前仍活跃的事件豁免); 0 = 仅按条数兜底
 NMS_HISTORY_RETENTION_DAYS = get_int("NMS_HISTORY_RETENTION_DAYS", 30)
 # A3 异常检测的查询窗口 (天); ZSET score 范围扫描, 默认 14 天覆盖常见业务周期
 NMS_ANOMALY_HISTORY_WINDOW_DAYS = get_int(

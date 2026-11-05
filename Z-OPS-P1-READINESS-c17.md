@@ -23,3 +23,17 @@ SPEC P1「技术选择与上线前置条件」要求的只读核查（未改动�
 
 - AOF everysec 存在至多 ~1s 丢失窗口；AOF+RDB 双存储不承诺零丢失。
 - 不承诺任意外部操作 exactly-once；写操作超时/崩溃进入 UNKNOWN 由人工核查（task_runtime 状态机实现）。
+
+---
+
+## 状态更新（2026-11-01 复核，本会话实测）
+
+| 项 | 2026-10-13 核查 | 当前实测 | 结论 |
+|---|---|---|---|
+| Redis 版本 | 6.0.16（阻塞） | **7.2.10** | 管理员已按变更流程升级 → 6.2 门槛达标 |
+| 淘汰策略 / 持久化 | noeviction / AOF+RDB ok | noeviction / appendfsync=everysec | ✅ 未变 |
+| Streams 消费 | readiness gate 拦截未激活 | `ZOPS_TR_STREAMS=true`（zops.env，2026-10-27 起）+ 启动日志 `[lifespan] P1 Streams 消费已启动 (OPS-CORE 试点路由)` | ✅ 已激活（仅 OPS-CORE 只读试点路由） |
+| 上线门核查方式 | 手工一次性核查 + 本文档 | 需认证端点 `GET /api/observability/task-runtime-readiness`（未认证 401）持续可查 | ✅ 诊断固化（版本/AOF/noeviction/拓扑/容量 + 队列/租约/归档 lag/Outbox/服务主体） |
+
+- 本文档「阻塞项处置」中的版本阻塞**已由管理员解除**，本报告保留原结论作为历史事实（不覆盖旧核查数据）。
+- 诊断端点仍会如实列出未达标项（例如测试实例 AOF 未启用即 `ready=false`）；`ready` 不等于业务成功率达标，门 4 指标需真实流量窗口统计。

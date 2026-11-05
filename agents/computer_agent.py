@@ -13,7 +13,7 @@
            write_document / file_move / file_overwrite / file_delete / system_info /
            process_list / service_list / log_collect / script
   桌面:    desktop_inspect / desktop_request_control / desktop_act (仅本机验收后;
-           Windows 走 UIA 元素级 invoke 优先; Linux X11 无控件树, 只能坐标与键盘)
+           Windows 走 UIA、macOS 走 AX 元素级 invoke 优先; Linux X11 无控件树, 只能坐标与键盘)
   结束:    done(result) / fail(reason) / ask(question) / await_login
 
 安全策略:
@@ -255,8 +255,9 @@ DEVICE_PROMPT = """
 - 桌面 (仅当设备声明 desktop.*; 未通过本机验收时不可用):
   {"action":"desktop_inspect"} — 列出可操作窗口及 rect, 不操作; 只返回本机已按进程名授权的应用,
   若为空需让用户在本机运行 --allow-desktop-app 授权, 不得尝试未授权窗口
-  {"action":"desktop_inspect","window_id":123} — 额外返回该窗口的 UIA 可激活元素
-  (index/role/name, 只读, 不含输入内容与密码类控件; Linux X11 无控件树, 返回空列表)
+  {"action":"desktop_inspect","window_id":123} — 额外返回该窗口的本机可激活元素
+  (Windows UIA / macOS AX; index/role/name, 只读, 不含输入内容与密码类控件;
+   Linux X11 无控件树, 返回空列表)
   {"action":"desktop_request_control","window_id":123,"scopes":["invoke","type_text"],"reason":"..."} —
   scopes 可选 click/type_text/keys/scroll/invoke/view; view 表示同意在接管期间把被接管窗口画面推到小窗
   （锁屏或密码框有焦点时自动暂停采集）；触发设备本机原生批准, 批准后才获得 60 秒且不可续期的租约;

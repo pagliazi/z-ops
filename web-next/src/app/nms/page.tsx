@@ -95,6 +95,7 @@ interface NmsData {
   seen_count: number;
   history_count: number;
   configured: boolean;
+  is_personal?: boolean;
   pending?: boolean;
   message?: string;
   error?: string;
@@ -106,6 +107,8 @@ interface NmsHistoryData {
   source?: 'zset' | 'list';
   has_more?: boolean;
   page?: number;
+  /** 带关键字时的扫描窗口提示：true = 已在扫描上限内扫完，不代表全库无更多命中 */
+  q_partial?: boolean;
   error?: string;
 }
 
@@ -1412,6 +1415,9 @@ function NmsContent() {
   const [historyHasMore, setHistoryHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // 告警/历史读取失败原因：区分「请求失败」与「确实没有告警」，
+  // 否则后端/前端重启期间的瞬时失败会被渲染成「暂无现存告警」，看起来像数据丢了
+  const [loadError, setLoadError] = useState('');
   const [activeTab, setActiveTab] = useState<'incidents' | 'alarms' | 'history' | 'analysis' | 'checklist'>('incidents');
   const [alarmStatus, setAlarmStatus] = useState<'active' | 'cleared'>('active');
   const [selectedSeverities, setSelectedSeverities] = useState<Set<string>>(new Set());
@@ -1419,6 +1425,9 @@ function NmsContent() {
   const [groupsTouched, setGroupsTouched] = useState(false);
   const [groupSearch, setGroupSearch] = useState('');
   const [searchText, setSearchText] = useState('');
+  // fetchHistory 依赖此 ref 取当前关键字，避免因 searchText 进依赖数组导致
+  // 每次按键都重建回调 → 与防抖 effect 相互触发风暴
+  const searchTextRef = useRef('');
   // Phase 2.1: 时间范围筛选 (ISO-8601, 空 = 不限)
   const [timeFrom, setTimeFrom] = useState<string>('');
   const [timeTo, setTimeTo] = useState<string>('');
@@ -1494,7 +1503,7 @@ function NmsContent() {
   const dismissedTsRef = useRef('');
 
   const fetchData = useCallback(async (groupsParam?: string, page = 1, append = false, statusParam?: 'active' | 'cleared') => {
-    if (!append) setLoading(true);
+    if (!append) { setLoading(true); setLoadError(''); }
     try {
       const gp = groupsParam !== undefined ? groupsParam : [...selectedGroups].join(',');
       const st = statusParam || alarmStatus;
@@ -1503,8 +1512,14 @@ function NmsContent() {
         : '';
       const url = `/api/nms/alarms?page=${page}&page_size=500&status=${st}${gp ? `&groups=${encodeURIComponent(gp)}` : ''}${timeParams}`;
       const alarmsRes = await fetch(url, { headers });
-      if (alarmsRes.ok) {
+      if (!alarmsRes.ok) {
+        // 保留上一次成功数据，仅暴露失败原因（不清空列表，避免误判为「告警消失」）
+        setLoadError(`读取告警失败 (HTTP ${alarmsRes.status})`);
+      } else {
         const d: NmsData = await alarmsRes.json();
+        // 后端异常被包成 {error} 且 latest=null 返回，不能当成「无告警」渲染
+        // (pending = 首轮采集尚未完成，属于正常等待态，不算读取失败)
+        setLoadError(d?.error ? `后端异常: ${d.error}` : '');
         if (append && d.latest) {
           setData(prev => {
             if (!prev?.latest || !d.latest) return d;
@@ -1525,38 +1540,70 @@ function NmsContent() {
       }
     } catch (e) {
       console.error('NMS fetch error:', e);
+      setLoadError('无法连接后端服务');
     }
     if (!append) setLoading(false);
   }, [headers, selectedGroups, alarmStatus, timeFrom, timeTo]);
 
-  // 拉取历史告警库 (内容键去重事件, 30 天保留; 分组/时间过滤+分页在服务端做)
-  const fetchHistory = useCallback(async (page = 1, append = false, loadingMore = false) => {
-    if (!loadingMore) setHistoryLoading(true);
+  // 拉取历史告警库 (内容键去重事件, 30 天保留; 分组/时间/关键字过滤+分页在服务端做)
+  const fetchHistory = useCallback(async (
+    page = 1, append = false, loadingMore = false,
+    qOverride?: string,
+  ) => {
+    if (!loadingMore) { setHistoryLoading(true); setLoadError(''); }
     try {
       const gp = [...selectedGroups].join(',');
       const timeParams = (timeFrom || timeTo)
         ? `&from_ts=${encodeURIComponent(timeFrom || '')}&to_ts=${encodeURIComponent(timeTo || '')}`
         : '';
-      const url = `/api/nms/history?limit=200&page=${page}${gp ? `&groups=${encodeURIComponent(gp)}` : ''}${timeParams}`;
+      // 关键字交给服务端：旧实现只在前端已加载的本页 200 条里筛，命中不到早期
+      // 事件，用户体感就是「历史告警搜不到 / 又没了」；qOverride 缺省取当前输入框
+      const q = (qOverride !== undefined ? qOverride : searchTextRef.current).trim();
+      const url = `/api/nms/history?limit=200&page=${page}${gp ? `&groups=${encodeURIComponent(gp)}` : ''}${timeParams}${q ? `&q=${encodeURIComponent(q)}` : ''}`;
       const res = await fetch(url, { headers });
-      if (res.ok) {
-        const d: NmsHistoryData = await res.json();
-        setHistoryData(prev => (append && prev
-          ? { ...d, alarms: [...prev.alarms, ...d.alarms] }
-          : d));
-        setHistoryPage(d.page || page);
-        setHistoryHasMore(!!d.has_more);
-        // 第一页已是最新历史：清空基线，由下次探测静默采纳当前快照
-        if ((d.page || page) === 1 && !append) {
-          snapshotTsRef.current = '';
-          setNewSnapshot(null);
-        }
+      if (!res.ok) {
+        setLoadError(`读取历史告警失败 (HTTP ${res.status})`);
+        return;
+      }
+      const d: NmsHistoryData = await res.json();
+      setLoadError(d?.error ? `后端异常: ${d.error}` : '');
+      setHistoryData(prev => (append && prev
+        ? { ...d, alarms: [...prev.alarms, ...d.alarms] }
+        : d));
+      setHistoryPage(d.page || page);
+      setHistoryHasMore(!!d.has_more);
+      // 第一页已是最新历史：清空基线，由下次探测静默采纳当前快照
+      if ((d.page || page) === 1 && !append) {
+        snapshotTsRef.current = '';
+        setNewSnapshot(null);
       }
     } catch (e) {
       console.error('NMS history fetch error:', e);
+      setLoadError('无法连接后端服务');
+    } finally {
+      // finally 保证早退分支（请求失败）也会收起 loading，否则空态会被 loading 隐藏
+      if (!loadingMore) setHistoryLoading(false);
     }
-    if (!loadingMore) setHistoryLoading(false);
   }, [headers, selectedGroups, timeFrom, timeTo]);
+
+  // 历史页签的关键字走服务端全库搜索：输入防抖 500ms 后重查第一页
+  // （快照页签仍是前端在本页内过滤，口径不变）
+  useEffect(() => {
+    searchTextRef.current = searchText;
+  }, [searchText]);
+  // 首次切入历史页由 switchTab 直接 fetch，防抖 effect 只处理切入后的输入变化
+  const histSearchInitRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeTab !== 'history') { histSearchInitRef.current = null; return; }
+    if (histSearchInitRef.current === null) {   // 刚切入：记下当前关键字，不重发
+      histSearchInitRef.current = searchText;
+      return;
+    }
+    if (histSearchInitRef.current === searchText) return;
+    histSearchInitRef.current = searchText;
+    const t = setTimeout(() => { fetchHistory(1, false, false, searchText.trim()); }, 500);
+    return () => clearTimeout(t);
+  }, [searchText, activeTab]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   // 拉取关联降噪事件簇（按选中分组过滤）
   // 最近一次成功拉取时间：面板打开时据此判断是否需要补拉，避免展示旧事件
@@ -1712,7 +1759,11 @@ function NmsContent() {
     setLoadingMore(true);
     const gp = [...selectedGroups].join(',');
     fetch(`/api/nms/alarms?page=${currentPage + 1}&page_size=500&status=${alarmStatus}${gp ? `&groups=${encodeURIComponent(gp)}` : ''}`, { headers })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => {
+        if (r.ok) return r.json();
+        setLoadError(`读取更多告警失败 (HTTP ${r.status})`);
+        return null;
+      })
       .then((d: NmsData | null) => {
         const latest = d?.latest;
         if (!d || !latest) return;
@@ -1723,7 +1774,7 @@ function NmsContent() {
         setHasMore(latest.has_more || false);
         setCurrentPage(latest.page || currentPage + 1);
       })
-      .catch(() => {})
+      .catch(() => setLoadError('读取更多告警失败'))
       .finally(() => setLoadingMore(false));
   };
 
@@ -2229,7 +2280,8 @@ function NmsContent() {
     } else if (tab === 'history') {
       setSelectedSeverities(new Set());
       setSearchText('');
-      fetchHistory();
+      searchTextRef.current = '';   // 同步清掉，避免 fetchHistory 取到上一页的旧关键字
+      fetchHistory(1, false, false, '');
     } else if (tab === 'analysis') {
       const g = [...selectedGroups][0] || analysisGroup || panelGroups[0] || availableGroups[0] || '';
       if (g) { setAnalysisGroup(g); fetchAnalysis(g); fetchChecklist(g); }
@@ -2252,7 +2304,8 @@ function NmsContent() {
   };
 
   // 按选中分组 → 严重级别 → 搜索 过滤
-  // 历史页签: 分组过滤+分页已在服务端完成, 客户端仅做级别/ACK/搜索; 保持接口时间倒序
+  // 历史页签: 分组/时间/关键字过滤+分页已全部在服务端完成, 客户端不再重复筛关键字
+  // (服务端按整条记录字节匹配，与客户端只看几个字段的口径不同，重复筛会漏掉合法命中)
   const filteredAlarms = useMemo(() => {
     let result = sourceAlarms.filter(a => {
       if (activeTab === 'history') return true;  // 服务端已按分组过滤
@@ -2267,7 +2320,8 @@ function NmsContent() {
     // ACK 确认状态过滤：未确认 / 已确认
     if (ackFilter === 'acked') result = result.filter(isAcked);
     else if (ackFilter === 'unacked') result = result.filter(a => !isAcked(a));
-    if (searchText.trim()) {
+    if (searchText.trim() && activeTab !== 'history') {
+      // 历史页签关键字已在服务端全库过滤，这里仅快照页签做本页前端过滤
       const q = searchText.toLowerCase();
       result = result.filter(a =>
         (a.summary || '').toLowerCase().includes(q) ||
@@ -2901,7 +2955,24 @@ function NmsContent() {
                     </tbody>
                   </table>
 
-                  {(activeTab === 'history'
+                  {loadError && (activeTab === 'history' ? !historyLoading : !loading) && (
+                    <div className="text-center py-16">
+                      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 bg-[#FEF2F2]">
+                        <Activity size={26} className="text-[#FCA5A5]" />
+                      </div>
+                      <p className="text-[#B91C1C] font-medium text-sm">告警数据读取失败（不是没有告警）</p>
+                      <p className="text-xs mt-1 text-[#94A3B8]">
+                        {loadError}；服务重启或后端瞬时异常会造成此提示，数据仍在后端，稍后可重试
+                      </p>
+                      <button onClick={() => (activeTab === 'history'
+                          ? fetchHistory(historyPage)
+                          : fetchData([...selectedGroups].join(','), currentPage))}
+                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#0F172A] text-white text-sm font-medium hover:bg-[#1E293B] transition-colors">
+                        <RefreshCw size={14} /> 重试
+                      </button>
+                    </div>
+                  )}
+                  {!loadError && (activeTab === 'history'
                     ? (filteredAlarms.length === 0 && !historyLoading)
                     : (scopeTotal === 0 && !loading)) && (
                     <div className="text-center py-16">
@@ -2910,18 +2981,27 @@ function NmsContent() {
                       </div>
                       <p className="text-[#475569] font-medium text-sm">
                         {activeTab === 'history'
-                          ? (historyData ? '历史库暂无事件' : '暂无历史数据')
+                          ? (searchText.trim()
+                            ? `未找到匹配“${searchText.trim()}”的历史告警`
+                            : (historyData ? '历史库暂无事件' : '暂无历史数据'))
                           : (data?.configured
                             ? (selectedGroups.size === 0 ? '未选择任何分组' : '暂无现存告警')
                             : 'NMS 凭据未配置')}
                       </p>
                       <p className="text-xs mt-1 text-[#94A3B8]">
                         {activeTab === 'history'
-                          ? ((timeFrom || timeTo)
-                            ? '所选时间窗口内无历史事件（历史保留 30 天，更早的已按保留期老化）'
-                            : '历史事件由抓取轮次持续写入（内容键去重，保留 30 天）；若刚部署请等待一轮抓取')
+                          ? (searchText.trim()
+                            ? '关键字在服务端全库扫描（多词空格=且），已按时窗/分组限定；可清空搜索或放宽时间范围重试'
+                            : ((timeFrom || timeTo)
+                              ? '所选时间窗口内无历史事件（历史保留 30 天，更早的已按保留期老化）'
+                              : '历史事件由抓取轮次持续写入（内容键去重，保留 30 天）；若刚部署请等待一轮抓取'))
                           : (data?.configured
-                            ? (selectedGroups.size === 0 ? '请在左侧勾选要查看的分组' : (data?.message || '将用您的 AD 账号登录 NMS 抓取，仅显示您权限范围内的告警'))
+                            ? (selectedGroups.size === 0
+                              ? '请在左侧勾选要查看的分组'
+                              : (data?.message
+                                || (data?.is_personal
+                                  ? '你的 NMS 权限范围内该分组当前无现存告警；可点下方按钮重新抓取'
+                                  : '当前快照内该分组没有现存告警（已清除的告警请到「历史告警」页签查看）')))
                             : '请在 zops.env 中配置 NMS_USERNAME 和 NMS_PASSWORD')}
                       </p>
                       {data?.configured && selectedGroups.size !== 0 && activeTab === 'alarms' && (

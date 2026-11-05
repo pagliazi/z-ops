@@ -9,7 +9,8 @@ hidden = collect_submodules("companion") + collect_submodules("keyring.backends"
 hidden += ["openpyxl", "docx", "pypdf", "PIL.Image", "aiohttp", "psutil"]
 # Windows 的原生批准用 Win32 MessageBox，Linux 用 tkinter；托盘只在 Linux 需要 python-xlib。
 if sys.platform.startswith("linux"):
-    hidden += ["pystray", "Xlib"]
+    # pystray/Xlib：X11 桌面驱动；jeepney：Wayland 下的 xdg-desktop-portal 探测（纯 Python D-Bus）。
+    hidden += ["pystray", "Xlib", "jeepney.io.blocking", "jeepney.bus_messages", "jeepney.wrappers"]
     excludes = ["pytest"]
 else:
     excludes = ["pytest", "tkinter"]

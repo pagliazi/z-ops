@@ -40,7 +40,9 @@ interface Msg {
   device_id?: string; cu_task_id?: string;
   need_extension?: boolean;              // 需用户本机浏览器才能继续 → 渲染连接引导卡片
   login_handoff?: boolean;               // 等待用户在自己的浏览器里完成登录
-  steps?: { t: string; text: string; source?: string }[];  // 执行过程事件流 (工具/子代理 tab 数据源)
+  steps?: { t: string; text: string; source?: string;    // 执行过程事件流 (工具/子代理 tab 数据源)
+    seq?: number; tool?: string; args?: Record<string, unknown>;  // 工具调用详情 (可折叠展开)
+    result?: string; ok?: boolean; secs?: number; result_len?: number }[];
 }
 interface Sess { id: string; title: string; updated_at?: string; message_count?: number; }
 
@@ -233,10 +235,23 @@ export default function ChatApp() {
         device_id: m.device_id || m.metadata?.device_id, cu_task_id: m.cu_task_id || m.metadata?.cu_task_id,
         login_handoff: !!m.login_handoff,
         // 后端落库的过程事件 (10-19): 历史消息重开时 工具/子代理 tab 仍有数据
-        steps: (m.steps || []).map((s: any) => ({
-          t: typeof s.t === 'number' ? new Date(s.t * 1000).toLocaleTimeString('zh-CN', { hour12: false }) : (s.t || ''),
-          text: s.text || '', source: s.source || '',
-        })),
+        // 工具详情字段 (seq/tool/args/result/ok/secs) 保留; 开始+完成两条按 seq 合并为一行 (与实时流一致)
+        steps: ((m.steps || []) as any[]).reduce<any[]>((out, s) => {
+          const st = {
+            t: typeof s.t === 'number' ? new Date(s.t * 1000).toLocaleTimeString('zh-CN', { hour12: false }) : (s.t || ''),
+            text: s.text || '', source: s.source || '',
+            seq: s.seq, tool: s.tool, args: s.args, result: s.result, ok: s.ok, secs: s.secs, result_len: s.result_len,
+          };
+          if (s.seq != null && s.result !== undefined) {
+            // 完成行合并回开始行; 精确匹配失败回退同 tool 最后未完成行
+            let i = out.findIndex(o => o.seq === s.seq && o.tool === s.tool);
+            if (i < 0) for (let j = out.length - 1; j >= 0; j--) {
+              if (out[j].tool === st.tool && out[j].result === undefined) { i = j; break; }
+            }
+            if (i >= 0) { out[i] = { ...out[i], text: st.text, result: st.result, ok: st.ok, secs: st.secs, result_len: st.result_len }; return out; }
+          }
+          out.push(st); return out;
+        }, []),
       })));
       scrollBottom();
       getUsage(sid).then(data => { if (epoch === sessionEpoch.current) setUsage(data); }).catch(() => {});
@@ -325,16 +340,31 @@ export default function ChatApp() {
         }
         if (c.type === 'progress') {
           lastNote = c.text || '';
-          // 采集执行过程事件流 (供 工具/子代理 tab 展示)
-          const st = {
-            t: new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            text: c.text || '', source: (c as any).source,
-          };
-          patch(m => ({ ...m, progress: c.text, steps: [...(m.steps || []), st],
-            agent: st.source === 'computer_agent' ? st.source : m.agent,
-            cu_backend: c.cu_backend || m.cu_backend, cu_task_id: c.cu_task_id || m.cu_task_id, device_id: c.device_id || m.device_id }));
+          // 采集执行过程事件流 (供 工具/子代理 tab 展示); detail 携带工具调用详情
+          const d = (c as any).detail as { seq?: number; tool?: string; args?: Record<string, unknown>;
+            result?: string; ok?: boolean; secs?: number; result_len?: number } | undefined;
+          const now = () => new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          patch(m => {
+            const steps = [...(m.steps || [])];
+            if (d && typeof d.seq === 'number' && d.result !== undefined) {
+              // 工具完成事件: 合并到对应"正在查询"步骤 — 一次查询 = 一行 (展开可见参数+结果)
+              // seq+tool 精确匹配失败时回退合并同 tool 最后一条未完成行 (容错旧数据 seq 错位)
+              let i = steps.findIndex(s => s.seq === d.seq && s.tool === d.tool);
+              if (i < 0) for (let j = steps.length - 1; j >= 0; j--) {
+                if (steps[j].tool === d.tool && steps[j].result === undefined) { i = j; break; }
+              }
+              if (i >= 0) steps[i] = { ...steps[i], text: c.text || steps[i].text, result: d.result, ok: d.ok, secs: d.secs, result_len: d.result_len };
+              else steps.push({ t: now(), text: c.text || '', source: (c as any).source, seq: d.seq, tool: d.tool, args: d.args, result: d.result, ok: d.ok, secs: d.secs, result_len: d.result_len });
+            } else {
+              steps.push({ t: now(), text: c.text || '', source: (c as any).source,
+                seq: d?.seq, tool: d?.tool, args: d?.args });
+            }
+            return { ...m, progress: c.text, steps,
+              agent: (c as any).source === 'computer_agent' ? (c as any).source : m.agent,
+              cu_backend: c.cu_backend || m.cu_backend, cu_task_id: c.cu_task_id || m.cu_task_id, device_id: c.device_id || m.device_id };
+          });
           // 只展开任务视图，画面仍须通过会话、任务与设备绑定校验。
-          if (st.source === 'computer_agent' && !cuPanelRef.current) {
+          if ((c as any).source === 'computer_agent' && !cuPanelRef.current) {
             if (!c.cu_task_id) setCuBinding(null);
             cuPanelRef.current = true;
             setBrowserOpen(true);
@@ -918,6 +948,16 @@ interface CallNode {
   id: string; kind: 'root' | 'agent' | 'step' | 'sources' | 'thinking';
   title: string; time?: string; link?: string;
   children?: CallNode[]; defaultOpen?: boolean;
+  detail?: { tool: string; args?: Record<string, unknown>; result?: string; ok?: boolean; secs?: number; result_len?: number };
+}
+
+/* step 节点构造: 有工具详情 (tool) 的步骤可折叠展开参数/结果 */
+function stepNode(s: NonNullable<Msg['steps']>[number], tag: string): CallNode {
+  return {
+    id: `st-${s.t}-${tag}${s.seq ?? ''}-${s.tool || ''}`,
+    kind: 'step', title: s.text || '', time: s.t,
+    detail: s.tool ? { tool: s.tool, args: s.args, result: s.result, ok: s.ok, secs: s.secs, result_len: s.result_len } : undefined,
+  };
 }
 
 /* 由消息的 steps 时间线 + agents + 来源链接构建多级调用树:
@@ -944,9 +984,9 @@ function buildCallTree(msg: Msg | null): CallNode[] {
     if (routed && (!s.source || s.source === 'orchestrator')) {
       agentNodeOf(routed[1], s.t);
     } else if (s.source && s.source !== 'orchestrator') {
-      agentNodeOf(s.source).children!.push({ id: `st-${s.t}-${s.source}`, kind: 'step', title: s.text || '', time: s.t });
+      agentNodeOf(s.source).children!.push(stepNode(s, s.source));
     } else {
-      root.children!.push({ id: `st-${s.t}-o`, kind: 'step', title: s.text || '', time: s.t });
+      root.children!.push(stepNode(s, 'o'));
     }
   }
   // agents 字段里有但 steps 未覆盖的 agent (如历史消息) → 空子树占位
@@ -1109,17 +1149,70 @@ function InfoCard({ msg, onClose }: { msg: Msg | null; onClose: () => void }) {
   );
 }
 
+/* 工具调用详情 (步骤展开区): 工具名 + 参数 + 结果摘要 */
+function ToolDetail({ detail }: { detail: NonNullable<CallNode['detail']> }) {
+  const args = detail.args || {};
+  const argEntries = Object.entries(args).filter(([, v]) => v !== '' && v != null);
+  const result = detail.result || '';
+  const total = detail.result_len || result.length;
+  const CLIP = 300;
+  const [showAll, setShowAll] = useState(false);
+  const clipped = result.length > CLIP && !showAll;
+  return (
+    <div className='my-1 rounded-xl bg-[#fafafa] border border-[#ececf0] px-3 py-2.5 text-[11px] leading-relaxed'>
+      <div className='flex items-center gap-1.5 min-w-0'>
+        <Wrench size={11} className='text-[#8f8f8f] shrink-0' />
+        <code className='font-mono text-[10.5px] text-indigo-600 truncate' title={detail.tool}>{detail.tool}</code>
+      </div>
+      {argEntries.length > 0 && (
+        <div className='mt-2'>
+          <div className='text-[#b4b4b4] text-[9.5px] font-semibold tracking-wider mb-1'>参数</div>
+          <div className='rounded-lg bg-white border border-[#efefef] px-2.5 py-1.5 space-y-0.5'>
+            {argEntries.map(([k, v]) => (
+              <div key={k} className='flex gap-2 min-w-0'>
+                <span className='text-[#8f8f8f] shrink-0 font-mono text-[10px]'>{k}</span>
+                <span className='text-[#333] font-mono text-[10px] break-all'>{typeof v === 'string' ? v : JSON.stringify(v)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {result !== '' && (
+        <div className='mt-2'>
+          <div className='text-[#b4b4b4] text-[9.5px] font-semibold tracking-wider mb-1'>
+            结果{detail.ok === false ? ' · 失败' : ''}{total > result.length ? `（显示前 ${result.length} 字符，共 ${total}）` : total > CLIP ? `（${total} 字符）` : ''}
+          </div>
+          <div className='relative'>
+            <pre className={`whitespace-pre-wrap break-all font-mono text-[10.5px] rounded-lg border px-2.5 py-2 overflow-y-auto
+              ${detail.ok === false ? 'text-red-600 bg-red-50/50 border-red-100' : 'text-[#44464a] bg-white border-[#efefef]'}
+              ${clipped ? 'max-h-[132px] overflow-hidden' : 'max-h-60'}`}>{showAll ? result : result.slice(0, CLIP)}</pre>
+            {clipped && <div className='pointer-events-none absolute bottom-0 left-0 right-0 h-8 rounded-b-lg bg-gradient-to-b from-transparent to-white' />}
+          </div>
+          {result.length > CLIP && (
+            <button onClick={() => setShowAll(v => !v)} className='mt-1 text-[10.5px] text-indigo-600 hover:text-indigo-700 hover:underline'>
+              {showAll ? '收起结果' : `展开全文（共 ${total} 字符）`}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TreeNode({ node, depth }: { node: CallNode; depth: number }) {
-  const [open, setOpen] = useState(node.defaultOpen !== false);
+  const hasDetail = !!node.detail;
+  const [open, setOpen] = useState(!hasDetail && node.defaultOpen !== false);
   const hasKids = (node.children?.length || 0) > 0;
+  const expandable = hasKids || hasDetail;
   const icon = node.kind === 'root' ? '🧠' : node.kind === 'agent' ? '🤖'
     : node.kind === 'sources' ? '📚' : node.kind === 'thinking' ? '💭' : '•';
+  const d = node.detail;
   return (
     <div className="py-[2px]">
-      <div onClick={() => hasKids && setOpen(v => !v)}
+      <div onClick={() => expandable && setOpen(v => !v)}
         className={`flex items-start gap-1.5 rounded-lg px-2 py-1 text-[12.5px] leading-snug
-          ${hasKids ? 'cursor-pointer hover:bg-black/[0.03]' : ''}`}>
-        {hasKids ? (
+          ${expandable ? 'cursor-pointer hover:bg-black/[0.03]' : ''}`}>
+        {expandable ? (
           <ChevronRight size={12} className={`mt-[3px] shrink-0 text-[#b4b4b4] transition-transform ${open ? 'rotate-90' : ''}`} />
         ) : (
           <span className="w-3 shrink-0" />
@@ -1133,10 +1226,16 @@ function TreeNode({ node, depth }: { node: CallNode; depth: number }) {
           <span className={`truncate ${node.kind === 'root' || node.kind === 'agent' || node.kind === 'sources' || node.kind === 'thinking'
             ? 'font-medium text-[#0d0d0d]' : 'text-[#4b4b4b]'}`}>{node.title}</span>
         )}
+        {d && d.result !== undefined && (
+          <span className={`ml-auto shrink-0 mt-[2px] text-[10px] ${d.ok === false ? 'text-red-500' : 'text-emerald-500'}`}>
+            {d.ok === false ? '✕' : '✓'}{d.secs != null ? ` ${d.secs}s` : ''}
+          </span>
+        )}
       </div>
-      {open && hasKids && (
+      {open && expandable && (
         <div className="border-l border-[#efefef] ml-[13px] pl-1">
-          {node.children!.map(c => <TreeNode key={c.id} node={c} depth={depth + 1} />)}
+          {hasDetail && <ToolDetail detail={node.detail!} />}
+          {node.children?.map(c => <TreeNode key={c.id} node={c} depth={depth + 1} />)}
         </div>
       )}
     </div>

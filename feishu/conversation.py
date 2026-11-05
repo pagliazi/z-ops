@@ -382,12 +382,60 @@ async def _handle_feishu_message(text: str, message_id: str, chat_id: str,
         )
         # P0: 受众随消息传播 (RequestContext.audience / 子任务继承 / wiki 检索过滤)
         msg.provenance = {**(msg.provenance or {}), "audience": audience}
+
+        # ═══ P1: 飞书入口可靠任务登记 (TR_FEISHU_ENABLED, 默认开) ═══
+        # message_id 天然幂等键 (重复回调不重复建任务); task 事件 JSONL 提供
+        # 永久归档 —— 闭合“飞书仅写 Redis 截断 1000/4000、无 transcript 归档”缺口。
+        # 登记失败/关闭时降级为纯对话 (可用性优先, 不阻断回复)。
+        _tr = {"runtime": None, "task_id": "", "owner": "", "fencing": 0}
+        if getattr(config, "TR_FEISHU_ENABLED", True):
+            try:
+                from core.task_runtime import get_task_runtime
+                _rt = get_task_runtime()
+                _tid, _created, _fenc, _own = await _rt.submit_for_chat(
+                    actor=username or "", session_id=session_id,
+                    client_key=message_id, message=text, target="orchestrator",
+                    meta={"msg_id": msg.msg_id, "chat_id": chat_id,
+                          "chat_type": chat_type or "", "audience": audience},
+                    channel="feishu")
+                _tr = {"runtime": _rt, "task_id": _tid, "owner": _own,
+                       "fencing": _fenc}
+                if _created:
+                    await _rt.ledger.link_msg(_tid, msg.msg_id)
+            except Exception as tr_e:
+                logger.warning(f"飞书任务登记失败 (降级非持久, 不阻断): {tr_e}")
+
+        async def _task_emit(ev_type: str, data: dict):
+            """P1: 记录任务事件 (失租/未登记时静默降级)"""
+            if not _tr["task_id"]:
+                return
+            try:
+                await _tr["runtime"].emit(_tr["task_id"], _tr["owner"],
+                                          _tr["fencing"], ev_type, data)
+            except Exception as e:
+                logger.debug(f"飞书任务事件失败 {_tr['task_id']}/{ev_type}: {e}")
+
+        async def _task_complete(terminal: str, result: dict):
+            """P1: 终态提交 (原子: 终态+事件+Outbox+归档确认); 失租被拒返回 None"""
+            if not _tr["task_id"]:
+                return None
+            try:
+                return await _tr["runtime"].complete(
+                    _tr["task_id"], _tr["owner"], _tr["fencing"],
+                    terminal, result)
+            except Exception as e:
+                logger.warning(f"飞书任务终态提交异常 {_tr['task_id']}: {e}")
+                return None
+
         r = aioredis.from_url(config.REDIS_URL, decode_responses=True)
         reply_ch = config.reply_channel(msg.msg_id)
         pubsub = r.pubsub()
         await pubsub.subscribe(reply_ch)
+        # 先订阅激活再发布 (旧顺序发布早于订阅就绪, 快速回复会丢 reply 频道的存量竞态修复)
         await r.publish(config.channel("orchestrator"), msg.to_json())
         logger.info(f"飞书消息已转发 orchestrator: {text[:50]}")
+        await _task_emit("dispatched", {"target": "orchestrator"})
+        _last_hb = time.time()
         try:
             deadline = time.time() + 180
             progress_sent = 0
@@ -395,9 +443,16 @@ async def _handle_feishu_message(text: str, message_id: str, chat_id: str,
             _route_acked = False
             while True:
                 remaining = deadline - time.time()
+                # P1: lease 心跳 (12s < 默认 15s); 内联节流, 失租后不再自动重试
+                # (旧协调者禁止提交终态, 由 reclaim_loop 兜底闭合 UNKNOWN)
+                if _tr["task_id"] and time.time() - _last_hb >= 12:
+                    _last_hb = time.time()
+                    await _tr["runtime"].heartbeat(
+                        _tr["task_id"], _tr["owner"], _tr["fencing"])
                 if remaining <= 0:
                     logger.warning(f"飞书对话等待回复超时: {text[:50]}")
                     await _bot._reply_im(message_id, "⚠️ 处理超时，请稍后再试。", chat_id)
+                    await _task_complete("failed", {"error": "feishu_reply_timeout_180s"})
                     break
                 # 轮询取消息：get_message 超时返回 None，保证 deadline 始终可触发
                 raw_msg = await pubsub.get_message(timeout=min(remaining, 5.0))
@@ -422,6 +477,7 @@ async def _handle_feishu_message(text: str, message_id: str, chat_id: str,
                         if pt in _seen_progress:
                             continue
                         _seen_progress.add(pt)
+                        await _task_emit("progress", {"text": pt[:500]})
                         if progress_sent < 3:
                             progress_sent += 1
                             # 进度文本自身可能已含 ⏳（如 kb_agent 生成等待提示），避免双图标
@@ -449,6 +505,18 @@ async def _handle_feishu_message(text: str, message_id: str, chat_id: str,
                 # 回复写入会话历史（供下轮追问上下文）
                 await _save_session_msg(session_id, "assistant", str(answer)[:1000],
                                         source=(reply.source or "agent"))
+                # P1: 事件全量回复 + 终态 (complete 内含归档确认) → 发送成功即交付确认
+                await _task_emit("reply", {
+                    "text": str(answer)[:2000], "source": reply.source or "",
+                    "truncated_in_feishu_card": len(str(answer)) > 4000})
+                _dlv = await _task_complete("succeeded", {
+                    "text": str(answer)[:2000], "source": reply.source or ""})
+                if _dlv:
+                    try:
+                        await _tr["runtime"].ledger.mark_delivery(
+                            _tr["task_id"], _dlv, "delivered")
+                    except Exception:
+                        pass
                 break
         finally:
             await pubsub.unsubscribe(reply_ch)

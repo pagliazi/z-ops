@@ -188,29 +188,48 @@ def _nms_history_bound_epoch(ts):
 
 async def nms_history_read(r, base: str, limit: int = 200, page: int = 1,
                            groups=None, from_ts: str = '', to_ts: str = '',
-                           scan_cap: int = 60000):
+                           scan_cap: int = 60000, q: str = ''):
     """读历史告警 (时间倒序)。返回 (alarms, source, has_more)。
 
     主路径: history_z (member=内容键) + history_data (payload 哈希);
       - score = 最早首见时间, from_ts/to_ts 直接作分数区间 (zrevrangebyscore);
-      - 无 groups: 按分数区间 rank 分页, 快路径;
-      - 有 groups: 分批扫描 (zrevrangebyscore+hmget) 过滤分组, 收满 page*limit 即停,
-        扫描上限 scan_cap 条防御全库扫 (分组命中稀疏时仍能在 ~1s 内返回)。
+      - 无 groups 且无 q: 按分数区间 rank 分页, 快路径;
+      - 有 groups 或 q: 分批扫描 (zrevrangebyscore + hmget) 过滤, 收满 page*limit 即停,
+        扫描上限 scan_cap 条防御全库扫（命中稀疏时仍能在 ~1s 内返回）。
+    q: 关键字搜索（服务端全库口径，不再只在前端已加载的本页 200 条里筛）。
+      多个词 AND；在非 UTF-8 安全的原始字节上先子串匹配（避免先解码上百 MB），
+      只有命中项才 json.loads；为与前端旧口径一致，haystack 含"序列化后的整条
+      记录"（因此字段名也可能被命中，与旧行为相同不会提词）。
     降级: 老 LIST (兼容未迁移环境, 忽略 groups/page, 时间按 payload 首见过滤)。"""
     limit = max(1, min(int(limit or 200), 1000))
     page = max(1, int(page or 1))
     gs = set(groups or [])
+    terms = [t.lower() for t in str(q or '').split() if t.strip()]
+    if not terms and q and str(q).strip():
+        terms = [str(q).strip().lower()]
     lo = _nms_history_bound_epoch(from_ts)
     hi = _nms_history_bound_epoch(to_ts)
     lo_s = '-inf' if lo is None else str(lo)
     hi_s = '+inf' if hi is None else str(hi)
     k_z = f"{base}:history_z"
     k_data = f"{base}:history_data"
+
+    def _match(obj) -> bool:
+        if gs:
+            _g = obj.get("groups") or ([obj["group"]] if obj.get("group") else [])
+            if not (_g and any(g in gs for g in _g)):
+                return False
+        if terms:
+            hay = json.dumps(obj, ensure_ascii=False).lower()
+            if not all(t in hay for t in terms):
+                return False
+        return True
+
     try:
         if await r.zcard(k_z) > 0:
             need = page * limit
             out: List = []
-            if not gs:
+            if not gs and not terms:
                 # 快路径: 分数区间 + rank 分页, 一次定位
                 cks = await r.zrevrangebyscore(
                     k_z, hi_s, lo_s, start=(page - 1) * limit, num=limit)
@@ -240,13 +259,18 @@ async def nms_history_read(r, base: str, limit: int = 200, page: int = 1,
                     for v in vals:
                         if not v:
                             continue
+                        b = v if isinstance(v, bytes) else str(v).encode("utf-8")
+                        if terms:
+                            # 先字节级筛选：命中才解码+解析（全库解码要上百 MB）
+                            low = b.lower()
+                            if not all(t.encode("utf-8", "ignore") in low
+                                       for t in terms):
+                                continue
                         try:
-                            obj = json.loads(v)
+                            obj = json.loads(b)
                         except Exception:
                             continue
-                        ogs = obj.get("groups") or (
-                            [obj["group"]] if obj.get("group") else [])
-                        if ogs and not any(g in gs for g in ogs):
+                        if not _match(obj):
                             continue
                         out.append(obj)
                         if len(out) >= need:
@@ -271,6 +295,8 @@ async def nms_history_read(r, base: str, limit: int = 200, page: int = 1,
                 continue
             if hi is not None and t > hi:
                 continue
+        if not _match(obj):
+            continue
         out.append(obj)
     return out, 'list', False
 
@@ -1033,8 +1059,12 @@ class NmsAgent(BaseAgent):
 
     async def _nms_monitor_loop(self):
         """定时抓取 IBM NMS 告警页面并分析（后台协程，永不终止）"""
-        # 启动后等待 30 秒，让浏览器完全就绪
-        await asyncio.sleep(30)
+        # 启动后等待 30 秒，让浏览器完全就绪（分段等待：期间收到退出信号立即结束，
+        # 不必让重启白等半分钟）
+        for _ in range(30):
+            if not self._running:
+                return
+            await asyncio.sleep(1)
         logger.info("[nms_agent] NMS 监控循环启动")
 
         # 订阅 bot 命令唤醒频道：feishu_bot 入队截图/分析命令后 publish，
@@ -1092,8 +1122,10 @@ class NmsAgent(BaseAgent):
     async def _nms_wait_next_round(self, wake_ps) -> None:
         """等待下一轮采集。
 
-        分段等待（≤30s）：管理页把采集间隔调短/调长后，无需等满旧周期即可热生效
-        （无需重启进程）；bot 命令唤醒频道可提前结束等待、立即开下一轮。
+        分段等待（≤1s）：管理页把采集间隔调短/调长后，无需等满旧周期即可热生效
+        （无需重启进程）；bot 命令唤醒可提前结束等待、立即开下一轮；
+        `_running=False`（SIGTERM）后最多 1 秒退出，不等满旧分段——这是把
+        agent 重启窗口从 45s 压到秒级、消除「重启期间告警凭空消失」的关键。
         """
         _round_end = time.time()
         _interval = await self._nms_effective_interval()
@@ -1101,7 +1133,7 @@ class NmsAgent(BaseAgent):
             _remain = _round_end + _interval - time.time()
             if _remain <= 0:
                 return
-            _step = min(_remain, 30)
+            _step = min(_remain, 1.0)
             if wake_ps is not None:
                 try:
                     _msg = await wake_ps.get_message(
@@ -1484,6 +1516,8 @@ class NmsAgent(BaseAgent):
                 "alarms": alarms
             }
             await r.set(k_latest, json.dumps(snapshot, ensure_ascii=False))
+            # 旁路时间戳小键：API 比较快照新鲜度靠它，避免为取时间戳 GET 70+MB 本体
+            await r.set(f"{k_latest}:ts", snapshot["timestamp"])
 
             # 5.5 关联降噪：把原始告警归并为「事件簇」，写入 {base}:incidents
             try:
@@ -1530,10 +1564,12 @@ class NmsAgent(BaseAgent):
                                       json.dumps(alarm, ensure_ascii=False))
                 await r.ltrim(k_history, -config.NMS_HISTORY_MAX, -1)
 
-            # 6.5 历史基线导入 (一次性): 监控上线前就存在的存量活跃告警永远不会因
-            # "首见为新增"入历史 → 历史覆盖远小于实际存量。按内容键补录当前快照
-            # (首见时间在保留期内), 新写入优先不覆盖; 标记键防重复。
-            await self._nms_bootstrap_history(r, base, new_alarms)
+            # 6.5 历史覆盖修复 (每轮幂等): 历史过去只由"本轮新增"写入, 长期活跃事件
+            # (上线前的存量 / 摘要每日倒数而换内容键的事件) 永远补不进来, 老键又被
+            # 按首见时间老化删除 → 正在告警的事件在"历史告警"里凭空消失。这里以当前
+            # 快照为准补录缺失并做老化 (活跃豁免)。一次性基线导入 (marker 门禁) 在
+            # 首次执行后即失效, 无法跟进后续漂移, 故被本步骤取代。
+            await self._nms_repair_history(r, base, alarms)
 
             # 7.8 分组告警截图（browser tool）：重点分组 + 飞书 bot 命令请求的分组
             # ⚠️ 必须在 page.close() 前执行（需浏览器会话内切换分组视图并截图）
@@ -3140,32 +3176,10 @@ class NmsAgent(BaseAgent):
                                  json.dumps(rec, ensure_ascii=False))
                     await r.zadd(f"{base}:history_z", {ck: float(score)})
                 except Exception as e:
-                    logger.debug(f"[NMS] 历史写入失败 (忽略): {e}")
-            # 30 天老化 (score=首见): 先取成员再删, payload 同步清理
-            retention_days = max(0, getattr(config, "NMS_HISTORY_RETENTION_DAYS", 30))
-            if retention_days > 0:
-                cutoff = now_ts - retention_days * 86400
-                try:
-                    stale = await r.zrangebyscore(
-                        f"{base}:history_z", "-inf", f"({cutoff}")
-                    if stale:
-                        await r.zremrangebyscore(
-                            f"{base}:history_z", "-inf", f"({cutoff}")
-                        await r.hdel(f"{base}:history_data", *stale)
-                        logger.info(f"[nms_agent] 历史老化清理: 删除 {len(stale)} 条"
-                                    f" (> {retention_days} 天)")
-                except Exception as e:
-                    logger.debug(f"[NMS] 历史老化失败 (忽略): {e}")
-            # 条数保险丝: 只防内存失控 (保留期由 retention_days 决定)
-            max_n = getattr(config, "NMS_HISTORY_ZSET_MAX", 100000)
-            if max_n > 0:
-                try:
-                    excess = await r.zrange(f"{base}:history_z", 0, -(max_n + 1))
-                    if excess:
-                        await r.zremrangebyrank(f"{base}:history_z", 0, -(max_n + 1))
-                        await r.hdel(f"{base}:history_data", *excess)
-                except Exception as e:
-                    logger.debug(f"[NMS] 历史条数裁剪失败 (忽略): {e}")
+                    logger.warning(f"[NMS] 历史写入失败 (下轮覆盖修复会补回): {e}")
+            # 老化与条数保险丝不在写入路径做: 改由 _nms_repair_history 每轮统一
+            # 执行, 并豁免当前仍活跃的事件 (否则存活超保留期的告警会被当成
+            # "过期数据"删掉, 表现为正在响的告警在历史库里凭空消失)。
         # seen 标记 (全部 new, 含 cleared; 语义不变)
         for alarm in new_alarms:
             aid = alarm.get("alarm_id", "")
@@ -3293,74 +3307,109 @@ class NmsAgent(BaseAgent):
         except Exception as e:
             logger.debug(f"[nms_agent] 历史格式修复失败 (忽略): {e}")
 
-    async def _nms_bootstrap_history(self, r, base: str, new_alarms=None,
-                                     batch: int = 500):
-        """一次性历史基线导入: 把当前快照的存量活跃告警补录进历史库。
+    async def _nms_trim_history(self, r, base: str, active_cks=None,
+                                now_ts: float = None) -> int:
+        """历史老化: 删除超出保留期且当前不活跃的事件 (payload 同步清理)。
 
-        背景: 历史只记录"首见为新增"的告警, 监控上线/历史库重装之前就已存在的
-        存量告警 (首见时间早于历史库起点) 永远不会入历史 → 历史覆盖严重小于
-        实际存量 (实测存量 ~2.2 万条在保留期内, 历史仅万级)。
-        按内容键补录 (occurrences=1), 首见时间在保留期内才导入;
-        hmget 去重 (新告警写入/回填已有记录不覆盖), 标记键防重复执行。"""
+        活跃豁免是关键: score = 首见时间, 一个持续数十天的事件 (证书倒数天数、
+        长期磁盘劣化) 若只按首见老化, 正在告警的事件也会被从历史库删掉 ——
+        前端"历史告警"就再也找不到它, 这不是数据自然过期, 是活跃数据被误删。"""
+        now_ts = now_ts or time.time()
+        protected = set(active_cks or ())
+        k_z, k_data = f"{base}:history_z", f"{base}:history_data"
+        removed = 0
+        retention_days = max(0, getattr(config, "NMS_HISTORY_RETENTION_DAYS", 30))
         try:
-            marker = f"{base}:history_bootstrap:v1"
-            if await r.get(marker):
-                return
-            raw = await r.get(f"{base}:latest")
-            if not raw:
-                return
-            snap = json.loads(raw)
-            alarms = [a for a in snap.get("alarms", [])
-                      if a.get("severity") in _NMS_ACTIVE_SEV]
-            if not alarms:
-                await r.set(marker, "v1")
-                return
-            retention_days = max(0, getattr(config, "NMS_HISTORY_RETENTION_DAYS", 30))
-            cutoff = (time.time() - retention_days * 86400) if retention_days > 0 else 0
-            skip_cks = {_nms_alarm_content_key(a) for a in (new_alarms or [])}
+            if retention_days > 0:
+                cutoff = now_ts - retention_days * 86400
+                stale = [ck for ck in await r.zrangebyscore(
+                    k_z, "-inf", f"({cutoff}") if ck not in protected]
+                if stale:
+                    await r.zrem(k_z, *stale)
+                    await r.hdel(k_data, *stale)
+                    removed += len(stale)
+                    logger.info(f"[nms_agent] 历史老化清理: 删除 {len(stale)} 条"
+                                f" (> {retention_days} 天, 活跃事件豁免)")
+        except Exception as e:
+            logger.debug(f"[NMS] 历史老化失败 (忽略): {e}")
+        # 条数保险丝: 只防内存失控 (保留期由 retention_days 决定), 同样豁免活跃
+        max_n = getattr(config, "NMS_HISTORY_ZSET_MAX", 100000)
+        try:
+            if max_n > 0:
+                over = await r.zcard(k_z) - max_n
+                if over > 0:
+                    excess = [ck for ck in await r.zrange(k_z, 0, over - 1)
+                              if ck not in protected]
+                    if excess:
+                        await r.zrem(k_z, *excess)
+                        await r.hdel(k_data, *excess)
+                        removed += len(excess)
+                        logger.info(f"[nms_agent] 历史条数裁剪: 删除 {len(excess)} 条"
+                                    f" (> NMS_HISTORY_ZSET_MAX={max_n})")
+        except Exception as e:
+            logger.debug(f"[NMS] 历史条数裁剪失败 (忽略): {e}")
+        return removed
+
+    async def _nms_repair_history(self, r, base: str, alarms,
+                                  batch: int = 1000) -> int:
+        """历史覆盖修复 (每轮幂等执行, 取代一次性基线导入)。
+
+        背景: 历史过去只由"本轮新增告警"写入, 而长期活跃事件两条路径都覆盖不到 ——
+        1) 监控上线/历史库重建之前就存在的存量; 2) 摘要随时间漂移换了内容键的存量
+        (如 "ssl证书可用天数: 27" 每日倒数 → 内容键天天变, 老键被老化删除、新键
+        因 Serial 未变而不算"新增", 于是永远不入历史)。实测 4.2 万条现存告警中
+        3.1 万条不在历史库, 前端"历史告警"因此看不到正在响的告警。
+        做法: 以当前快照活跃事件为准补录缺失记录 (occurrences=1, 首见取告警
+        FirstTime), 已存在的不覆盖; 补录后做保留期老化 (活跃事件豁免)。
+        每轮最多补写 NMS_HISTORY_REPAIR_MAX 条, 防首次空库时大批量写入阻塞采集。"""
+        added = missing = 0
+        try:
+            now_ts = time.time()
             ck_first: Dict[str, float] = {}
             ck_alarm: Dict[str, Dict] = {}
-            for a in alarms:
-                ck = _nms_alarm_content_key(a)
-                if ck in skip_cks:
-                    continue  # 本轮新写入的已在历史中
-                ts = (a.get("first_time") or a.get("time")
-                      or a.get("last_time") or "")
-                score = _nms_parse_iso_ts(ts) or 0
-                if not score:
+            for a in (alarms or []):
+                if a.get("severity") not in _NMS_ACTIVE_SEV:
                     continue
-                if cutoff and score < cutoff:
-                    continue  # 超出保留期, 导入也会被老化清掉
-                ck_alarm[ck] = a
+                ck = _nms_alarm_content_key(a)
+                score = _nms_parse_iso_ts(a.get("first_time") or a.get("time")
+                                          or a.get("last_time") or "") or now_ts
+                ck_alarm.setdefault(ck, a)
                 if ck not in ck_first or score < ck_first[ck]:
                     ck_first[ck] = score
             cks = list(ck_alarm)
-            added = 0
+            cap = max(0, int(getattr(config, "NMS_HISTORY_REPAIR_MAX", 8000)))
+            k_data, k_z = f"{base}:history_data", f"{base}:history_z"
             for i in range(0, len(cks), batch):
                 chunk = cks[i:i + batch]
                 try:
-                    prevs = await r.hmget(f"{base}:history_data", chunk)
+                    prevs = await r.hmget(k_data, chunk)
                 except Exception:
                     prevs = [None] * len(chunk)
                 for ck, prev in zip(chunk, prevs):
                     if prev:
                         continue
+                    missing += 1
+                    if cap and added >= cap:
+                        continue  # 单轮上限, 剩余留给下一轮
                     rec = dict(ck_alarm[ck])
                     rec["occurrences"] = 1
                     rec["_ck"] = ck
                     try:
-                        await r.hset(f"{base}:history_data", ck,
+                        await r.hset(k_data, ck,
                                      json.dumps(rec, ensure_ascii=False))
-                        await r.zadd(f"{base}:history_z",
-                                     {ck: float(ck_first[ck])})
+                        await r.zadd(k_z, {ck: float(ck_first[ck])})
                         added += 1
                     except Exception as e:
-                        logger.debug(f"[NMS] 历史基线写入失败 (忽略): {e}")
-            await r.set(marker, "v1")
-            logger.info(f"[nms_agent] 历史基线导入: 快照活跃 {len(alarms)} 条 → "
-                        f"补录 {added} 个事件 ({len(cks) - added} 个已在历史中)")
+                        logger.warning(f"[NMS] 历史补录失败 (下轮重试): {e}")
+            if cks:
+                await self._nms_trim_history(r, base, set(cks), now_ts)
+            if added or missing != added:
+                logger.info(f"[nms_agent] 历史覆盖修复: 快照活跃 {len(cks)} 个事件 → "
+                            f"补录 {added} 个 (缺失 {missing}"
+                            f"{'，单轮上限内剩余留待下轮' if missing > added else ''})")
         except Exception as e:
-            logger.debug(f"[nms_agent] 历史基线导入失败 (忽略): {e}")
+            logger.debug(f"[nms_agent] 历史覆盖修复失败 (忽略): {e}")
+        return added
 
 
     async def _nms_kb_remediation_context(self, new_alarms, all_alarms):
@@ -5340,11 +5389,18 @@ class NmsAgent(BaseAgent):
                     f"types={[a['action_type'] for a in actions[:dispatched]]}")
 
     async def _cleanup(self):
-        """清理浏览器资源"""
+        """清理浏览器资源（退出路径必须有界：playwright 与 node 子进程通信卡住时
+        不能拖到 systemd SIGKILL，否则遗留 node/chromium 孤儿进程）"""
         if self._browser:
-            await self._browser.close()
+            try:
+                await asyncio.wait_for(self._browser.close(), timeout=3)
+            except Exception as e:
+                logger.debug(f"[nms_agent] 浏览器关闭异常(忽略): {e}")
         if self._playwright:
-            await self._playwright.stop()
+            try:
+                await asyncio.wait_for(self._playwright.stop(), timeout=3)
+            except Exception as e:
+                logger.debug(f"[nms_agent] playwright 停止异常(忽略): {e}")
         await super()._cleanup()
 
 

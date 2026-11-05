@@ -1,16 +1,22 @@
-"""Windows 验收清单的判定逻辑测试：只在本机校验“不许跳步、不许默认通过”。"""
+"""Windows 验收清单的判定逻辑测试：只在本机校验“不许跳步、不许默认通过”。
+
+实现住在 companion/winaccept.py（随包打包，Windows 实机只带 exe 就能跑）；
+scripts/windows_acceptance.py 只是命令行外壳，另有一条测试钉住两者是同一份口径。
+"""
 import importlib.util
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from companion import winaccept as acceptance  # noqa: E402
+
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "windows_acceptance.py"
-spec = importlib.util.spec_from_file_location("windows_acceptance", SCRIPT)
-acceptance = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(acceptance)
 
 
 def row(step_id, status, kind="auto", spec="82"):
@@ -287,6 +293,42 @@ class RunTests(unittest.TestCase):
         with patch.object(acceptance, "os", SimpleNamespace(name="nt")):
             with self.assertRaises(SystemExit):
                 acceptance.run(str(Path(self.tmp.name) / "absent.exe"), str(self.output))
+
+
+class PackagedRunnerTest(unittest.TestCase):
+    """验收器随 Companion 打包后的对外口径：单一实现、非 Windows 一律拒绝、CLI 可用。"""
+
+    ROOT = Path(__file__).resolve().parents[2]
+
+    def test_script_shell_shares_the_same_implementation(self):
+        spec = importlib.util.spec_from_file_location("windows_acceptance_shell", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.assertIs(module.STEPS, acceptance.STEPS)
+        self.assertIs(module.run, acceptance.run)
+        self.assertIs(module.verdict, acceptance.verdict)
+
+    def test_non_windows_is_refused_and_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "report.json"
+            with patch.object(acceptance, "os", SimpleNamespace(name="posix")):
+                with self.assertRaises(SystemExit) as caught:
+                    acceptance.run(output=str(output))
+            self.assertIn("windows_only", str(caught.exception))
+            self.assertFalse(output.exists())
+
+    def test_probe_uses_the_driver_hotkey_constants(self):
+        """探针必须复用驱动的真热键定义，不然会出现“验收过了但实际热键不同”。"""
+        from companion import desktop
+        self.assertIs(acceptance.HOTKEY_ID, desktop.HOTKEY_ID)
+        self.assertIs(acceptance.HOTKEY_TEXT, desktop.HOTKEY_TEXT)
+
+    def test_cli_flag_is_wired_into_the_companion(self):
+        probe = subprocess.run([sys.executable, "-m", "companion", "--help"],
+                               cwd=str(self.ROOT), capture_output=True, text=True, timeout=120)
+        self.assertEqual(probe.returncode, 0, probe.stderr[-300:])
+        self.assertIn("--windows-acceptance", probe.stdout)
+        self.assertIn("--acceptance-output", probe.stdout)
 
 
 if __name__ == "__main__":

@@ -246,7 +246,10 @@ async def chat(request: Request, current_user: str = Depends(verify_token)):
                 if t == "task_started":
                     yield f"data: {json.dumps({'type': 'start', 'msg_id': d.get('msg_id', ''), 'session_id': session_id, 'task_id': task_id, 'idempotency_key': idem_key, 'replay': True}, ensure_ascii=False)}\n\n"
                 elif t == "progress":
-                    yield f"data: {json.dumps({'type': 'progress', 'text': d.get('text', ''), 'source': d.get('source', '')}, ensure_ascii=False)}\n\n"
+                    _pd = {'type': 'progress', 'text': d.get('text', ''), 'source': d.get('source', '')}
+                    if d.get('detail'):
+                        _pd['detail'] = d.get('detail')
+                    yield f"data: {json.dumps(_pd, ensure_ascii=False)}\n\n"
                 elif t == "delta":
                     yield f"data: {json.dumps({'type': 'delta', 'text': d.get('text', ''), 'source': d.get('source', ''), 'kind': d.get('kind', 'content'), 'event_id': ev.get('event_id')}, ensure_ascii=False)}\n\n"
                 elif t == "reply":
@@ -322,16 +325,37 @@ async def chat(request: Request, current_user: str = Depends(verify_token)):
                         maybe = json.loads(data)
                         if maybe.get("_type") in ("progress", "delta"):
                             if maybe.get("_type") == "progress" and maybe.get("text") and len(_steps_log) < 60:
-                                _steps_log.append({
+                                _step = {
                                     "t": time.strftime("%H:%M:%S"),
                                     "text": str(maybe.get("text", ""))[:200],
                                     "source": str(maybe.get("source", "") or ""),
-                                })
+                                }
+                                # 工具调用详情 (右侧调用详情卡片折叠展示)
+                                _det = maybe.get("detail") if isinstance(maybe.get("detail"), dict) else None
+                                if _det:
+                                    _step.update({k: _det[k] for k in
+                                                  ("seq", "tool", "args", "result", "ok", "secs", "result_len") if k in _det})
+                                # 一次工具调用 = 一条记录: 完成事件合并进同 seq+tool 的开始条目
+                                _merged = False
+                                if _det and "result" in _det:
+                                    for _i in range(len(_steps_log) - 1, -1, -1):
+                                        _o = _steps_log[_i]
+                                        if _o.get("seq") == _det.get("seq") and _o.get("tool") == _det.get("tool"):
+                                            _o["text"] = _step["text"]
+                                            _o.update({k: _det[k] for k in
+                                                       ("seq", "tool", "args", "result", "ok", "secs", "result_len") if k in _det})
+                                            _merged = True
+                                            break
+                                if not _merged:
+                                    _steps_log.append(_step)
                             # P1: 中间事件持久化 (单一 writer = persist 任务; 客户端断流仍记录)
-                            await _task_emit(maybe.get("_type"), {
+                            _emit_d = {
                                 "text": maybe.get("text", ""),
                                 "kind": maybe.get("kind", ""),
-                                "source": maybe.get("source", "")})
+                                "source": maybe.get("source", "")}
+                            if isinstance(maybe.get("detail"), dict):
+                                _emit_d["detail"] = maybe.get("detail")
+                            await _task_emit(maybe.get("_type"), _emit_d)
                             continue  # 继续等待最终回复
                     except (json.JSONDecodeError, AttributeError):
                         pass
@@ -547,7 +571,10 @@ async def chat(request: Request, current_user: str = Depends(verify_token)):
                         if maybe_progress.get("_type") == "progress":
                             # 收到进度 → 流水线存活，刷新空闲截止时间 (滑动窗口)
                             deadline = time.time() + config.REPLY_TIMEOUT
-                            yield f"data: {json.dumps({'type': 'progress', 'text': maybe_progress.get('text', '处理中...'), 'source': maybe_progress.get('source', '')}, ensure_ascii=False)}\n\n"
+                            _pd = {'type': 'progress', 'text': maybe_progress.get('text', '处理中...'), 'source': maybe_progress.get('source', '')}
+                            if isinstance(maybe_progress.get("detail"), dict):
+                                _pd['detail'] = maybe_progress.get("detail")
+                            yield f"data: {json.dumps(_pd, ensure_ascii=False)}\n\n"
                             continue  # 不 break，继续等待最终回复
                         if maybe_progress.get("_type") == "delta":
                             # 流式增量 → 纯转发 (事件记录由 persist 任务统一负责, 单一 writer)

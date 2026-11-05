@@ -109,9 +109,12 @@ class TaskRuntime:
 
     async def submit_for_chat(self, actor: str, session_id: str,
                               client_key: str, message: str,
-                              target: str = "", meta: dict = None) -> tuple:
-        """幂等登记 + 建立 + 立即 claim (协调者=后端进程, 旧执行路径不变)。
+                              target: str = "", meta: dict = None,
+                              channel: str = "webchat") -> tuple:
+        """幂等登记 + 建立 + 立即 claim (协调者=后端/飞书进程, 旧执行路径不变)。
         创建成功时记录 task_started 事件 (重复请求不重复记)。
+
+        channel: 入口渠道 (webchat/feishu/...); 决定 Outbox 投递归属与归档受众。
 
         Returns: (task_id, created_flag, fencing, owner)
         Raises:  IdempotencyConflict (同键不同内容 → 409); LedgerError("capacity", reason) (受控拒收)
@@ -121,7 +124,7 @@ class TaskRuntime:
             raise LedgerError("capacity", why)
         try:
             task_id, created = await self.ledger.submit(
-                actor=actor, channel="webchat", session_id=session_id,
+                actor=actor, channel=channel, session_id=session_id,
                 client_key=client_key,
                 payload_hash=payload_hash(message, target, session_id),
                 enqueue=False)
@@ -231,6 +234,12 @@ class TaskRuntime:
                     task_id, {"reason": "coordinator_lease_expired",
                               "last_status": t.get("status")})
                 await r.zrem(f"{config.REDIS_PREFIX}:tr:active", task_id)
+                # 永久事实归档确认 (与 complete 同口径): 崩溃类任务最需审计,
+                # 不得仅存 Redis 事件 (旧实现此处未归档 → UNKNOWN 任务 JSONL 缺失)。
+                try:
+                    await task_archive.reconcile(self.ledger, task_id)
+                except Exception as ae:
+                    logger.error(f"[task_runtime] {task_id} 孤儿闭合后归档确认失败 (待补扫): {ae}")
                 logger.warning(f"[task_runtime] 孤儿任务闭合为 UNKNOWN: {task_id}")
                 n += 1
             except LedgerError:
@@ -267,11 +276,52 @@ class TaskRuntime:
                 break
         return n
 
+    async def archive_sweep_once(self, max_tasks: int = 200) -> dict:
+        """归档补偿扫描: 把仅在 Redis 的事件补写 JSONL (SPEC: 未归档事件补写)。
+
+        覆盖 complete()/孤儿闭合之外的缺口来源 (归档时 Redis 抖动、进程被 SIGKILL、
+        历史遗留未归档任务)。幂等 (按 event_id 去重), 只补写不删除, 不回滚已落事实。
+        """
+        res = {"scanned": 0, "repaired": 0, "lag_tasks": 0, "error": ""}
+        try:
+            r = await self.ledger._redis()
+        except Exception as e:
+            res["error"] = f"redis: {e}"
+            return res
+        cursor = 0
+        while True:
+            try:
+                cursor, batch = await r.scan(cursor=cursor,
+                                             match=f"{config.REDIS_PREFIX}:tr:task:*", count=200)
+            except Exception as e:
+                res["error"] = f"scan: {e}"
+                return res
+            for key in batch:
+                if res["scanned"] >= max_tasks:
+                    return res
+                tid = key.split(":")[-1]
+                res["scanned"] += 1
+                try:
+                    st = await r.hget(key, "status")
+                    if st not in ("succeeded", "failed", "cancelled", "unknown"):
+                        continue
+                    n = await task_archive.reconcile(self.ledger, tid)
+                    if n:
+                        res["repaired"] += n
+                        res["lag_tasks"] += 1
+                        logger.info(f"[task_runtime] 归档补写 {tid}: {n} 条事件")
+                except Exception as e:
+                    logger.warning(f"[task_runtime] 归档补扫失败 {tid}: {e}")
+            if cursor == 0:
+                return res
+
     async def reclaim_loop(self):
         """后台回收循环 (backend 启动时拉起; 60s 一轮: 孤儿回收 + outbox + 容量告警)"""
         _capacity_alert_ts = 0
+        _cycle = 0
         while True:
             await asyncio.sleep(60)
+            _cycle += 1
             try:
                 await self.reclaim_orphans_once()
             except Exception as e:
@@ -280,6 +330,14 @@ class TaskRuntime:
                 await self._drain_outbox_webchat()
             except Exception as e:
                 logger.debug(f"[task_runtime] outbox 台账异常: {e}")
+            # 归档补偿扫描 (10min 一轮; 每轮上限 200 个任务, 不删历史只补写)
+            if _cycle % 10 == 0:
+                try:
+                    s = await self.archive_sweep_once()
+                    if s.get("repaired") or s.get("error"):
+                        logger.info(f"[task_runtime] 归档补扫: {s}")
+                except Exception as e:
+                    logger.debug(f"[task_runtime] 归档补扫异常: {e}")
             # P1 容量监控: 键总数/内存超阈值时告警 (SPEC: 不删历史, 只告警+受控拒收)
             try:
                 import time as _time

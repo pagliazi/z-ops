@@ -1,4 +1,5 @@
 """桌面接管安全链的纯逻辑测试：Windows 实机验收仍单独阻塞。"""
+import ctypes
 import os
 import tempfile
 import time
@@ -241,29 +242,35 @@ class DesktopSafetyTest(unittest.IsolatedAsyncioTestCase):
         env = {key: value for key, value in os.environ.items()
                if key not in ("XDG_SESSION_TYPE", "WAYLAND_DISPLAY")}
         env.update({"DISPLAY": ":0", "WAYLAND_DISPLAY": "wayland-0"})
-        with mock.patch.dict(os.environ, env, clear=True):
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("companion.desktop._wayland_reason",
+                           return_value="wayland_window_scope_not_supported"):
             desktop = Desktop(self.cfg, driver=FakeDriver(), acceptance=acceptance,
                               platform="linux")
             await desktop.prepare()
         self.assertFalse(desktop.enabled)
-        self.assertEqual(desktop.reason, "wayland_portal_not_implemented")
+        # 原因必须来自 portal 探测层，而且不能是“还没验收”（两者对运维意义完全不同）。
+        self.assertEqual(desktop.reason, "wayland_window_scope_not_supported")
+        self.assertNotEqual(desktop.reason, "desktop_acceptance_required")
         self.assertEqual(desktop.capabilities, [])
 
     async def test_wayland_session_is_disabled_with_its_own_reason(self):
-        """Wayland（含 XWayland）下 XTest 无效、Portal 未适配：必须给出可区分的原因。"""
+        """Wayland（含 XWayland）下 XTest 无效、portal 给不出窗口作用域：原因必须可区分。"""
         acceptance = {"version": 1, "device_id": "device-123", "platform": "linux",
                       "accepted_version": __version__, "accepted_at": int(time.time()),
                       "checks": {name: True for name in ACCEPTANCE_CHECKS_X11}}
-        with mock.patch.dict(os.environ, {"XDG_SESSION_TYPE": "wayland"}):
+        with mock.patch.dict(os.environ, {"XDG_SESSION_TYPE": "wayland"}), \
+                mock.patch("companion.desktop._wayland_reason",
+                           return_value="wayland_portal_not_running"):
             desktop = Desktop(self.cfg, driver=FakeDriver(), acceptance=acceptance,
                               platform="linux")
             await desktop.prepare()
         self.assertFalse(desktop.enabled)
-        self.assertEqual(desktop.reason, "wayland_portal_not_implemented")
+        self.assertEqual(desktop.reason, "wayland_portal_not_running")
         self.assertEqual(desktop.capabilities, [])
         for capability in ("desktop.inspect", "desktop.request_control", "desktop.act",
                            "desktop.screen"):
-            self.assertEqual(desktop.unavailable[capability], "wayland_portal_not_implemented")
+            self.assertEqual(desktop.unavailable[capability], "wayland_portal_not_running")
 
     async def test_acceptance_must_match_device_version_and_all_checks(self):
         for mutant in (
@@ -596,6 +603,52 @@ class DesktopSafetyTest(unittest.IsolatedAsyncioTestCase):
         # 未授权且非标准的应用不入报告。
         self.assertNotIn("other.exe", report)
 
+
+class InputDesktopHandleTest(unittest.TestCase):
+    """输入桌面句柄必须按指针收发：默认 restype 是 c_int，64 位句柄会被截断。"""
+
+    def test_open_input_desktop_passes_pointer_sized_handle(self):
+        handle = 0x7FFF_0000_1234
+
+        def open_input(_desktop, _inherit, _access):
+            return handle
+
+        def read_name(_handle, _index, buffer, _length, needed):
+            buffer[0:7] = "Default"
+            needed._obj.value = 7
+            return True
+
+        user32 = mock.MagicMock()
+        user32.OpenInputDesktop = mock.MagicMock(side_effect=open_input)
+        user32.GetUserObjectInformationW = mock.MagicMock(side_effect=read_name)
+        with mock.patch.object(ctypes, "windll", mock.MagicMock(user32=user32), create=True):
+            self.assertEqual(WindowsDriver()._input_desktop_name(), "Default")
+        self.assertIs(user32.OpenInputDesktop.restype, ctypes.c_void_p)
+        self.assertIs(user32.GetUserObjectInformationW.argtypes[0], ctypes.c_void_p)
+        self.assertEqual(user32.CloseDesktop.argtypes, (ctypes.c_void_p,))
+        # 原样关闭：句柄不经过 int 往返，不能被截断。
+        self.assertEqual(user32.CloseDesktop.call_args[0], (handle,))
+
+    def test_missing_input_desktop_is_unavailable_and_not_closed(self):
+        user32 = mock.MagicMock()
+        user32.OpenInputDesktop = mock.MagicMock(return_value=None)
+        with mock.patch.object(ctypes, "windll", mock.MagicMock(user32=user32), create=True):
+            self.assertEqual(WindowsDriver()._input_desktop_name(), "unavailable")
+        user32.CloseDesktop.assert_not_called()
+
+    def test_locked_desktop_name_is_reported_verbatim(self):
+        def open_input(_desktop, _inherit, _access):
+            return 0x1234
+
+        def read_name(_handle, _index, buffer, _length, _needed):
+            buffer[0:8] = "Winlogon"
+            return True
+
+        user32 = mock.MagicMock()
+        user32.OpenInputDesktop = mock.MagicMock(side_effect=open_input)
+        user32.GetUserObjectInformationW = mock.MagicMock(side_effect=read_name)
+        with mock.patch.object(ctypes, "windll", mock.MagicMock(user32=user32), create=True):
+            self.assertEqual(WindowsDriver()._input_desktop_name(), "Winlogon")
 
 if __name__ == "__main__":
     unittest.main()

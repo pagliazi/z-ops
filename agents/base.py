@@ -409,10 +409,12 @@ class BaseAgent:
 
     async def get_redis(self) -> aioredis.Redis:
         if self._redis is None:
+            # 连接池上限可配: 固定 10 在长驻 pubsub + 并发采集 + 分钟级 LLM 调用
+            # 重叠时会耗尽, redis-py 报 "Too many connections", 心跳与写入静默失败
             self._redis = aioredis.from_url(
                 config.REDIS_URL,
                 decode_responses=True,
-                max_connections=10
+                max_connections=getattr(config, "REDIS_POOL_MAX", 50)
             )
         return self._redis
 
@@ -621,11 +623,23 @@ class BaseAgent:
         logger.info(f"[{self.name}] \U0001f4e1 \u5df2\u8ba2\u9605\u9891\u9053: {channel_name}")
 
         # 消息处理循环
+        # 不用 `async for pubsub.listen()`：无消息时它会无限阻塞，_running 翻了也读不到
+        # → SIGTERM 后只能等 systemd TimeoutStopSec 到点 SIGKILL（实测 ~45s，重启窗口内
+        # 前端读接口全失败，用户看到「告警又没了」）。改成 1s 有界轮询，停止延迟可预期。
         try:
-            async for raw_msg in pubsub.listen():
-                if not self._running:
-                    break
-                if raw_msg["type"] != "message":
+            while self._running:
+                try:
+                    raw_msg = await pubsub.get_message(
+                        ignore_subscribe_messages=True, timeout=1.0)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    if not self._running:
+                        break
+                    logger.debug(f"[{self.name}] 消息读取异常: {e}")
+                    await asyncio.sleep(1)
+                    continue
+                if raw_msg is None or raw_msg.get("type") != "message":
                     continue
                 try:
                     msg = AgentMessage.from_json(raw_msg["data"])
@@ -638,13 +652,50 @@ class BaseAgent:
                 except Exception as e:
                     logger.error(f"[{self.name}] 消息处理异常: {e}")
         finally:
-            await pubsub.unsubscribe(channel_name)
+            try:
+                await pubsub.unsubscribe(channel_name)
+            except Exception:
+                pass
+            try:
+                await pubsub.aclose()
+            except Exception:
+                # 老版本 redis-py 无 aclose；连接已损坏时也不能让退出流程卡死
+                pass
             await self._cleanup()
 
     async def stop(self):
         """停止 Agent"""
         self._running = False
         logger.info(f"[{self.name}] \u23f9\ufe0f \u505c\u6b62\u4e2d...")
+
+    async def _graceful_shutdown(self, loop, grace: float = 6.0):
+        """SIGTERM/SIGINT 的统一退出编排（由 run_agent 安装为 loop 信号回调）。
+
+        旧实现用 signal.signal + loop.create_task：信号处理函数在主线程执行，
+        循环正阻塞在 epoll wait 时新任务没人调度，stop() 根本不执行；而
+        agent.stop() 只改标志位，卡死的 pubsub / 采集轮次不会被取消，于是
+        每个 agent 都要等 systemd TimeoutStopSec 到点 SIGKILL。nms_agent 还
+        会连带遗留 playwright 的 node/chromium 子进程，SIGKILL 前 systemd
+        要逐个追杀（journal 里可见 V8Worker/libuv-worker 一排）。
+
+        本方法：置停止标志 → 给业务自己收尾的宽限期 → 超时才取消残留任务 →
+        限时等 _cleanup（浏览器/Redis）→ 停止循环。子进程在 Python 进程内
+        就收干净，不把担子留给 systemd。"""
+        self._running = False
+        logger.info(f"[{self.name}] \u23f9\ufe0f \u6536\u5230\u9000\u51fa\u4fe1\u53f7\uff0c\u5f00\u59cb\u4f18\u96c5\u505c\u6b62")
+        main = [t for t in asyncio.all_tasks(loop=loop) if t is not asyncio.current_task()]
+        done, pending = await asyncio.wait(main, timeout=grace)
+        if pending:
+            logger.warning(f"[{self.name}] {grace}s \u5185\u672a\u81ea\u884c\u9000\u51fa\uff0c\u53d6\u6d88 {len(pending)} \u4e2a\u6b8b\u7559\u4efb\u52a1")
+            for t in pending:
+                t.cancel()
+            # 不带回取结果的 gather：cancel 后的 CancelledError 不报 "never retrieved"
+            await asyncio.gather(*pending, return_exceptions=True)
+        try:
+            await asyncio.wait_for(self._cleanup(), timeout=4)
+        except Exception as e:
+            logger.debug(f"[{self.name}] \u9000\u51fa\u6e05\u7406\u5f02\u5e38(\u5ffd\u7565): {e}")
+        loop.stop()
 
     async def _cleanup(self):
         """清理资源"""
@@ -1091,15 +1142,22 @@ class BaseAgent:
             logger.warning(f"[{self.name}] 转发 opscore_agent 异常: {e}")
             return False
 
-    async def send_progress(self, msg: AgentMessage, text: str):
-        """发送进度消息到回复频道 (不终止 SSE 流)"""
+    async def send_progress(self, msg: AgentMessage, text: str, detail: dict = None):
+        """发送进度消息到回复频道 (不终止 SSE 流)
+
+        detail: 可选结构化详情 (右侧调用详情卡片折叠展示), 如
+                {"seq": 1, "tool": "query_vms", "args": {...}, "result": "..."}
+        """
         r = await self.get_redis()
-        progress = json.dumps({
+        payload = {
             "_type": "progress",
             "source": self.name,
             "reply_to": msg.msg_id,
             "text": text
-        }, ensure_ascii=False)
+        }
+        if detail:
+            payload["detail"] = detail
+        progress = json.dumps(payload, ensure_ascii=False)
         reply_ch = config.reply_channel(msg.msg_id)
         await r.publish(reply_ch, progress)
         logger.info(f"[{self.name}] ⏳ 进度[{msg.username or '-'}]: {text[:50]}")
@@ -2070,22 +2128,57 @@ class BaseAgent:
 # ═══ 启动入口 ═══
 
 def run_agent(agent: BaseAgent):
-    """启动 Agent 的便捷函数"""
+    """启动 Agent 的便捷函数（带 systemd 友好的优雅退出）"""
     import signal
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    def _shutdown(sig, frame):
-        logger.info(f"收到信号 {sig}, 正在停止 {agent.name}...")
-        loop.create_task(agent.stop())
+    _shutting = {"v": False}
 
-    signal.signal(signal.SIGINT, _shutdown)
-    signal.signal(signal.SIGTERM, _shutdown)
+    def _on_signal(sig):
+        if _shutting["v"]:
+            # 第二次 SIGTERM：立即取消全部任务并停循环（不等宽限期）
+            logger.warning(f"[{agent.name}] 再次收到信号 {sig}，强制退出")
+            for t in asyncio.all_tasks(loop=loop):
+                t.cancel()
+            loop.stop()
+            return
+        _shutting["v"] = True
+        logger.info(f"[{agent.name}] 收到信号 {sig}，正在停止...")
+        loop.create_task(agent._graceful_shutdown(loop))
 
+    # add_signal_handler 而非 signal.signal：它通过 loop.add_reader 唤醒事件循环，
+    # 循环阻塞在 epoll 时也能立即被调度；否则 create_task 的任务不会被执行（见
+    # _graceful_shutdown 注释）。旧式 handler 在 run_until_complete 返回后会被
+    # asyncio 拆掉，所以每轮重跑前重新安装，保证第二次重启信号同样有界。
     try:
-        loop.run_until_complete(agent.start())
-    except KeyboardInterrupt:
-        loop.run_until_complete(agent.stop())
+        while True:
+            for _sig in (signal.SIGINT, signal.SIGTERM):
+                try:
+                    loop.add_signal_handler(_sig, _on_signal, _sig)
+                except (NotImplementedError, RuntimeError):
+                    # Windows / 非主线程：退回旧式处理
+                    signal.signal(_sig, lambda s, f: _on_signal(s))
+            try:
+                loop.run_until_complete(agent.start())
+                break
+            except KeyboardInterrupt:
+                break
+            except asyncio.CancelledError:
+                # 优雅退出时 start() 任务被取消属于预期路径
+                break
+            except SystemExit:
+                break
+            finally:
+                for _sig in (signal.SIGINT, signal.SIGTERM):
+                    try:
+                        loop.remove_signal_handler(_sig)
+                    except Exception:
+                        pass
     finally:
+        try:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+        except Exception:
+            pass
         loop.close()

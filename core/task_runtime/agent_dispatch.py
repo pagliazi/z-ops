@@ -48,6 +48,7 @@ class AgentDispatch:
         reply_ch = config.reply_channel(msg.msg_id)
         pubsub = r.pubsub()
         deadline = time.time() + config.REPLY_TIMEOUT * 3
+        _steps = []  # progress 时间线 (随 assistant 消息落库, 历史重开仍可展开工具详情)
         try:
             await pubsub.subscribe(reply_ch)
             await r.publish(config.channel(target), msg.to_json())
@@ -74,11 +75,38 @@ class AgentDispatch:
                 try:
                     mid = json.loads(data)
                     if mid.get("_type") in ("progress", "delta"):
+                        _ev = {
+                            "text": mid.get("text", ""),
+                            "kind": mid.get("kind", ""),
+                            "source": mid.get("source", "")}
+                        # 工具调用结构化详情 (右侧调用详情卡片折叠展示)
+                        _det = mid.get("detail") if isinstance(mid.get("detail"), dict) else None
+                        if _det:
+                            _ev["detail"] = _det
                         await self.ledger.emit(task_id, consumer.owner, fencing,
-                                               mid.get("_type"), {
-                                                   "text": mid.get("text", ""),
-                                                   "kind": mid.get("kind", ""),
-                                                   "source": mid.get("source", "")})
+                                               mid.get("_type"), _ev)
+                        # steps 采集: 一次工具调用 = 一条记录。完成事件 (detail 带 result)
+                        # 合并进同 seq+tool 的开始条目, 而不是另起一条 (历史重开不再双行)
+                        if mid.get("_type") == "progress" and mid.get("text") and len(_steps) < 60:
+                            _st = {"t": time.strftime("%H:%M:%S"),
+                                   "text": str(mid.get("text", ""))[:200],
+                                   "source": str(mid.get("source", "") or "")}
+                            _det2 = _det if _det else None
+                            if _det2:
+                                _st.update({k: _det2[k] for k in
+                                            ("seq", "tool", "args", "result", "ok", "secs", "result_len") if k in _det2})
+                            _merged = False
+                            if _det2 and "result" in _det2:
+                                for _i in range(len(_steps) - 1, -1, -1):
+                                    _o = _steps[_i]
+                                    if _o.get("seq") == _det2.get("seq") and _o.get("tool") == _det2.get("tool"):
+                                        _o["text"] = _st["text"]
+                                        _o.update({k: _det2[k] for k in
+                                                   ("seq", "tool", "args", "result", "ok", "secs", "result_len") if k in _det2})
+                                        _merged = True
+                                        break
+                            if not _merged:
+                                _steps.append(_st)
                         continue
                 except (json.JSONDecodeError, AttributeError):
                     pass
@@ -90,7 +118,8 @@ class AgentDispatch:
                 if not reply.error:
                     res = reply.result or {}
                     text = res.get("text") or json.dumps(res, ensure_ascii=False)
-                    await self._persist_session(session_id, actor, text, reply.source or target)
+                    await self._persist_session(session_id, actor, text, reply.source or target,
+                                                steps=_steps)
                     await self.ledger.emit(task_id, consumer.owner, fencing, "reply", {
                         "text": str(text)[:2000], "source": reply.source or target,
                         "agents": (reply.result or {}).get("agents") or []})
@@ -113,8 +142,9 @@ class AgentDispatch:
                 pass
 
     async def _persist_session(self, session_id: str, actor: str,
-                               text: str, source: str):
-        """回复落会话历史 (Redis + transcript 双写; 与 webchat 协调路径同口径)"""
+                               text: str, source: str, steps: list = None):
+        """回复落会话历史 (Redis + transcript 双写; 与 webchat 协调路径同口径)
+        steps: progress 时间线 (含工具调用详情), 前端历史重开时调用详情卡片仍有数据"""
         try:
             if not session_id:
                 return
@@ -124,6 +154,8 @@ class AgentDispatch:
                 "source": source, "timestamp": time.time(),
                 "session_id": session_id,
             }
+            if steps:
+                assistant_msg["steps"] = steps
             await r.rpush(config.key_session_msgs(session_id),
                           json.dumps(assistant_msg, ensure_ascii=False))
             if config.SESSION_TTL > 0:

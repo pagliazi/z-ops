@@ -1,0 +1,33 @@
+[Unit]
+Description=Z-OPS Agent (%i)
+Documentation=https://github.com/zops
+After=network-online.target redis-server.service
+Wants=network-online.target redis-server.service
+# 2026-10-08 事故: Redis 闪断导致 nohup agent 全灭无人拉起。迁入 systemd 后
+# 进程崩溃 5 秒内自动重启; 禁用启动频率限制保证无限重试直到 Redis 恢复。
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/zops
+Environment="PYTHONUNBUFFERED=1"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="PYTHONPATH=/opt/zops"
+Environment="TMPDIR=/opt/zops/.pw_tmp"
+EnvironmentFile=-/opt/zops/zops.env
+ExecStartPre=/usr/bin/mkdir -p /opt/zops/.pw_tmp
+ExecStart=/usr/bin/python3 -m agents.%i
+Restart=always
+RestartSec=5
+# 2026-11-05: 旧值 45s 是给「agent 不响应 SIGTERM」兜底的，实际每次重启都要
+# 等满 45s 才 SIGKILL（重启窗口内 /api/nms/* 全部失败 → 前端显示「暂无现存告警」）。
+# agents/base.py run_agent 现走 add_signal_handler + 6s 宽限 + 4s 清理（≤11s 退出），
+# 故收紧到 15s：正常优雅退出用不到它，仅在真卡死时兜底。
+TimeoutStopSec=15
+LimitNOFILE=65535
+StandardOutput=append:/opt/zops/logs/%i.log
+StandardError=append:/opt/zops/logs/%i.log
+
+[Install]
+WantedBy=multi-user.target

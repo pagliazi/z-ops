@@ -413,6 +413,22 @@ def obs_analyzer_failure_limit() -> int:
     except Exception:
         return 500
 
+
+@router.get("/api/observability/task-runtime-readiness")
+async def obs_task_runtime_readiness(current_user: str = Depends(verify_token)):
+    """P1 上线门诊断 (SPEC: 需认证的 diagnostic readiness)
+
+    覆盖: Redis 前置条件 / 队列与活跃租约 / 归档水位与 lag / 事件补读 / Outbox /
+    服务主体与入口鉴权配置。Redis ping 不单独作为验收; 凭据仅报是否配置, 不返回值。
+    """
+    await require_admin_or_biz_perm(current_user, "observability.detail")
+    try:
+        from core.task_runtime.diagnostics import collect
+        return await collect()
+    except Exception as e:
+        logger.warning(f"[api] task-runtime-readiness 错误: {e}")
+        return {"ready": False, "blockers": [f"diagnostics 异常: {e}"], "notes": []}
+
 @router.get("/api/observability/optimizations")
 async def obs_optimizations(days: int = 30, current_user: str = Depends(verify_token)):
     """优化闭环台账: 用真实执行数据核算每条优化的落地效果"""

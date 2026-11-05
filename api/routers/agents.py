@@ -9,6 +9,7 @@ from webchat_api import (_HOSTNAME_RE, _IP4_RE, _NMS_ACTIVE_SEV, _NMS_HARDWARE_T
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from fastapi import Response  # SSL 调查创建: 202 新建 / 200 幂等复用
+import asyncio  # 快照解析缓存 + to_thread 解析 (不依赖 star import)
 from datetime import datetime as _dt  # Phase 2.1: 时间范围过滤
 import base64 as _nms_b64  # noqa: F401  (nms 凭据解码, 原主文件模块级 import)
 import uuid as _uuid  # noqa: F401  (Phase 1.3: SSE stream_id)
@@ -1066,9 +1067,10 @@ async def nms_channels_get(current_user: str = Depends(verify_token)):
     # 分组候选 = 最新告警快照的 groups 并集 + 采集过滤组 + 用户组 NMS 映射
     group_opts = {g for g in config.NMS_FILTERS if g not in ("*", "ALL", "all")}
     try:
-        latest_raw = await r.get(f"{config.REDIS_PREFIX}:nms_alarms:latest")
-        if latest_raw:
-            for a in json.loads(latest_raw).get("alarms") or []:
+        latest = await _nms_load_snapshot(
+            r, f"{config.REDIS_PREFIX}:nms_alarms")
+        if latest:
+            for a in latest.get("alarms") or []:
                 for g in (a.get("groups") or
                           ([a.get("group")] if a.get("group") else [])):
                     if g:
@@ -1335,6 +1337,112 @@ async def _nms_resolve_owner_async(r, current_user):
     if has_session and current_user and current_user != config.NMS_USERNAME:
         return f"{config.REDIS_PREFIX}:nms_alarms:user:{current_user}", True
     return f"{config.REDIS_PREFIX}:nms_alarms", False
+
+
+def _nms_ts_to_dt(ts: str):
+    """ISO 字符串 → datetime（无时区的旧快照按本地时区理解）。"""
+    if not ts:
+        return None
+    try:
+        t = _dt.fromisoformat(str(ts).replace('Z', '+00:00'))
+    except Exception:
+        return None
+    if t.tzinfo is None:
+        t = t.astimezone()
+    return t
+
+
+async def _nms_snapshot_ts(r, base) -> str:
+    """快照时间戳旁路小键 {base}:latest:ts（由采集侧随快照写入）。
+
+    快照本体 70+MB，比较新鲜度绝不能靠再 GET 一次 latest。"""
+    try:
+        v = await r.get(f"{base}:latest:ts")
+        return (v.decode() if isinstance(v, bytes) else str(v)) if v else ''
+    except Exception:
+        return ''
+
+
+# 快照解析缓存：单个 NMS 快照 70+MB，GET ~0.25s + json.loads ~1.2s，而 loads
+# 在事件循环里执行——前端轮询 × 多用户并发足以把后端拖到请求超时，
+# 表现就是「告警/历史又没了」（其实是这一页读失败）。同一快照只解析一次，
+# 靠 latest:ts 判断是否换新；解析放工线程，不阻塞事件循环。
+_NMS_SNAP_CACHE = {}          # base -> (ts, snapshot)
+_NMS_SNAP_CACHE_MAX = 2       # 全局 + 当前活跃的个人视图
+
+
+async def _nms_load_snapshot(r, base):
+    """返回解析后的快照 dict（同 ts 复用缓存）；无快照返回 None。
+
+    命中缓存时返回共享对象：调用方需浅拷贝后再写顶层键，不得就地改 alarms。"""
+    ts = await _nms_snapshot_ts(r, base)
+    hit = _NMS_SNAP_CACHE.get(base)
+    if hit and ts and hit[0] == ts:
+        _NMS_SNAP_CACHE[base] = _NMS_SNAP_CACHE.pop(base)  # 命中即标为最近使用
+        return hit[1]
+    raw = await r.get(f"{base}:latest")
+    if not raw:
+        _NMS_SNAP_CACHE.pop(base, None)
+        return None
+    snap = await asyncio.to_thread(json.loads, raw)
+    new_ts = snap.get("timestamp") or ""
+    if new_ts and not ts:
+        try:
+            await r.set(f"{base}:latest:ts", new_ts)   # 旧快照补齐旁路键
+        except Exception:
+            pass
+    _NMS_SNAP_CACHE[base] = (new_ts, snap)
+    while len(_NMS_SNAP_CACHE) > _NMS_SNAP_CACHE_MAX:
+        _NMS_SNAP_CACHE.pop(next(iter(_NMS_SNAP_CACHE)), None)
+    return snap
+
+
+async def _nms_read_base(r, current_user):
+    """展示类读路径的数据基键：个人快照缺失或明显陈旧时回退全局共享快照。
+
+    返回 (used_base, is_personal, note)。回退条件：
+    - 个人键无 latest 快照（尚未用个人身份抓取过）；
+    - 个人快照比全局快照旧超过 3 个采集周期（个人抓取早已停摆，
+      而全局仍在持续采集）。否则用户会看到几个月前的空分组，
+      被误读为「告警又没了」。
+    新鲜度只读旁路小键 (latest:ts)：快照本体 70+MB，不得为了取时间戳再 GET。
+    注：刚手动抓取过的个人快照比全局更新，不会触发回退。
+    """
+    base, is_personal = await _nms_resolve_owner_async(r, current_user)
+    if not is_personal:
+        return base, False, ''
+    global_base = f"{config.REDIS_PREFIX}:nms_alarms"
+
+    async def _has_snap(key_base):
+        try:
+            return bool(await r.exists(f"{key_base}:latest"))
+        except Exception:
+            return False
+
+    p_ts_raw = await _nms_snapshot_ts(r, base)
+    if not p_ts_raw and not await _has_snap(base):
+        return global_base, False, '个人快照缺失，已回退全局共享快照'
+    if not p_ts_raw:
+        # 旧快照未写旁路时间戳：无法判定新旧，沿用原有「个人优先」行为，
+        # 由采集侧下一轮补齐 latest:ts
+        return base, True, ''
+    g_ts_raw = await _nms_snapshot_ts(r, global_base)
+    p_ts, g_ts = _nms_ts_to_dt(p_ts_raw), _nms_ts_to_dt(g_ts_raw)
+    if p_ts and g_ts:
+        try:
+            _iv = config.NMS_CHECK_INTERVAL
+            _dyn = await r.get(config.KEY_NMS_DYN_CFG)
+            if _dyn:
+                _dv = json.loads(_dyn).get('check_interval')
+                if isinstance(_dv, (int, float)) and _dv >= 60:
+                    _iv = int(_dv)
+        except Exception:
+            _iv = config.NMS_CHECK_INTERVAL
+        if (g_ts - p_ts).total_seconds() > 3 * max(60, _iv):
+            return global_base, False, (
+                f'个人快照已过期（最后抓取 {p_ts:%m-%d %H:%M}），'
+                '已回退全局共享快照；点「立即抓取」可恢复你的权限视图')
+    return base, True, ''
 
 
 def _nms_groups_of(a):
@@ -1852,10 +1960,10 @@ async def nms_get_groups(current_user: str = Depends(verify_token)):
     await require_admin(current_user)
     try:
         r = await get_redis()
-        latest_raw = await r.get(f"{config.REDIS_PREFIX}:nms_alarms:latest")
-        if not latest_raw:
+        latest = await _nms_load_snapshot(
+            r, f"{config.REDIS_PREFIX}:nms_alarms")
+        if not latest:
             return {'groups': [], 'group_counts': {}}
-        latest = json.loads(latest_raw)
         group_counts = latest.get('group_counts') or {}
         groups = sorted(group_counts.keys(), key=lambda g: -group_counts[g])
         return {'groups': groups, 'group_counts': group_counts}
@@ -1870,13 +1978,8 @@ async def nms_snapshot_meta(current_user: str = Depends(verify_token)):
     前端比对 timestamp 判定后台是否已完成新一轮采集。同时返回当前生效采集间隔。"""
     try:
         r = await get_redis()
-        base, is_personal = await _nms_resolve_owner_async(r, current_user)
-        raw = await r.get(f"{base}:latest")
-        used_base = base
-        if not raw and is_personal:
-            used_base = f"{config.REDIS_PREFIX}:nms_alarms"
-            raw = await r.get(f"{used_base}:latest")
-            is_personal = False
+        used_base, is_personal, _view_note = await _nms_read_base(r, current_user)
+        latest = await _nms_load_snapshot(r, used_base)
         # 动态配置优先，静态环境变量兜底
         _iv = config.NMS_CHECK_INTERVAL
         try:
@@ -1887,12 +1990,11 @@ async def nms_snapshot_meta(current_user: str = Depends(verify_token)):
                 _iv = int(_dyn['check_interval'])
         except Exception:
             pass
-        if not raw:
+        if not latest:
             return {'timestamp': None, 'total': 0, 'seen_count': 0,
                     'check_interval': _iv,
                     'configured': bool(config.NMS_USERNAME and config.NMS_PASSWORD),
                     'is_personal': is_personal, 'pending': True}
-        latest = json.loads(raw)
         return {
             'timestamp': latest.get('timestamp'),
             'total': latest.get('total', 0),
@@ -1901,6 +2003,7 @@ async def nms_snapshot_meta(current_user: str = Depends(verify_token)):
             'check_interval': _iv,
             'configured': bool(config.NMS_USERNAME and config.NMS_PASSWORD),
             'is_personal': is_personal,
+            'view_note': _view_note,
         }
     except Exception as e:
         return {'timestamp': None, 'total': 0, 'error': str(e)}
@@ -1925,29 +2028,26 @@ async def nms_get_alarms(groups: str = '', page: int = 1, page_size: int = 0,
     始终返回完整 group_counts（供分组选择器）与所选范围的 severity_counts（全量，不受分页影响）。"""
     try:
         r = await get_redis()
-        base, is_personal = await _nms_resolve_owner_async(r, current_user)
-        latest_raw = await r.get(f"{base}:latest")
-        used_base = base
-        if not latest_raw and is_personal:
-            used_base = f"{config.REDIS_PREFIX}:nms_alarms"
-            latest_raw = await r.get(f"{used_base}:latest")
-            is_personal = False
+        used_base, is_personal, _view_note = await _nms_read_base(r, current_user)
+        _snap = await _nms_load_snapshot(r, used_base)
         configured = bool(config.NMS_USERNAME and config.NMS_PASSWORD)
         seen_count = await r.hlen(f"{used_base}:seen")
         history_count = (await r.zcard(f"{used_base}:history_z")
                          or await r.llen(f"{used_base}:history"))
         analysis_raw = await r.get(f"{used_base}:analysis")
         analysis = json.loads(analysis_raw) if analysis_raw else None
-        if not latest_raw:
+        if not _snap:
             return {
                 'latest': None, 'analysis': analysis,
                 'seen_count': seen_count, 'history_count': history_count,
                 'configured': configured, 'is_personal': is_personal,
                 'pending': True,
+                'view_note': _view_note,
                 'message': ('暂无告警快照，监控任务尚未完成首次抓取'
                             if configured else '未配置 NMS 凭据'),
             }
-        latest = json.loads(latest_raw)
+        # 浅拷贝：后续要写 snapshot_ref 与分页/统计字段，不得污染进程内快照缓存
+        latest = dict(_snap)
         # 快照不透明引用（服务端重算校验）：供 SSL 调查创建时防止绑定到错误告警集
         from core.nms_ssl_workflow import snapshot_ref as _ssl_snapshot_ref
         latest['snapshot_ref'] = _ssl_snapshot_ref(current_user, used_base, latest)
@@ -2054,6 +2154,7 @@ async def nms_get_alarms(groups: str = '', page: int = 1, page_size: int = 0,
             'latest': latest, 'analysis': analysis,
             'seen_count': seen_count, 'history_count': history_count,
             'configured': configured, 'is_personal': is_personal,
+            'view_note': _view_note,
         }
     except Exception as e:
         return {'latest': None, 'analysis': None, 'seen_count': 0,
@@ -2067,13 +2168,8 @@ async def nms_get_incidents(groups: str = '',
     incidents 由 nms_agent 采集时基于当前快照全局计算并存入 {base}:incidents。"""
     try:
         r = await get_redis()
-        base, is_personal = await _nms_resolve_owner_async(r, current_user)
-        raw = await r.get(f"{base}:incidents")
-        used_base = base
-        if not raw and is_personal:
-            used_base = f"{config.REDIS_PREFIX}:nms_alarms"
-            raw = await r.get(f"{used_base}:incidents")
-            is_personal = False
+        used_base, is_personal, _view_note = await _nms_read_base(r, current_user)
+        raw = await r.get(f"{used_base}:incidents")
         configured = bool(config.NMS_USERNAME and config.NMS_PASSWORD)
         if not raw:
             return {
@@ -2108,6 +2204,7 @@ async def nms_get_incidents(groups: str = '',
             'scope_analysis_scope': scope_scope,
             'timestamp': payload.get('timestamp'),
             'configured': configured, 'is_personal': is_personal,
+            'view_note': _view_note,
         }
     except Exception as e:
         return {'incidents': [], 'incident_count': 0, 'timestamp': None,
@@ -2115,27 +2212,32 @@ async def nms_get_incidents(groups: str = '',
 
 @router.get('/api/nms/history')
 async def nms_get_history(limit: int = 200, page: int = 1, groups: str = '',
-                          from_ts: str = '', to_ts: str = '',
+                          from_ts: str = '', to_ts: str = '', q: str = '',
                           current_user: str = Depends(verify_token)):
     """历史告警列表（时间倒序，最多 limit 条，上限 1000；page 分页）。
 
     数据源优先 Phase H2 ZSET ({base}:history_z 内容键去重 + history_data
     payload)。groups: 逗号分隔分组，服务端过滤（命中稀疏时分批扫描，上限 6 万条）；
     from_ts/to_ts: 时间窗口 (ISO, 按事件首见时间过滤, 分数区间直查)；
+    q: 关键字，服务端全库扫描匹配（多词 AND）——前端不再只在已加载的本页
+      200 条里过滤；命中稀疏时受 scan_cap 限制，回 `q_partial` 提示范围不完整。
     个人视图为空时回退全局。"""
     try:
         r = await get_redis()
-        base, is_personal = await _nms_resolve_owner_async(r, current_user)
+        used_base, is_personal, _view_note = await _nms_read_base(r, current_user)
         want_groups = [g for g in (groups or '').split(',') if g.strip()]
+        _q = (q or '').strip()
         from agents.nms_agent import nms_history_read
         alarms, source, has_more = await nms_history_read(
-            r, base, limit, page, want_groups, from_ts, to_ts)
-        if not alarms and is_personal:
+            r, used_base, limit, page, want_groups, from_ts, to_ts, q=_q)
+        if not alarms and is_personal and not _q:
             alarms, source, has_more = await nms_history_read(
                 r, f"{config.REDIS_PREFIX}:nms_alarms", limit, page,
                 want_groups, from_ts, to_ts)
         return {'count': len(alarms), 'alarms': alarms, 'source': source,
-                'has_more': bool(has_more), 'page': page}
+                'has_more': bool(has_more), 'page': page,
+                # 带关键字时扫描窗口有限（每页最多扫 6 万条事件），明确告知前端
+                'q_partial': bool(_q) and not has_more}
     except Exception as e:
         return {'count': 0, 'alarms': [], 'error': str(e)}
 
@@ -2203,10 +2305,7 @@ async def nms_get_analysis(group: str = '',
     """分组维度 LLM 分析。group 为空返回全局分析；否则返回该分组的预算/按需分析。"""
     try:
         r = await get_redis()
-        base, is_personal = await _nms_resolve_owner_async(r, current_user)
-        used_base = base
-        if is_personal and not (await r.exists(f"{base}:latest")):
-            used_base = f"{config.REDIS_PREFIX}:nms_alarms"
+        used_base, is_personal, _view_note = await _nms_read_base(r, current_user)
         g = (group or '').strip()
 
         async def _with_sev(analysis_obj, want=None):
@@ -2214,14 +2313,9 @@ async def nms_get_analysis(group: str = '',
             if not isinstance(analysis_obj, dict):
                 return analysis_obj
             sev = {}
-            latest_raw = None
-            try:
-                latest_raw = await r.get(f"{used_base}:latest")
-            except Exception:
-                pass
-            if latest_raw:
+            latest = await _nms_load_snapshot(r, used_base)
+            if latest:
                 try:
-                    latest = json.loads(latest_raw)
                     want = want or set()
                     for a in latest.get('alarms') or []:
                         s = a.get('severity')
@@ -2272,9 +2366,9 @@ async def nms_get_checklist_plans(current_user: str = Depends(verify_token)):
             })
         # 当前活跃告警命中统计（最新全局快照，alarm.checklist 标注）
         hit_stats: dict = {}
-        latest_raw = await r.get(f"{config.REDIS_PREFIX}:nms_alarms:latest")
-        if latest_raw:
-            latest = json.loads(latest_raw)
+        latest = await _nms_load_snapshot(
+            r, f"{config.REDIS_PREFIX}:nms_alarms")
+        if latest:
             for a in latest.get('alarms', []):
                 t = a.get('checklist')
                 if t:
@@ -2390,15 +2484,12 @@ async def nms_get_checklist(groups: str = '',
     与未匹配告警的分类摘要，供智能分析页结构化展示。"""
     try:
         r = await get_redis()
-        base, is_personal = await _nms_resolve_owner_async(r, current_user)
-        latest_raw = await r.get(f"{base}:latest")
-        if not latest_raw and is_personal:
-            latest_raw = await r.get(f"{config.REDIS_PREFIX}:nms_alarms:latest")
-        if not latest_raw:
+        used_base, _is_personal, _view_note = await _nms_read_base(r, current_user)
+        latest = await _nms_load_snapshot(r, used_base)
+        if not latest:
             return {'matches': [], 'matched_count': 0, 'active_count': 0,
                     'unmatched_count': 0, 'unmatched': [],
                     'timestamp': None, 'pending': True}
-        latest = json.loads(latest_raw)
         want = {g.strip() for g in groups.split(',') if g.strip()}
         steps_map = latest.get('checklist_steps') or {}
         # 工具实测结果（抓取时写入快照，如 DNS API 解析测试）
@@ -3029,14 +3120,10 @@ async def _ssl_current_user(current_user: str) -> dict:
 
 
 async def _nms_ssl_load_snapshot(r, current_user: str):
-    """读取当前用户实际生效的快照（个人优先，缺失回退全局），返回 (base, latest)。"""
-    base, is_personal = await _nms_resolve_owner_async(r, current_user)
-    raw = await r.get(f"{base}:latest")
-    used_base = base
-    if not raw and is_personal:
-        used_base = f"{config.REDIS_PREFIX}:nms_alarms"
-        raw = await r.get(f"{used_base}:latest")
-    return used_base, (json.loads(raw) if raw else None)
+    """读取当前用户实际生效的快照（与展示类端点同一 base 口径，
+    否则服务端重算的 snapshot_ref 会对不上），返回 (base, latest)。"""
+    base, _is_personal, _note = await _nms_read_base(r, current_user)
+    return base, await _nms_load_snapshot(r, base)
 
 
 async def _ssl_idempotent(owner: str, key: str, producer):

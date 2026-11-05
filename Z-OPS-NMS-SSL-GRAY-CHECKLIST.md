@@ -350,3 +350,205 @@ sudo grep -E 'clear_streak_start|clear_reset|manual_verification' /opt/zops/logs
   但重新出现同身份活跃记录会立即重置。
 - 调查与案例存储在独立键空间，**告警消失后仍可只读查看**，不受当前快照影响。
 
+---
+
+## 十一、历史告警库的覆盖缺口：长期活跃事件“从历史里消失”
+
+### 11.1 问题与结论
+
+现象：`/nms` 的「历史告警」页里找不到正在响的告警（本次现场：12 个 SSL 证书告警仅 1 个在历史库中）。
+历史数据本体未丢（`history_z`/`history_data` 一致、接口可查），缺的是**写入覆盖**与**老化口径**：
+
+| 环节 | 原行为 | 后果 |
+| --- | --- | --- |
+| 写入 | 只有「本轮新增（Serial 不在 seen）」才入历史 | 上线前存量、以及摘要每日漂移换了内容键的事件（如 `ssl证书可用天数: 27` 倒数）永远补不进来 |
+| 基线导入 | `_nms_bootstrap_history` 靠 `history_bootstrap:v1` 标记只跑一次 | 首次之后的新增覆盖缺口不会自愈，“修过一次又没了” |
+| 老化 | `zremrangebyscore -inf (now-30d)` 只看首见时间 | 存活超 30 天但**仍在告警**的事件被当过期数据删除 |
+
+修复（`agents/nms_agent.py`）：
+
+- 新增 `_nms_repair_history`：**每轮幂等**以当前快照活跃事件为准补录缺失（`occurrences=1`，首见取告警 FirstTime，已有不覆盖），取代一次性基线导入；
+- 新增 `_nms_trim_history`：老化与条数保险丝从写入路径移出，统一在修复尾部执行，并**豁免当前仍活跃的事件**；
+- 历史写入/补录失败由 `logger.debug` 升为 `logger.warning`（不再静默吞掉）；
+- `agents/base.py` Agent 共用 Redis 客户端连接池 `max_connections=10` → 可配 `REDIS_POOL_MAX`（默认 50）：
+  日志中反复出现的 `心跳更新失败: Too many connections`（nms_agent 单日 108 次）是 redis-py 本地连接池耗尽，
+  会使采集侧 Redis 写入静默失败，是历史缺口的放大器。
+
+### 11.2 配置
+
+| 键 | 默认 | 说明 |
+| --- | --- | --- |
+| `NMS_HISTORY_RETENTION_DAYS` | 30 | 保留期，按首见时间老化，**活跃事件豁免** |
+| `NMS_HISTORY_ZSET_MAX` | 100000 | 条数保险丝，同样豁免活跃事件 |
+| `NMS_HISTORY_REPAIR_MAX` | 8000 | 每轮覆盖修复单轮补写上限（缺口大时分轮消化，不阻塞采集） |
+| `REDIS_POOL_MAX` | 50 | Agent 常驻进程 Redis 连接池上限 |
+
+### 11.3 观测与回滚
+
+```bash
+# 覆盖率：快照活跃事件（内容键去重）与历史库交集，缺失应为 0~小量漂移
+# 看日志即可，每轮一条：“历史覆盖修复: 快照活跃 N 个事件 → 补录 M 个 (缺失 M)” 与“历史老化清理… 活跃事件豁免”
+grep -a "历史覆盖修复\|历史老化清理" logs/nms_agent.log | tail -4
+redis-cli ZCARD zops:nms_alarms:history_z; redis-cli HLEN zops:nms_alarms:history_data
+# 连接池耗尽是否消失
+grep -c "Too many connections" logs/nms_agent.log
+```
+
+回滚：`git checkout -- agents/nms_agent.py agents/base.py config.py && systemctl restart 'zops-agent@nms_agent.service'`；
+已补录的历史条目无需清理（只多了不应少的活跃事件记录）。
+
+### 11.4 实测记录（2026-11-02，真实快照 42,310 条）
+
+| 验证点 | 结果 |
+| --- | --- |
+| 修复前覆盖 | 快照活跃事件（内容键去重）36,235 个，其中 **19,040 个不在历史库**；12 个 SSL 证书告警 **11 个缺失** |
+| 手动跑同一代码路径（5 pass，单轮上限 8000） | 共补录 19,040 条，`history_z` 66,493 → 85,533，缺失降为 **0** |
+| 重启后自动轮次（采集侧真实代码） | `历史覆盖修复: 快照活跃 36242 个事件 → 补录 56 个 (缺失 56)`、`历史老化清理: 删除 20 条 (> 30 天, 活跃事件豁免)` —— 收敛后只剩漂移量 |
+| SSL 证书告警在历史库 | 12 个全部命中，首见时间保留真实值（10/20 、 10/29 、 11/02） |
+| 单元测试 | `tests/test_nms_analyzer.py` 全量通过（H3 改为“写入路径不老化 + 活跃豁免”、H4 重写为覆盖修复含幂等/单轮上限）；十一个 SSL/闭环/探针文件合并 180 项 OK |
+
+### 11.5 边界（必须说明）
+
+- 历史库排序与时间窗口筛选仍以**首见时间**为口径：长期活跃事件若首见在 30 天前，选“今天”窗口仍不会出现在首页，
+  需拉长时间窗口或到「当前告警」页看活跃项（本次未改口径，避免历史页与告警发生时间语义不一致）。
+- 「历史告警」页的关键字搜索是前端在本页已加载的 200 条内过滤（服务端无 `q` 参数），
+  对稀疏事件（如 12 条 SSL）会“搜不到”，属于接口能力缺口，需单独评估后再动。
+- 内容键含摘要文本，摘要内数值每日变化（证书倒数天数等）会产生新事件行；这是“一天一行”的真实语义，
+  未做跨天归并（归并需屏蔽摘要数字，会与 IP/实例号撞键，风险大于收益）。
+- `history_bootstrap:v1` / `history_z:fmt` 两个一次性标记键不再被读取，保留不影响行为，可手动删除。
+
+## 十二、告警读路径加固：把「请求失败」与「确实没有告警」分开
+
+### 12.1 症状与真实原因
+
+用户两次反馈「历史告警又没了」「当前告警变成 暂无现存告警 / 将用您的 AD 账号登录 NMS 抓取」。核查结论：
+
+| 核查项 | 结果 |
+| --- | --- |
+| 全局快照 | `zops:nms_alarms:latest` 存在且新鲜（12:15 轮次，42,800 条），admin 与 op1855 两条身份口径均返回 `filtered_total=43`（OPSCORE_use） |
+| 历史库 | `history_z` 正常，`历史覆盖修复 / 历史老化清理` 日志按轮收敛 |
+| 服务 | 12:23:51 全量重启（11 个 agent + backend + frontend，并触发一次 next 构建），12:24:37 拉起 |
+| 结论 | **数据没丢**，是①重启窗口内前端请求失败被渲染成空态；②单次请求成本过高放大了失败面 |
+
+真正需要修的三个缺陷：
+
+1. **前端把读失败当「无告警」**：`fetchData` / `fetchHistory` 对非 2xx 与异常一律静默 `console.error`，
+   空态分支于是显示「暂无现存告警」＋「将用您的 AD 账号登录 NMS 抓取」＋「用我的 AD 账号抓取」按钮，
+   语义上把「我读不到」说成「没有告警」，这是「又没了」的直接来源。
+2. **单请求成本**：快照本体 74MB，每次 `/api/nms/alarms`、`snapshot-meta`、`analysis`、`checklist` 都 GET 一次
+   并在事件循环里 `json.loads`（实测 0.24s + 1.17s，同步阻塞整个 worker），多人轮询 + 探测并发即可把后端拖到超时。
+3. **个人快照可能永久陈旧**：会话有效时读 `{prefix}:nms_alarms:user:{name}:latest`，
+   该键一旦写下不再更新也不会失效（现场存在 2026-07-17 的个人快照）；
+   页面按陈旧个人快照渲染，用户看到的就是「告警凭空变少/变空」。
+
+### 12.2 改动
+
+| 文件 | 改动 |
+| --- | --- |
+| `web-next/src/app/nms/page.tsx` | 新增 `loadError` 状态；`fetchData` / `fetchHistory` / `loadMore` 区分 HTTP 失败、后端 `{error}`、网络异常三种口径，**失败时保留上一次成功数据**；空态前插入「告警数据读取失败（不是没有告警）」分支并给「重试」按钮；`configured && latest` 全空时的提示改为按 `is_personal` 分别措辞，不再无条件诱导点「用我的 AD 账号抓取」 |
+| `api/routers/agents.py` | 新增 `_nms_snapshot_ts` / `_nms_load_snapshot` / `_nms_read_base`：旁路小键 `latest:ts` 做新鲜度判定（禁止为取时间戳 GET 74MB）；进程内按 `(base, ts)` 缓存解析结果（上限 2 个 base，LRU 驱逐），解析走 `asyncio.to_thread`；`alarms` / `snapshot-meta` / `incidents` / `history` / `analysis` / `checklist` / `_nms_ssl_load_snapshot` 统一走 `_nms_read_base`，响应新增 `view_note` |
+| `agents/nms_agent.py` | 写快照时同步写旁路键 `{base}:latest:ts`（API 侧对旧快照会一次性回填） |
+
+回退口径（`_nms_read_base`）：个人快照缺失 → 用全局；个人快照比全局旧超过 3 个采集周期 → 用全局并给出 `view_note`；
+个人快照不比全局旧（刚抓过） → 继续用个人视图；旧快照没有旁路时间戳（无法判定） → 保持原「个人优先」行为不误伤。
+展示端点与 SSL 调查创建共用同一 base 口径，否则服务端重算的 `snapshot_ref` 会对不上（已有回归用例覆盖）。
+
+### 12.3 观测
+
+```bash
+# 旁路时间戳（应与快照 timestamp 一致）
+redis-cli GET zops:nms_alarms:latest:ts
+redis-cli GET zops:nms_alarms:latest | head -c 120
+
+# 读路径耗时：首次需解析，之后应命中缓存
+curl -s -o /dev/null -w '%{time_total}\n' -H "Authorization: Bearer $TOK" \
+  'http://127.0.0.1:7789/api/nms/alarms?page=1&page_size=5&status=active&groups=OPSCORE_use'
+
+# 个人视图回退说明（正常全局视图应为空串）
+curl -s -H "Authorization: Bearer $TOK" 'http://127.0.0.1:7789/api/nms/snapshot-meta' | python3 -c 'import json,sys;print(json.load(sys.stdin).get("view_note"))'
+```
+
+### 12.4 实测
+
+| 验证点 | 结果 |
+| --- | --- |
+| 数据面 | `zops:nms_alarms:latest` 42,800 条（12:15 轮次）；OPSCORE_use `filtered_total=43`，`severity_counts={critical:4, major:31, minor:7, warning:1}` |
+| 身份口径 | Basic(admin) 与 Bearer(op1855) 两条路径均 `is_personal=false`（服务账号 op1855 即 `NMS_USERNAME`，按设计走全局共享键） |
+| 读路径提速 | 同一请求：首次（需解析 74MB）**1.74s** → 二次（命中缓存）**0.24s** |
+| 旁路键 | API 已回填 `zops:nms_alarms:latest:ts`，采集侧改动重启后每轮随快照写入 |
+| 浏览器 | `/nms` 当前告警 49 行、历史告警 200/98,755 条（11/04 13:34 → 11/05 12:22），无「暂无现存告警」「NMS 凭据未配置」「告警数据读取失败」文案，控制台 0 报错 |
+| 单测 | 新增 `tests/test_nms_snapshot_view.py`（11 项：过期回退/新鲜保留/旧快照不误伤/缓存命中不再 GET/新 ts 重载/旁路键回填/缓存上限/SSL 与展示端点同 base）；与既有 10 个 NMS/闭环/探针文件合并 **191 项 OK** |
+| 构建 | `npx tsc --noEmit` 通过，`npm run build` 通过；backend / nms_agent / frontend 均 active，重启后日志无新增 Traceback |
+
+### 12.5 边界与遗留
+
+- 缓存只在进程内、按 `(base, ts)` 失效，多 worker 部署时每个 worker 各自一份（当前单进程，成立）。
+  若将来改成多 uvicorn worker，需要把上限与内存占用重新核算。
+- 重启期间（本次约 45s：agent SIGTERM 退出慢 + next 构建）前端仍会短暂读失败，现在会明确显示「读取失败 + 重试」，
+  不再谎报「没有告警」；但**服务重启本身仍是这类「数据消失」错觉的主要来源**，后续应把 agent 的 SIGTERM 退出耗时压下来。
+- 个人视图的「过期回退全局」是展示层兜底，不改变权限语义：个人快照仍按用户键独立存储，
+  回退时页面拿到的是全局共享（服务账号）范围数据，`is_personal` 会变为 `false`，前端不应再声称「仅显示你权限范围内的告警」。
+- 「历史告警」页关键字搜索仍是前端在本页 200 条内过滤（服务端无 `q` 参数），未在本次处理。
+
+## 十三、把第十二节遗留的两项坐实：Agent 秒级优雅退出 + 历史告警服务端全库搜索
+
+第十二节 12.5 明确留了两项：①服务重启本身仍是「数据消失」错觉的主要来源，应压 agent 的 SIGTERM 退出耗时；
+②「历史告警」页关键字搜索只在前端本页 200 条里过滤，服务端无 `q` 参数。本次全部推进落地。
+
+### 13.1 Agent 优雅退出（把重启窗口从 ~45s 压到亚秒）
+
+真因：`agents/base.py run_agent` 旧实现用 `signal.signal(SIGTERM, handler)`，handler 里
+`loop.create_task(agent.stop())`。信号处理函数在主线程同步执行，而此刻事件循环正阻塞在
+`epoll wait`，新任务没人调度 → `stop()` 根本不跑；`agent.stop()` 又只把 `_running=False`，
+卡死在 `pubsub.listen()`（无消息时永久阻塞）与采集轮次里的任务不会被取消。于是每个 agent
+都要等 systemd `TimeoutStopSec=45` 到点 SIGKILL，journal 里可见连带追杀 playwright 的
+`V8Worker / libuv-worker / SignalInspector` 一排子进程。nms_agent 重启期间 `/api/nms/*` 全失败，
+前端就表现为「告警又没了」。
+
+修复（三处协同）：
+- `run_agent`：改用 `loop.add_signal_handler(SIGTERM/SIGINT, ...)`（经 self-pipe 唤醒事件循环，回调必然被调度），
+  回调里编排 `_graceful_shutdown`；第二次信号直接取消全部任务并停循环；每轮 `run_until_complete` 前重装 handler
+  （asyncio 在 run 结束时会拆掉旧式 handler），保证连续重启都有界。
+- `BaseAgent._graceful_shutdown`：置停止标志 → 给业务 `grace=6s` 自行收尾 → 超时才 `cancel` 残留任务并
+  `gather(return_exceptions=True)` → `wait_for(_cleanup(), 4s)` → `loop.stop()`。
+- `BaseAgent.start` 消息循环：`async for pubsub.listen()`（无消息无限阻塞）改为 `get_message(timeout=1.0)`
+  有界轮询，`_running=False` 后 ≤1s 退出；退出对 `unsubscribe/aclose` 各自 try/except，绝不让退出卡死。
+- `nms_agent`：监控首轮等待 30s 拆成 30×1s 可中断；`_nms_wait_next_round` 分段从 30s 降到 1s（SIGTERM 后 ≤1s 退出，
+  同时采集间隔热生效更快）；`_cleanup` 关浏览器/playwright 各加 `wait_for(timeout=3)`，避免与 node 子进程通信卡住拖到 SIGKILL。
+- `deploy/zops-agent@.service`（并同步 /etc）：`TimeoutStopSec` 45 → 15（新退出路径 ≤11s，15s 仅作真卡死兜底）。
+
+### 13.2 历史告警服务端全库关键字搜索
+
+`nms_history_read` 新增 `q` 参数：在 `history_z` 全库分批扫描时，先在**原始字节**上做子串匹配（多词空格=AND），
+命中才 `json.loads` 并用 `_match()` 复核分组/关键字，未命中不解码——避免整库上百 MB 解码。
+无关键字仍走原 rank 分页快路径。`/api/nms/history` 透传 `q` 并回 `q_partial`（带关键字且未 `has_more` = 已在扫描上限内扫完，
+不代表全库无更多命中）。个人视图带关键字时不做「空则回退全局」二次扫描（尊重用户权限边界）。
+前端 `page.tsx`：历史页签关键字改由服务端过滤（`fetchHistory` 带 `q`，输入防抖 500ms 重查第一页），
+客户端 `filteredAlarms` 对历史页不再重复用 `searchText` 过滤（口径不同会漏合法命中）；空态按是否有关键字分别措辞
+（「未找到匹配“X”的历史告警」而非误导的「暂无现存告警」）。
+
+### 13.3 实测（2026-11-05，服务账号 op1855=全局口径）
+
+| 验证点 | 结果 |
+| --- | --- |
+| 优雅退出（旧代码进程） | `systemctl stop` = **15.25s**，`Failed with result 'timeout'` + 追杀 `V8Worker/libuv-worker` 一排（改造前形态） |
+| 优雅退出（新代码，空闲） | `systemctl stop` = **0.59s**，`Deactivated successfully`，无 SIGKILL |
+| 优雅退出（新代码，采集轮次进行中且浏览器已开） | `systemctl stop` = **0.35s**，`Deactivated successfully`，`playwright/driver/node` + `chrome-headless` 子进程**孤儿数=0**（Python 进程内已随 `_cleanup` 收干净，systemd 无需追杀） |
+| 历史搜索 `q=link` | HTTP 200，命中含 `SNMP_TRAP_LINK_DOWN / Link Down / uplink` 等；`has_more=true` |
+| 历史搜索 `q=23506`（早期稀有 token） | HTTP 200，命中（10/26 事件），证明跨全库、非仅首页 200 条 |
+| 中文关键字 `q=规则编号` | UTF-8 字节匹配生效，命中 wazuh 事件；多词 `q=SNMP_TRAP link` 按 AND 命中 |
+| 搜索成本 | `limit=200` 带 q：**0.16s**；无 q 快路径：0.07s |
+| 读路径 | `/api/nms/alarms?groups=OPSCORE_use` 重启后首请求 1.60s（进程内缓存冷）→ `filtered_total=45`，`is_personal=false`，`view_note=''` |
+| 浏览器 | `/nms` 当前告警 45 行（无「暂无现存告警」/「用我的 AD 账号抓取」/「读取失败」文案）；历史 `link` 命中 21 条、时间追溯至 10/21（远超首页），控制台 0 报错 |
+| 单测 | 新增 `tests/test_nms_history_search_and_shutdown.py`（10 项：跨页命中/多词 AND/无命中/大小写不敏感/分组+关键字/字节预筛选不整库解析/空 q 走快路径；run_agent 用 add_signal_handler 且信号回调编排 _graceful_shutdown；宽限期到取消残留任务并清理）；与 12 个 NMS/闭环/探针文件合并 **212 项 OK** |
+| 构建 | `npx tsc --noEmit` 通过，`npm run build` 通过；backend / nms_agent / frontend 均 active |
+
+### 13.4 边界
+
+- 优雅退出把「重启即数据消失」的错觉窗口从 ~45s 压到亚秒，但采集本身仍有周期（默认 900s）：
+  刚重启的首轮抓取前 `snapshot-meta` 仍可能 `pending=true`，前端已明确区分 pending（正常等待）与读取失败（可重试）。
+- 服务端 `q` 走全库分批扫描，命中稀疏时受 `scan_cap=6 万` 限制：极老且极稀有的关键字可能只覆盖扫描窗口内的命中，
+  前端用 `q_partial` 文案提示「可清空搜索或放宽时间范围」，不谎报「无匹配」。
+- 全库关键字匹配按「序列化整条记录」子串命中（含字段名与聚合 raw 原文），因此数字类关键字可能命中聚合事件的子字段
+  （如 23506 命中一条已合并 wazuh 子事件的 windows 记录），这是全库搜索的预期语义，不是 bug。
+- 多 uvicorn worker 部署时进程内快照缓存每 worker 一份，退出编排不受影响（信号是进程级）。

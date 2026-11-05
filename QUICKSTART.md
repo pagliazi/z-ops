@@ -8,7 +8,10 @@
 2. [服务管理](#服务管理)
 3. [日志查看](#日志查看)
 4. [桌面接管验收](#-桌面接管验收linux--x11)
-5. [故障排查](#故障排查)
+5. [Windows 实机验收](#-windows-实机验收随包自检)
+6. [冻结包预检](#-冻结包预检构建即验)
+7. [界面实机取证](#-界面实机取证浏览器-ui-验证)
+8. [故障排查](#故障排查)
 
 ---
 
@@ -124,7 +127,13 @@ tail -f logs/daemon_stdout.log
 每次接管仍要你在桌面上点一次“允许”，租约 60 秒，对话框 30 秒无人操作自动拒绝（原因码
 `desktop_approval_timeout`）。
 
-> Wayland 会话（含 XWayland）不支持，`--doctor` 会报 `wayland_portal_not_implemented`；
+> Wayland 会话（含 XWayland）不支持：`--doctor` 会问一遍 xdg-desktop-portal（`companion/portal.py`）再报原因，
+> 常见为 `wayland_window_scope_not_supported`（portal 与 `ConnectToEIS` 输入通道都在，但给不出窗口作用域）、
+> `wayland_eis_channel_missing`（portal 在，但两侧接口都没报出 `ConnectToEIS`，没有输入传输通道）或
+> `wayland_portal_not_running` / `wayland_dbus_session_missing`；探测层本身出错时回到
+> 兜底码 `wayland_portal_not_implemented`。这些原因都不等于“还没验收”——Wayland 下不声明任何 `desktop.*`。
+> 输入传输层（`companion/eis.py`，EI/libei 协议）已实现并按规范逐字节验证，但协议里没有“窗口”对象（只有
+> 屏幕 `region`），要开放 Wayland 桌面能力还得在真实合成器上验收。
 > X11 认不出密码框，所以 Linux 不声明 `desktop.screen`、不做窗口采集。
 
 ### 1. 配对并授权要操作的应用
@@ -179,6 +188,79 @@ companion/.venv/bin/python scripts/linux_desktop_check.py --config ~/.config/zop
 `--companion <可执行文件路径>` 指定。
 
 > 用 XTest 脚本扮演“机旁的人”只能证明链路能跑通，**不能**作为验收结论。
+
+---
+
+## 🪟 Windows 实机验收（随包自检）
+
+13 项验收清单的实现住在 Companion 包内（`companion/winaccept.py`），到测试机上只带 exe 就能跑完，
+不需要装 Python、不需要克隆仓库（这条是为兑现“不要求操作端安装 Python”）：
+
+```bash
+companion-unsigned-test.exe --windows-acceptance
+companion-unsigned-test.exe --windows-acceptance --acceptance-output D:\cu.json
+```
+
+- 逐项口径：auto 4（`--doctor` 声明自洽、`Ctrl+Alt+Pause` 能注册、后台无头执行前后前台窗口与剪贴板序列号不变）、
+  measure 1（取消后实测子进程 pid 消失，走 Win32 `OpenProcess`，不靠自述）、
+  manual 8（批准/拒绝/到期/急停/锁屏/打字干扰/托盘/UIA 四类应用，**必须留证据**）。
+- 缺项、无证据、skip、fail 都会让整体结论变成“未通过”并 `rc=1`；13 项全 pass 才 `rc=0`。
+- 非 Windows 上执行只会得到 `windows_only：本清单必须在 Windows 实机上运行`（`rc=1`）且不写任何报告，
+  Linux 打包或 CI 里都不能顺手“代跑” Windows 验收。
+- `scripts/windows_acceptance.py` 是同一实现的命令行外壳（源码方式运行时可用），不存在第二套判定口径。
+- 前提：exe 本身必须在 Windows 上构建（PyInstaller 不支持交叉构建）；要出签名版还得有证书指纹与时间戳服务。
+
+---
+
+## 📦 冻结包预检（构建即验）
+
+打包产物里没有仓库源码也没有单测，“模块被收进包里”不等于“能跑”，所以构建收尾时会
+直接拿**刚构出来的二进制**跑一遍自检，不通过就不写回执：
+
+```bash
+# 构建（未签名测试包）：内置“包内自检”闸门，失败直接 rc=1 且不出回执
+companion/.venv/bin/python companion/build.py --ack-unsigned-test
+
+# 事后单独重跑同一项自检（不需要 Wayland 桌面，也不连 D-Bus、不接管任何窗口）
+companion/dist/companion-unsigned-test/companion-unsigned-test --eis-selfcheck
+# 输出 8 步全过且 rc=0：握手/seat/设备/未开模拟不得注入/输入与 frame/窗口作用域必须为假/
+# paused 停注入/绝对指针前置条件
+
+# 核验产物目录（测试包永远不得报“可发布”）
+companion/.venv/bin/python companion/build.py --verify-release \
+  companion/dist/companion-unsigned-test --allow-test-package
+```
+
+无显示环境或交叉构建时可以用 `--skip-native-selfcheck` 跳过，但这个包**算未预检**，
+交付时要写明；预检不通过时只可能得到“不写回执、不交付”。
+
+---
+
+## 🖼️ 界面实机取证（浏览器 UI 验证）
+
+界面必须被真实操作过并留下截图，**不能拿源码字符串断言当成界面已验证**。取证脚本固化在
+`scripts/ui_probe_computer_use.py`：用真 Chromium 打开前端，把页面上**渲染出来的**按钮、标题
+与正文原样抄下，并逐张截图，产出 `screenshots/ui/*.png` 与 `ui_probe_report.json`。
+
+```bash
+# 前端必须先经 systemd 处于运行态（默认 http://localhost:3000/）
+systemctl is-active zops-frontend
+python3 scripts/ui_probe_computer_use.py        # 可用 ZOPS_UI_URL / ZOPS_UI_USER / ZOPS_UI_TTL 覆盖
+ls -l screenshots/ui/
+```
+
+三点必读：
+
+- **只读。** 脚本内置动作黑名单，只会打开面板与切标签，绝不点“保存 / 吊销 / 删除 / 清空会话 /
+  生成配对码”，也不往任何输入框写内容。
+- **登录态是本地签发的临时会话。** 界面要求 AD 域账号，脚本不持有也不留存口令，而是用后端自己
+  的会话机制在 Redis 为本地账号签一个短 TTL token（等于登录接口本地分支的最后两步），**用完在
+  `finally` 里立即删除**；不改密码、不建号、不授权。所以这组截图证明的是“界面按登录态真实渲染出
+  这些内容”，**不证明**“某个真实用户完成了 AD 登录”——后者仍需本人输口令。
+- **能看到什么。** 设置模态四个分组（通用 / 记忆 / 电脑操作 / 数据控制），以及设备、安装与配对、
+  后台策略与本机授权、桌面接管申请、任务画面推送、截图证据保存的完整文案；还有管理页的
+  Computer Use 配置。界面文案必须与代码常量对得上（租约 60 秒、对话框 30 秒、验收 90 秒、
+  证据 20 张 / 10 秒、Cookie 交接 300 秒），对不上就是交付面缺陷。
 
 ---
 

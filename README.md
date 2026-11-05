@@ -70,8 +70,22 @@ python3 -m core.memory.wiki_ingest   # 首次编译
 ## 🖥️ 本机（桌面）接管
 
 桌面操作能力默认全关，且必须先在**本机**做一遍人工验收；验收记录只留在本机，每次接管仍要
-在你的桌面上点一次“允许”（60 秒有效，30 秒无人操作自动拒绝）。当前仅支持 X11，Wayland
-会话（含 XWayland）会以 `wayland_portal_not_implemented` 拒绝，Linux 也不做窗口采集。
+在你的桌面上点一次“允许”（60 秒有效，30 秒无人操作自动拒绝）。当前仅支持 X11（macOS AX 已适配，
+待实机验收）；Wayland 会话（含 XWayland）一律不开任何 `desktop.*`，`--doctor` 会用
+`companion/portal.py` 问一遍 xdg-desktop-portal 后给出可区分的原因码：
+`wayland_dbus_session_missing`（没有会话总线地址）、`wayland_portal_binding_unavailable`（没有 D-Bus 绑定）、
+`wayland_portal_not_running`（portal 未运行）、`wayland_remote_desktop_unavailable`（没有 RemoteDesktop 接口）、
+`wayland_eis_channel_missing`（portal 在、但两侧接口都没报出 `ConnectToEIS`——没有可用的输入传输通道）、
+`wayland_window_scope_not_supported`（portal 与输入通道都在，但给不出“哪个窗口”的作用域——批准无法绑定到具体窗口，
+所以宁可不开放）；Linux 也不做窗口采集。
+> 输入传输层本身（`companion/eis.py`，EI/libei 二进制协议客户端）已实现并按协议规范逐字节验证，
+> 握手 / 能力掩码协商 / 设备 ready-resume-start_emulating 三道闸门均有测试；但 EIS 协议里只有屏幕
+> `region`，没有“窗口”对象，所以在拿到真实合成器（GNOME/KDE + portal 的 EIS 支持）之前，Wayland
+> 仍不声明任何 `desktop.*`。
+
+打包产物自带一项预检：`companion/build.py` 在写回执前会拿**刚构出来的二进制**跑
+`--eis-selfcheck`（EI 协议握手 + 三道注入闸门），不通过就不写回执、不交付；
+只有显式 `--skip-native-selfcheck`（无显示环境/交叉构建）才能跳过，代价是该包算未预检。
 
 ```bash
 # companion 要求 Python 3.11+；源码方式是仓库内 venv，交付方式是打包好的可执行文件
@@ -84,6 +98,14 @@ companion/.venv/bin/python scripts/linux_desktop_check.py --config ~/.config/zop
 
 清单里缺项、未做、未通过，结论都是“未通过”；用脚本扮演机旁的人不算验收。
 详细步骤与注意事项见 [QUICKSTART.md](./QUICKSTART.md#-桌面接管验收linux--x11)。
+
+Windows 的 13 项验收清单与 Companion 一起打包，到测试机上只带 exe 就能跑完（不需要装 Python）：
+`companion-unsigned-test.exe --windows-acceptance`；在非 Windows 上该入口只会回 `windows_only` 且不写报告。
+见 [QUICKSTART.md](./QUICKSTART.md#-windows-实机验收随包自检)。
+
+界面本身也需要实机取证（不能拿读源码代替真实渲染）：`python3 scripts/ui_probe_computer_use.py`
+用真 Chromium 操作前端并截图，全程只读，登录态为本地临时签发、用完即删；说明见
+[QUICKSTART.md](./QUICKSTART.md#-界面实机取证浏览器-ui-验证)。
 
 ## 📁 目录结构
 

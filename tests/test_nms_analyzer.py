@@ -626,8 +626,12 @@ class _HistFakeRedis:
     async def zadd(self, k, mapping):
         self.z.setdefault(k, {}).update(mapping)
 
-    async def zrem(self, k, m):
-        self.z.get(k, {}).pop(m, None)
+    async def zrem(self, k, *ms):
+        n = 0
+        for m in ms:
+            if self.z.get(k, {}).pop(m, None) is not None:
+                n += 1
+        return n
 
     async def zrange(self, k, start, stop, withscores=False):
         items = sorted(self.z.get(k, {}).items(), key=lambda x: x[1])
@@ -754,20 +758,29 @@ async def test_history_content_key_dedup():
         assert rec["occurrences"] == 2
         assert rec["last_time"] == "2026-10-19T03:40:00"       # last 更新
         assert r.z["b1:history_z"][ck_a] == _nms_parse_iso_ts("2026-10-19T03:00:00")  # 首见保留最早
-        # 老化: 手工塞一条 score 在 31 天前的成员 → 下次写入时连同 payload 删除
+        # 老化不在写入路径: 同样数据下写一轮, 超期成员仍在
         old_ck = "0" * 16
         r.z["b1:history_z"][old_ck] = 1.0
         r.h["b1:history_data"][old_ck] = json.dumps({"summary": "old", "_ck": old_ck})
         await agent._nms_write_history_zset(r, "b1", [a1], "seen_k")
+        assert old_ck in r.z["b1:history_z"], "写入路径不得再触发老化"
+        # 显式老化: 不活跃且超保留期 → 连同 payload 删除
+        assert await agent._nms_trim_history(r, "b1", active_cks=set()) == 1
         assert old_ck not in r.z["b1:history_z"] and old_ck not in r.h["b1:history_data"]
-        print("PASS H3: 内容键去重写入 (换手折叠 occurrences/首见保留/老化同步清 payload)")
+        # 活跃豁免: 仍在告警的事件即使首见超期也不得被误删
+        r.z["b1:history_z"][old_ck] = 1.0
+        r.h["b1:history_data"][old_ck] = json.dumps({"summary": "old", "_ck": old_ck})
+        assert await agent._nms_trim_history(r, "b1", active_cks={old_ck}) == 0
+        assert old_ck in r.z["b1:history_z"], "仍活跃的事件不得被老化误删"
+        print("PASS H3: 内容键去重写入 (换手折叠 occurrences/首见保留/老化含活跃豁免)")
     finally:
         if old_ttl is not None:
             config.NMS_SEEN_TTL = old_ttl
 
 
-async def test_history_bootstrap_from_snapshot():
-    """H4: 历史基线导入 — 快照存量补录, 保留期外跳过, 已有不覆盖, 标记幂等。"""
+async def test_history_repair_from_snapshot():
+    """H4: 历史覆盖修复 (每轮幂等) — 存量活跃事件补录、已有不覆盖、
+    活跃事件超保留期豁免、不活跃超期老化、单轮补写上限。"""
     agent = NmsAgent.__new__(NmsAgent)
     r = _HistFakeRedis()
     now = time.time()
@@ -778,23 +791,39 @@ async def test_history_bootstrap_from_snapshot():
          "summary": "alarm A", "severity": "major", "first_time": fmt(now - 86400)}
     b = {"alarm_id": "srl:2", "node": "n2", "event_key": "ek2",
          "summary": "alarm B", "severity": "critical", "first_time": fmt(now - 2 * 86400)}
-    old = {"alarm_id": "srl:3", "node": "n3", "event_key": "ek3",
-           "summary": "alarm C old", "severity": "minor",
-           "first_time": fmt(now - 40 * 86400)}
-    r.kv["b:latest"] = json.dumps({"alarms": [a, b, old]})
-    # A 已在历史中 (新告警路径写过)
-    ck_a = _nms_alarm_content_key(a)
-    r.z["b:history_z"] = {ck_a: now - 86400}
-    r.h["b:history_data"] = {ck_a: json.dumps({**a, "occurrences": 3, "_ck": ck_a})}
-    await agent._nms_bootstrap_history(r, "b")
-    assert await r.zcard("b:history_z") == 2  # A 保留(不覆盖) + B 补录, C 超期跳过
-    rec_a = json.loads(r.h["b:history_data"][ck_a])
-    assert rec_a["occurrences"] == 3, "已有记录不应被覆盖"
-    assert r.kv.get("b:history_bootstrap:v1") == "v1"
-    # 二次执行: 标记键生效, 不再写入
-    await agent._nms_bootstrap_history(r, "b")
-    assert await r.zcard("b:history_z") == 2
-    print("PASS H4: 历史基线导入 (存量补录/超期跳过/已有不覆盖/标记幂等)")
+    # 长期活跃事件 (证书倒数天数类): 首见 40 天前, 但仍在告警
+    live = {"alarm_id": "srl:3", "node": "n3", "event_key": "ek3",
+            "summary": "ssl证书可用天数: 27", "severity": "minor",
+            "first_time": fmt(now - 40 * 86400)}
+    ck_a, ck_b, ck_live = (_nms_alarm_content_key(x) for x in (a, b, live))
+    # A 已在历史中 (新告警路径写过); 另有一个不活跃且超期的旧事件
+    r.z["b:history_z"] = {ck_a: now - 86400, "0" * 16: now - 40 * 86400}
+    r.h["b:history_data"] = {ck_a: json.dumps({**a, "occurrences": 3, "_ck": ck_a}),
+                             "0" * 16: json.dumps({"summary": "gone", "_ck": "0" * 16})}
+    await agent._nms_repair_history(r, "b", [a, b, live])
+    # B + live 补录, A 不覆盖; 不活跃超期条目被老化 (活跃豁免)
+    assert set(r.z["b:history_z"]) == {ck_a, ck_b, ck_live}, r.z["b:history_z"]
+    assert "0" * 16 not in r.z["b:history_z"] and "0" * 16 not in r.h["b:history_data"]
+    assert json.loads(r.h["b:history_data"][ck_a])["occurrences"] == 3, "已有记录不应被覆盖"
+    assert r.z["b:history_z"][ck_live] == _nms_parse_iso_ts(live["first_time"]), "活跃事件保留真实首见时间"
+    assert r.z["b:history_z"][ck_live] < now - 30 * 86400, "该事件确实已超 30 天保留期"
+    assert json.loads(r.h["b:history_data"][ck_live])["occurrences"] == 1
+    # 二次执行: 幂等, 不重复写入也不丢活跃超期条目
+    assert await agent._nms_repair_history(r, "b", [a, b, live]) == 0
+    assert set(r.z["b:history_z"]) == {ck_a, ck_b, ck_live}
+    # 单轮补写上限: cap=1 时只补 1 个, 剩余留待下轮
+    old_cap = config.NMS_HISTORY_REPAIR_MAX
+    try:
+        config.NMS_HISTORY_REPAIR_MAX = 1
+        r2 = _HistFakeRedis()
+        assert await agent._nms_repair_history(r2, "b", [a, b, live]) == 1
+        assert await agent._nms_repair_history(r2, "b", [a, b, live]) == 1
+        assert await agent._nms_repair_history(r2, "b", [a, b, live]) == 1
+        assert await agent._nms_repair_history(r2, "b", [a, b, live]) == 0
+        assert await r2.zcard("b:history_z") == 3
+    finally:
+        config.NMS_HISTORY_REPAIR_MAX = old_cap
+    print("PASS H4: 历史覆盖修复 (存量补录/已有不覆盖/活跃豁免老化/幂等/单轮上限)")
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -862,7 +891,7 @@ async def main():
     test_nms_parse_iso_ts()
     await test_migrate_history_list_to_zset()
     await test_history_content_key_dedup()
-    await test_history_bootstrap_from_snapshot()
+    await test_history_repair_from_snapshot()
     await test_sso_session_roundtrip()
     await test_stream_event_helper_publishes_to_redis()
     print("\n✅ 所有 NMS 分析 Phase 1 单元测试通过")

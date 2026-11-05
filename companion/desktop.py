@@ -11,6 +11,7 @@ import threading
 import time
 
 from . import __version__
+from . import ax as macos_ax
 from .security import Denied, Paused, decode, encode, fields, integer, no_links, private_dir, require, text
 
 LEASE_SECONDS = 60
@@ -37,22 +38,48 @@ SECURITY_PROCESSES = {"logonui.exe", "consent.exe", "winlogon.exe", "lockapp.exe
 LINUX_SECURITY_PROCESSES = {"gcr-prompter", "polkit-gnome-authentication-agent-1",
                             "polkit-agent-helper-1", "gnome-shell-lock", "xscreensaver",
                             "light-locker", "i3lock", "swaylock", "systemd-ask-password"}
+# macOS 上的认证/锁屏进程（进程名按 psutil 的短名，不含 .app 后缀）：同样永不作为目标。
+MACOS_SECURITY_PROCESSES = {"loginwindow", "securityagent", "authorizationhost",
+                            "coreauthd", "coreautha", "keychainaccessd",
+                            "opendirectoryd", "screencaptureui"}
+SECURITY_PROCESSES_ALL = SECURITY_PROCESSES | LINUX_SECURITY_PROCESSES | MACOS_SECURITY_PROCESSES
 SHELL_CLASSES = {"progman", "workerw", "shell_traywnd", "shell_secondarytraywnd"}
 ACCEPTANCE_NAME = "desktop-acceptance.json"
-# 两个平台的验收项不同：Windows 依赖 UIA 与安全桌面查询，Linux X11 依赖 XTest 与屏保查询。
+# 三个平台的验收项不同：Windows 依赖 UIA 与安全桌面查询，Linux X11 依赖 XTest 与屏保查询，
+# macOS 依赖辅助功能授权与窗口采集；记录不能互相冒充。
 ACCEPTANCE_CHECKS = ("uia", "native_dialog", "input_sentinel", "secure_desktop_query",
                      "hotkey", "tray", "focus_query")
 ACCEPTANCE_CHECKS_X11 = ("x11", "native_dialog", "input_sentinel", "lock_query",
                          "focus_query", "hotkey", "injection")
+ACCEPTANCE_CHECKS_MACOS = ("ax", "native_dialog", "input_sentinel", "lock_query",
+                           "focus_query", "hotkey", "capture")
 # 桌面能力按平台声明：Linux 不做控件树也不截窗口，因此不包含 desktop.screen。
 DESKTOP_CAPABILITIES = ("desktop.inspect", "desktop.request_control", "desktop.act",
                         "desktop.screen")
 X11_CAPABILITIES = DESKTOP_CAPABILITIES[:3]
-CAPABILITIES_BY_PLATFORM = {"nt": DESKTOP_CAPABILITIES, "posix": X11_CAPABILITIES}
+CAPABILITIES_BY_PLATFORM = {"nt": DESKTOP_CAPABILITIES, "posix": X11_CAPABILITIES,
+                            "darwin": DESKTOP_CAPABILITIES}
 # Linux 会话不接受 Wayland 与 XWayland：XTest 注入对原生 Wayland 客户端无效。
 WAYLAND_MARKERS = ("wayland",)
-# 单独的原因码：让远端能区分“这个会话做不到（Portal 未适配）”与“还没验收”。
+# 兜底原因码：portal 探测层本身出错时用它；能问到事实时一律用 `portal.block_reason()`
+# 给出的精确码（“portal 没跑”/“没有 EIS 输入通道”/“没有窗口作用域”/“没有 D-Bus 地址”
+# 与“还没验收”必须可区分）。注意：无论哪个码，Wayland 下都不声明任何 `desktop.*`——
+# portal 与 EIS 协议里都没有“窗口”对象，只有整屏授权与屏幕 region（见 eis.py）。
 WAYLAND_REASON = "wayland_portal_not_implemented"
+
+
+def _wayland_reason():
+    """问一遍 portal，把 Wayland 上做不到的具体原因报出来。
+
+    这里不能报错也不能默认“可用”：探测层任何异常都回到兜底码，
+    桌面能力仍然是禁用，只是原因描述精度下降。
+    """
+    try:
+        from .portal import block_reason
+        reason = block_reason()
+    except Exception:
+        return WAYLAND_REASON
+    return reason if re.fullmatch(r"wayland_[a-z0-9_]{3,60}", str(reason)) else WAYLAND_REASON
 
 
 def wayland_session(environ=None):
@@ -89,9 +116,6 @@ def _reasons(system):
         "headed_login": login,
         "attach_user_browser": "user_profile_attachment_not_supported",
     }
-
-
-UNAVAILABLE = _reasons(os.name)
 
 
 class Lease:
@@ -134,20 +158,30 @@ class Lease:
 
 
 def platform_key(platform=None):
-    """把 os.name、sys.platform 和测试里的写法统一成 'nt' / 'posix' / 'darwin'。"""
-    value = str(platform or os.name).lower()
-    if value in ("nt", "windows"):
+    """把 os.name、sys.platform 和测试里的写法统一成 'nt' / 'posix' / 'darwin'。
+
+    缺省读 sys.platform 而不是 os.name：macOS 上 os.name 同样是 'posix'，
+    按它分支会把 Mac 当成 Linux X11 去驱动，能力表与验收记录都会张冠李戴。
+    """
+    value = str(platform or sys.platform).lower()
+    if value in ("nt", "windows", "win32"):
         return "nt"
     if value in ("darwin", "macos"):
         return "darwin"
     return "posix"
 
 
+# 平台相关的“做不到”原因：executor 在桌面未启用时用它如实标注能力缺口。
+UNAVAILABLE = _reasons(platform_key())
+
+
 def acceptance_platform(platform=None):
-    """验收记录的平台名与检查项；Windows 走 UIA，Linux 走 X11，其余平台不支持桌面。"""
+    """验收记录的平台名与检查项；Windows 走 UIA，Linux 走 X11，macOS 走 AX。"""
     platform = platform_key(platform)
     if platform == "nt":
         return "windows", ACCEPTANCE_CHECKS
+    if platform == "darwin":
+        return "macos", ACCEPTANCE_CHECKS_MACOS
     require(sys.platform.startswith("linux"), "desktop_unsupported_platform")
     return "linux", ACCEPTANCE_CHECKS_X11
 
@@ -237,16 +271,19 @@ class Desktop:
 
     async def prepare(self):
         self.unavailable = _reasons(self.platform)
-        # macOS 等未适配平台直接保持禁用；不报验收缺失，也不抛异常影响其它能力。
-        if self.platform != "nt" and not sys.platform.startswith("linux"):
+        # 只有未适配的平台（Wayland 之外的其它 posix 会话）直接保持禁用；
+        # 不报验收缺失，也不抛异常影响其它能力。nt/darwin 由各自驱动的 prepare 定实际预检。
+        if self.platform not in ("nt", "darwin") and not sys.platform.startswith("linux"):
             self.reason = self.unavailable["desktop.inspect"]
             return
         if self.platform == "posix" and wayland_session():
-            # Wayland 下 XTest 对原生客户端无效，Portal 也还没适配：先禁用，并给出可区分的原因。
-            self.reason = WAYLAND_REASON
+            # Wayland 下 XTest 对原生客户端无效，只能走 portal；问清原因后仍全部禁用：
+            # 批准无法绑定到具体窗口（Spec 第 50、51 条），所以不开放任何 desktop.*。
+            reason = await asyncio.to_thread(_wayland_reason)
+            self.reason = reason
             self.unavailable = {key: value for key, value in _reasons(self.platform).items()
                                 if key not in DESKTOP_CAPABILITIES}
-            self.unavailable.update({name: WAYLAND_REASON for name in DESKTOP_CAPABILITIES})
+            self.unavailable.update({name: reason for name in DESKTOP_CAPABILITIES})
             return
         try:
             data = self.acceptance if self.acceptance is not None else load_acceptance(self.config)
@@ -279,13 +316,15 @@ class Desktop:
         # “还没验收”和“这个平台做不到”。
         self.unavailable = {key: value for key, value in _reasons(self.platform).items()
                             if key not in self.capabilities}
-        if self.platform != "nt":
+        if self.platform == "posix":
             self.unavailable["desktop.screen"] = "desktop_capture_not_accepted_on_platform"
         self.suspended = ""
 
     def _make_driver(self):
         if self.platform == "nt":
             return WindowsDriver(on_stop=self.emergency_stop)
+        if self.platform == "darwin":
+            return MacDriver(on_stop=self.emergency_stop)
         return X11Driver(on_stop=self.emergency_stop)
 
     def _require_enabled(self):
@@ -512,8 +551,9 @@ class Desktop:
 
     @staticmethod
     def _forbidden(window):
+        # 三个平台的安全界面黑名单合并判定：即使驱动已按平台过滤，这里再兜一层。
         return (window.get("pid") == os.getpid()
-                or str(window.get("process") or "").lower() in SECURITY_PROCESSES
+                or str(window.get("process") or "").lower() in SECURITY_PROCESSES_ALL
                 or str(window.get("class_name") or "").lower() in SHELL_CLASSES)
 
     def _reject_forbidden(self, window):
@@ -848,6 +888,15 @@ class WindowsDriver:
         DESKTOP_SWITCHDESKTOP = 0x0100
         UOI_NAME = 2
         user32 = ctypes.windll.user32
+        # 收/发句柄的调用都必须显式声明类型：默认 restype 是 c_int，64 位句柄会被截断。
+        # 截断后 CloseDesktop 关不掉原句柄（泄漏），名字查询失败又会被当成“已锁屏”，
+        # 桌面能力会永久不可用；查询成功时也可能拿错桌面的名字。
+        user32.OpenInputDesktop.restype = ctypes.c_void_p
+        user32.OpenInputDesktop.argtypes = (ctypes.c_ulong, ctypes.c_bool, ctypes.c_ulong)
+        user32.GetUserObjectInformationW.argtypes = (
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_ulong,
+            ctypes.POINTER(ctypes.c_ulong))
+        user32.CloseDesktop.argtypes = (ctypes.c_void_p,)
         handle = user32.OpenInputDesktop(0, False, DESKTOP_SWITCHDESKTOP)
         if not handle:
             return "unavailable"
@@ -1073,12 +1122,20 @@ class WindowsDriver:
             self.hotkey_thread.join(3)
 
 
-class X11Driver:
-    """Linux X11 driver：只经 XTest 注入 + XScreenSaver 查空闲，不提供控件树与窗口截图。
+class NativeDriverBase:
+    """X11 与 macOS 共用的本机原生驱动层。
 
-    与 Windows 的差别必须如实上报：没有 UIA 等价物（AT-SPI 未适配），无法判断密码框，
-    因此能力表不包含 desktop.screen；没有 _NET_WM_PID 的窗口一律不可接管。
+    两个平台真正一致的部分都在这里：原生批准对话框、托盘与全局热键轮询、窗口
+    规范化与黑名单过滤、租约状态、以及基于“系统空闲计时”的外部输入哨兵。
+    子类只负责三件平台相关的事：准备后端并逐项预检（prepare/_preflight）、
+    给出安全界面黑名单与停止热键文案、实现平台能力差异（控件树/截图/密码框）。
+    分开写两份会让两边的安全语义逐轮漂移，那是不可接受的。
     """
+
+    hotkey_text = HOTKEY_TEXT
+    security_processes = frozenset()
+    shell_classes = SHELL_CLASSES
+    checks_names = ACCEPTANCE_CHECKS
 
     def __init__(self, on_stop=None):
         self.on_stop = on_stop
@@ -1097,44 +1154,6 @@ class X11Driver:
         self.last_approval = ""
         self.approval_seconds = float(APPROVAL_SECONDS)
         self.acceptance_seconds = float(ACCEPTANCE_SECONDS)
-
-    def prepare(self):
-        require(sys.platform.startswith("linux"), "linux_only")
-        # XWayland 下 XTest 对原生 Wayland 客户端无效，整段会话都不可信。
-        require(not wayland_session(), "wayland_desktop_not_accepted")
-        require(bool(os.environ.get("DISPLAY")), "x11_display_unavailable")
-        from .x11 import X11
-
-        backend = X11()
-        try:
-            self._preflight(backend)
-        except Exception:
-            backend.close()
-            raise
-        self._backend = backend
-        self._start_hotkey_loop()
-        self._start_tray()
-        self.uia_probe = backend.probe()
-        self.uia_probe["tray"] = bool(self.tray_ready)
-        self.uia_probe["elements"] = "not_supported"
-        return dict(self.checks)
-
-    def _preflight(self, backend):
-        """逐项实测：枚举窗口、查空闲、查焦点、抓热键、开原生对话框，全过才算就绪。"""
-        self.checks = {name: False for name in ACCEPTANCE_CHECKS_X11}
-        require(bool(backend.windows(8)), "x11_no_visible_windows")
-        self.checks["x11"] = True
-        require(bool(backend.xss) and backend.idle_ms() >= 0, "lock_query_unavailable")
-        self.checks["lock_query"] = True
-        self.checks["input_sentinel"] = True
-        require(backend.focus() >= 0, "x11_focus_query_failed")
-        self.checks["focus_query"] = True
-        require(bool(backend.xtest), "x11_injection_unavailable")
-        self.checks["injection"] = True
-        require(self._dialog_ready(), "native_dialog_unavailable")
-        self.checks["native_dialog"] = True
-        require(bool(backend.grab_hotkey()), "emergency_hotkey_unavailable")
-        self.checks["hotkey"] = True
 
     @staticmethod
     def _dialog_ready():
@@ -1164,16 +1183,16 @@ class X11Driver:
                 "class_name": str(info.get("class_name") or "")[:120], "pid": pid,
                 "process": process, "rect": [int(value) for value in info["rect"]]}
 
-    @staticmethod
-    def _forbidden(info):
+    def _forbidden(self, info):
         return (info["pid"] == os.getpid()
-                or info["process"].lower() in LINUX_SECURITY_PROCESSES
-                or info["class_name"].lower() in SHELL_CLASSES)
+                or info["process"].lower() in self.security_processes
+                or info["class_name"].lower() in self.shell_classes)
 
     def window(self, xid):
         info = self._window(self._backend.info(int(xid)))
         require(not self._forbidden(info), "security_ui_not_targetable")
-        # 没有 _NET_WM_PID 就无法核对进程授权；宁可拒绝，也不降级成按窗口类放行。
+        # 拿不到进程就无法核对应用白名单；宁可拒绝，也不降级成按窗口类放行。
+        # Linux 上没有 _NET_WM_PID 的窗口就在这里被拦下，macOS 的 CGWindowList 永远带 PID。
         require(info["pid"] > 0 and bool(info["process"]), "desktop_window_pid_unavailable")
         return info
 
@@ -1181,16 +1200,9 @@ class X11Driver:
         if self._backend.locked():
             return True, []
         windows = [self._window(info) for info in self._backend.windows(limit)]
-        # 没有 _NET_WM_PID 的窗口永远不可接管，也不在列表里出现（宁可少给，不给错的）。
+        # 无法核对进程的窗口永远不可接管，也不在列表里出现（宁可少给，不给错的）。
         return False, [item for item in windows
                        if item["pid"] > 0 and not self._forbidden(item)]
-
-    def list_elements(self, hwnd, limit):
-        # X11 协议没有控件树；AT-SPI 未适配前不假装能列出元素。
-        return []
-
-    def invoke_element(self, hwnd, element, role, name):
-        raise Denied("desktop_element_not_supported_on_platform")
 
     def same_window(self, identity):
         try:
@@ -1207,13 +1219,6 @@ class X11Driver:
         except Exception:
             return True
 
-    def sensitive_focus(self, hwnd):
-        # X11 拿不到密码框信息，所以 Linux 不声明 desktop.screen；这里只报锁屏。
-        return self.secure()
-
-    def capture_window(self, hwnd):
-        raise Denied("desktop_capture_not_accepted_on_platform")
-
     # ---- 输入基线 ----
     def last_input(self):
         idle = self._backend.idle_ms()
@@ -1222,13 +1227,13 @@ class X11Driver:
 
     def external_input_since(self, baseline):
         try:
-            # 无新输入时 idle 随时间增长, last_input 保持恒定; 用户一按键就跳到当前时刻。
+            # 无新输入时空闲计时随时间增长, last_input 保持恒定; 用户一动就跳到当前时刻。
             return self.last_input() > float(baseline) + 0.1
         except Exception:
             return True
 
     def mark_baseline(self):
-        """注入后 X 服务器的 idle 会归零；等它反映本次注入，避免把自己的输入当成用户输入。"""
+        """注入会让系统的空闲计时归零；等它反映本次注入，避免把自己的输入当成用户输入。"""
         deadline = time.monotonic() + 0.5
         while time.monotonic() < deadline:
             try:
@@ -1288,7 +1293,7 @@ class X11Driver:
     def stop(self):
         if self.on_stop:
             self.on_stop()
-        self.set_status("桌面接管已停止: " + HOTKEY_TEXT)
+        self.set_status("桌面接管已停止: " + self.hotkey_text)
 
     def _start_hotkey_loop(self):
         def loop():
@@ -1307,7 +1312,7 @@ class X11Driver:
     def _start_tray(self):
         """托盘只是第二条停止通道：没有托盘宿主时如实记 false，不阻断热键。"""
         try:
-            # pystray 在无托盘宿主的 X 会话里会一直重试并往 stderr 打堆栈，先问清楚再启动。
+            # pystray 在无托盘宿主的会话里会一直重试并往 stderr 打堆栈，先问清楚再启动。
             if not (self._backend is not None and self._backend.tray_available()):
                 self.tray_ready = False
                 return
@@ -1326,7 +1331,7 @@ class X11Driver:
             draw.ellipse((8, 8, 56, 56), outline="black", width=4)
             menu = pystray.Menu(
                 pystray.MenuItem(lambda _: self.status, None, enabled=False),
-                pystray.MenuItem("停止桌面接管 (" + HOTKEY_TEXT + ")", self.stop, default=True))
+                pystray.MenuItem("停止桌面接管 (" + self.hotkey_text + ")", self.stop, default=True))
             icon = pystray.Icon("zops-companion-desktop", image, "Z-OPS Companion", menu)
             ready = threading.Event()
 
@@ -1373,7 +1378,7 @@ class X11Driver:
             root.protocol("WM_DELETE_WINDOW", decline)
             root.bind("<Escape>", lambda _event: decline())
             root.after(max(1, int(seconds * 1000)), expire)
-            # 默认焦点在“拒绝”：误按回车不会批准。
+            # 默认焦点在“拒绍”：误按回车不会批准。
             root.focus_force()
             root.update_idletasks()
             x = max(0, (root.winfo_screenwidth() - root.winfo_reqwidth()) // 2)
@@ -1399,10 +1404,10 @@ class X11Driver:
             f"允许动作: {', '.join(request['scopes'])}\n"
             f"原因: {request['reason']}\n\n"
             f"有效期: {LEASE_SECONDS} 秒，不自动续期。\n"
-            f"你操作鼠标键盘、切换/关闭窗口、锁屏或按 {HOTKEY_TEXT} 会立即暂停。\n"
+            f"你操作鼠标键盘、切换/关闭窗口、锁屏或按 {self.hotkey_text} 会立即暂停。\n"
             "网页、模型和远端消息不能代你批准。")
-        body += f"\n\n{int(self.approval_seconds)} 秒内无操作将自动拒绝。"
-        approved, timed_out = self._ask("Z-OPS Companion — 本机桌面接管", body, "允许", "拒绝",
+        body += f"\n\n{int(self.approval_seconds)} 秒内无操作将自动拒绍。"
+        approved, timed_out = self._ask("Z-OPS Companion — 本机桌面接管", body, "允许", "拒绍",
                                         seconds=self.approval_seconds)
         self.last_approval = ("timeout" if timed_out
                               else ("approved" if approved else "declined"))
@@ -1438,6 +1443,180 @@ class X11Driver:
                 pass
         if self._hotkey_thread is not None:
             self._hotkey_thread.join(2)
+
+
+class X11Driver(NativeDriverBase):
+    """Linux X11 driver：只经 XTest 注入 + XScreenSaver 查空闲，不提供控件树与窗口截图。
+
+    与 Windows 的差别必须如实上报：没有 UIA 等价物（AT-SPI 未适配），无法判断密码框，
+    因此能力表不包含 desktop.screen；没有 _NET_WM_PID 的窗口一律不可接管。
+    """
+
+    checks_names = ACCEPTANCE_CHECKS_X11
+    security_processes = LINUX_SECURITY_PROCESSES
+
+    def prepare(self):
+        require(sys.platform.startswith("linux"), "linux_only")
+        # XWayland 下 XTest 对原生 Wayland 客户端无效，整段会话都不可信。
+        require(not wayland_session(), "wayland_desktop_not_accepted")
+        require(bool(os.environ.get("DISPLAY")), "x11_display_unavailable")
+        from .x11 import X11
+
+        backend = X11()
+        try:
+            self._preflight(backend)
+        except Exception:
+            backend.close()
+            raise
+        self._backend = backend
+        self._start_hotkey_loop()
+        self._start_tray()
+        self.uia_probe = backend.probe()
+        self.uia_probe["tray"] = bool(self.tray_ready)
+        self.uia_probe["elements"] = "not_supported"
+        return dict(self.checks)
+
+    def _preflight(self, backend):
+        """逐项实测：枚举窗口、查空闲、查焦点、抓热键、开原生对话框，全过才算就绪。"""
+        self.checks = {name: False for name in ACCEPTANCE_CHECKS_X11}
+        require(bool(backend.windows(8)), "x11_no_visible_windows")
+        self.checks["x11"] = True
+        require(bool(backend.xss) and backend.idle_ms() >= 0, "lock_query_unavailable")
+        self.checks["lock_query"] = True
+        self.checks["input_sentinel"] = True
+        require(backend.focus() >= 0, "x11_focus_query_failed")
+        self.checks["focus_query"] = True
+        require(bool(backend.xtest), "x11_injection_unavailable")
+        self.checks["injection"] = True
+        require(self._dialog_ready(), "native_dialog_unavailable")
+        self.checks["native_dialog"] = True
+        require(bool(backend.grab_hotkey()), "emergency_hotkey_unavailable")
+        self.checks["hotkey"] = True
+
+    def list_elements(self, hwnd, limit):
+        # X11 协议没有控件树；AT-SPI 未适配前不假装能列出元素。
+        return []
+
+    def invoke_element(self, hwnd, element, role, name):
+        raise Denied("desktop_element_not_supported_on_platform")
+
+    # ---- 安全状态 ----
+    def sensitive_focus(self, hwnd):
+        # X11 拿不到密码框信息，所以 Linux 不声明 desktop.screen；这里只报锁屏。
+        return self.secure()
+
+    def capture_window(self, hwnd):
+        raise Denied("desktop_capture_not_accepted_on_platform")
+
+
+class MacDriver(NativeDriverBase):
+    """macOS driver：AX 读控件树与焦点子角色，CoreGraphics 做注入与窗口采集。
+
+    与 Linux X11 的实质差别：AX 能识别安全文本输入（AXSecureTextField），也
+    能只截被授权的那个窗口，因此可以声明 desktop.screen 并在密码框上主动暂停。
+    与 Windows 的差别：没有“安全桌面”那种独立桌面对象，锁屏走会话字典查询。
+
+    这一层没在实机上验收过（本机是 Linux）：预检只接受实测成功的项，辅助功能或屏幕
+    录制权限缺失时直接禁用桌面能力，不降级成“看起来可用”（Spec 第 84 条同类纪律）。
+    """
+
+    hotkey_text = macos_ax.HOTKEY_TEXT_MAC
+    security_processes = MACOS_SECURITY_PROCESSES
+    # macOS 没有 Windows 盾层壳窗口；Dock/壁纸由 layer 过滤排除，故不沿用 SHELL_CLASSES。
+    shell_classes = frozenset()
+    checks_names = ACCEPTANCE_CHECKS_MACOS
+
+    def prepare(self):
+        require(sys.platform == "darwin", "macos_only")
+        from .ax import AX
+
+        backend = AX()
+        try:
+            self._preflight(backend)
+        except Exception:
+            backend.close()
+            raise
+        self._backend = backend
+        self._start_hotkey_loop()
+        self._start_tray()
+        self.uia_probe = backend.probe()
+        self.uia_probe["tray"] = bool(self.tray_ready)
+        return dict(self.checks)
+
+    def _preflight(self, backend):
+        """逐项实测：辅助功能授权、窗口枚举、空闲哨兵、锁屏查询、焦点、对话框、
+        热键与采集权限，全过才算就绪。"""
+        self.checks = {name: False for name in self.checks_names}
+        # 没有辅助功能权限，任何注入都到不了应用；这一步失败时必须引导用户去授权。
+        require(bool(backend.trusted()), "macos_accessibility_permission_required")
+        require(bool(backend.windows(8)), "macos_no_visible_windows")
+        self.checks["ax"] = True
+        require(backend.idle_ms() >= 0, "input_sentinel_unavailable")
+        self.checks["input_sentinel"] = True
+        require(backend.lock_state() is not None, "lock_query_unavailable")
+        self.checks["lock_query"] = True
+        require(backend.focus() >= 0, "macos_focus_query_failed")
+        self.checks["focus_query"] = True
+        require(self._dialog_ready(), "native_dialog_unavailable")
+        self.checks["native_dialog"] = True
+        require(bool(backend.grab_hotkey()), "emergency_hotkey_unavailable")
+        self.checks["hotkey"] = True
+        # 采集权限未授予时不声明 desktop.screen；老系统没有预检符号则交给实际采集。
+        require(backend.capture_allowed() is not False, "macos_screen_capture_permission_required")
+        self.checks["capture"] = True
+
+    # ---- 控件树（AX） ----
+    def list_elements(self, hwnd, limit):
+        # 只收可激活控件（按钮/菜单/复选框等）且名字可读的那些；不读值也不读正文。
+        return self._backend.list_elements(int(hwnd), limit)
+
+    def invoke_element(self, hwnd, element, role, name):
+        # 下标 + 角色 + 名称三重核对后只发 AXPress；不回落成坐标点击。
+        return self._backend.invoke_element(int(hwnd), element, role, name)
+
+    # ---- 安全状态 ----
+    def sensitive_focus(self, hwnd):
+        """锁屏或密码框有焦点都算敏感：采集与输入都必须停下来。"""
+        if self.secure():
+            return True
+        try:
+            return bool(self._backend.sensitive_focus(int(hwnd)))
+        except Exception:
+            # 读不到焦点子角色时按敏感处理，不能因为“不确定”就继续截屏。
+            return True
+
+    def capture_window(self, hwnd):
+        """只采目标窗口自己的矩形：不截整屏、不截其它应用。"""
+        frame = self._backend.capture(int(hwnd), limit=FRAME_BYTES)
+        # encode_frame 会降级缩图，缩到极限仍超限就如实报错，不静默发超大帧。
+        require(len(frame) * 3 // 4 <= FRAME_BYTES, "desktop_capture_too_large")
+        return frame
+
+    def capture_probe(self):
+        """验收时真采一帧：权限位为真不等于拿得到像素。"""
+        windows = self._backend.windows(8)
+        require(bool(windows), "macos_no_visible_windows")
+        return bool(self.capture_window(windows[0]["hwnd"]))
+
+    def ax_app_report(self, extra=()):
+        """只读 AX 探测：回报窗口能否被 AX 解析以及可激活控件数，不含控件名与内容。
+
+        与 Windows 侧的 UIA 报告同一形状，所以验收记录的校验不用分叉；区别是
+        macOS 没有“记事本/计算器”这种固定首批应用，白名单为空时按当前可见窗口报。
+        """
+        wanted = {str(name).lower() for name in (extra or ())}
+        report = {}
+        for info in self.list_windows(60)[1]:
+            process = str(info.get("process") or "").lower()
+            if wanted and process not in wanted:
+                continue
+            try:
+                count = len(self.list_elements(info["hwnd"], 40))
+            except Exception:
+                report[process] = {"readable": False, "elements": 0}
+                continue
+            report[process] = {"readable": True, "elements": count}
+        return report
 
 
 def _control_role(info):
@@ -1478,14 +1657,17 @@ def local_desktop_probe():
         driver = WindowsDriver()
     elif sys.platform.startswith("linux"):
         driver = X11Driver()
+    elif sys.platform == "darwin":
+        driver = MacDriver()
     else:
         raise Denied("desktop_unsupported_platform")
     checks = {}
     try:
         checks = driver.prepare()
     finally:
+        hotkey_text = driver.hotkey_text
         driver.close()
-    return {"enabled": False, "checks": checks, "hotkey": HOTKEY_TEXT,
+    return {"enabled": False, "checks": checks, "hotkey": hotkey_text,
             "uia": dict(getattr(driver, "uia_probe", None) or {}),
             "reason": "probe_does_not_enable_remote_desktop"}
 
