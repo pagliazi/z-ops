@@ -5,7 +5,7 @@
 # 本脚本保留原有 start|stop|restart|status 用法, 内部转发 systemctl,
 # 防止误用旧 nohup 方式造成双实例。历史实现备份于 start-agents.sh.bak-legacy。
 
-UNITS=(orchestrator general_agent ops_agent network_agent vm_agent dev_agent browser_agent nms_agent gcoc_agent kb_agent computer_agent)
+UNITS=(orchestrator general_agent ops_agent network_agent vm_agent dev_agent browser_agent nms_agent opscore_agent kb_agent computer_agent)
 
 agent_units() { for a in "${UNITS[@]}"; do echo "zops-agent@$a.service"; done; }
 
@@ -28,7 +28,7 @@ case "${1:-status}" in
         echo ""
         echo "  feishu_bot: ${fs:-unknown}  (zops-feishu.service)"
         echo ""
-        echo "单 agent 操作: systemctl restart zops-agent@gcoc_agent  |  日志: tail -f logs/gcoc_agent.log"
+        echo "单 agent 操作: systemctl restart zops-agent@opscore_agent  |  日志: tail -f logs/opscore_agent.log"
         ;;
     *) echo "用法: $0 {start|stop|restart|status}"; exit 1 ;;
 esac

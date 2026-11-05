@@ -123,7 +123,7 @@ export function formatSec(ms: any) {
 
 export const AGENT_COLORS: Record<string, string> = {
   orchestrator: '#6366f1',
-  gcoc_agent: '#06b6d4',
+  opscore_agent: '#06b6d4',
   kb_agent: '#f59e0b',
   general_agent: '#10b981',
   nms_agent: '#ef4444',

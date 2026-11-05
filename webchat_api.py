@@ -206,7 +206,7 @@ def send_notify_email(subject: str, body: str, to_email: str = "") -> dict:
                 logger.info(f"[MAIL] MX 直投: {domain} -> {mx_host}")
 
         smtp = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
-        ehlo_domain = getattr(config, 'SMTP_EHLO_DOMAIN', 'gcoc-ai.example.com')
+        ehlo_domain = getattr(config, 'SMTP_EHLO_DOMAIN', 'opscore-ai.example.com')
         smtp.ehlo(ehlo_domain)
         if config.SMTP_USE_TLS:
             smtp.starttls()
@@ -268,7 +268,7 @@ async def ensure_admin_user():
         await r.hset(config.KEY_USERS, config.DEFAULT_ADMIN_USER, json.dumps(user_data, ensure_ascii=False))
         logger.info(f"已创建默认管理员账户: {config.DEFAULT_ADMIN_USER}")
 
-    # 预置 AD 管理员账号 (如 svc-gcoc)
+    # 预置 AD 管理员账号 (如 svc-opscore)
     for ldap_admin in config.LDAP_ADMIN_USERS.split(","):
         ldap_admin = ldap_admin.strip()
         if not ldap_admin:
@@ -340,7 +340,7 @@ async def lifespan(app: FastAPI):
         _closure_task = asyncio.create_task(_closure_worker_loop())
     except Exception as e:
         logger.warning(f"[lifespan] 告警闭环 worker 启动失败 (不阻断): {e}")
-    # P1 (task-c17): 任务运行时后台 — 孤儿回收恒启; Streams 消费 (GCOC 试点)
+    # P1 (task-c17): 任务运行时后台 — 孤儿回收恒启; Streams 消费 (OPS-CORE 试点)
     # 仅在 readiness 达标 (Redis>=6.2 等) 且 ZOPS_TR_STREAMS 开关开启时启动
     _reclaim_task = None
     _tr_consumer = None
@@ -354,7 +354,7 @@ async def lifespan(app: FastAPI):
             _tr_consumer = TaskConsumer(_rt.ledger, AgentDispatch(_rt),
                                         owner="zops-backend", lease_s=_rt.lease_s)
             await _tr_consumer.start()
-            logger.info("[lifespan] P1 Streams 消费已启动 (GCOC 试点路由)")
+            logger.info("[lifespan] P1 Streams 消费已启动 (OPS-CORE 试点路由)")
         else:
             logger.info("[lifespan] P1 Streams 消费未激活 (开关/门槛), 协调者模式运行")
     except Exception as e:
@@ -881,10 +881,10 @@ for _g in _NMS_PLAN_GROUPS:
 
 
 # 平台管理网段（判断告警对象属于平台多客户共享环境还是单客户环境）
-# 平台段: GCOC 管理平台 10.12.x、数据中心 ESXi/VM 段 10.161-165.x、vCenter 172.19.x、
-#        平台内部服务段 192.168.145.x(备份)/192.168.166.x(SCM邮件)；其余视为单客户/外部
-_NMS_PLATFORM_NETS = ["10.12.", "10.161.", "10.162.", "10.163.", "10.164.", "10.165.",
-                      "172.19.", "192.168.145.", "192.168.166."]
+# 平台段: OPS-CORE 管理平台 198.18.12.x、数据中心 ESXi/VM 段 198.18.161-165.x、vCenter 198.19.19.x、
+#        平台内部服务段 198.18.145.x(备份)/198.18.166.x(SCM邮件)；其余视为单客户/外部
+_NMS_PLATFORM_NETS = ["198.18.12.", "198.18.161.", "198.18.162.", "198.18.163.", "198.18.164.", "198.18.165.",
+                      "198.19.19.", "198.18.145.", "198.18.166."]
 
 
 import re as _nms_re
@@ -894,7 +894,7 @@ _IP4_RE = _nms_re.compile(r'\b(?:\d{1,3}\.){3}\d{1,3}\b')
 
 
 
-# 硬件类预案：命中时需从 GCOC-MGT 资产系统（存储资产 API）补充设备 SN 等资产信息
+# 硬件类预案：命中时需从 OPS-CORE-MGT 资产系统（存储资产 API）补充设备 SN 等资产信息
 _NMS_HARDWARE_TITLES = {"存储磁盘故障", "存储控制器故障", "存储电源故障", "ESXi电源故障",
                         "ESXi CPU/内存硬件故障", "存储故障", "ESXi网卡故障", "ESXI主机outage故障"}
 

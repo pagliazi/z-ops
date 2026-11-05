@@ -90,7 +90,7 @@ async def main():
             print("FAIL: 未找到 content frame")
             await browser.close()
             return
-        await agent._nms_select_filter(frame, "GCOC_use")
+        await agent._nms_select_filter(frame, "OPSCORE_use")
         await asyncio.sleep(3)
         res = await frame.evaluate(PROBE)
         print(json.dumps(res, ensure_ascii=False, indent=2))

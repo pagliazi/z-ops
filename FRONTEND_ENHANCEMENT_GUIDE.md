@@ -2,7 +2,7 @@
 
 ## 🎨 优化效果预览
 
-参考 GCOC 管理平台 (https://gcoc-mgt.example.com/vcd) 的现代化设计，主要优化包括：
+参考 OPS-CORE 管理平台 (https://opscore-mgt.example.com/vcd) 的现代化设计，主要优化包括：
 
 ### 1. 视觉美化
 - ✅ 渐变背景动画（紫色渐变）

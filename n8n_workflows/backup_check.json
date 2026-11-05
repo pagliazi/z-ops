@@ -24,7 +24,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:7789/api/gcoc/backup/status",
+        "url": "http://localhost:7789/api/opscore/backup/status",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -60,8 +60,8 @@
           }
         }
       },
-      "id": "gcoc-api",
-      "name": "查询GCOC备份",
+      "id": "opscore-api",
+      "name": "查询OPS-CORE备份",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
@@ -178,14 +178,14 @@
       "main": [
         [
           {
-            "node": "查询GCOC备份",
+            "node": "查询OPS-CORE备份",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "查询GCOC备份": {
+    "查询OPS-CORE备份": {
       "main": [
         [
           {
@@ -261,7 +261,7 @@
     "callerPolicy": "workflowsFromSameOwner"
   },
   "tags": [
-    "gcoc",
+    "opscore",
     "backup",
     "自动化"
   ],

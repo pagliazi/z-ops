@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  allowedDevOrigins: ['198.18.18.147', 'localhost', 'gcoc-ai.example.com'],
+  allowedDevOrigins: ['198.18.18.147', 'localhost', 'opscore-ai.example.com'],
 };
 
 export default nextConfig;

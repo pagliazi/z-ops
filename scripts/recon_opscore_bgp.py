@@ -1,4 +1,4 @@
-"""侦察 v2：GCOC_use 与 BGPStatus 匹配集交集——BGP 告警为何被归入 GCOC_use。"""
+"""侦察 v2：OPSCORE_use 与 BGPStatus 匹配集交集——BGP 告警为何被归入 OPSCORE_use。"""
 import asyncio
 import json
 import sys
@@ -37,15 +37,15 @@ async def main():
         bgp_serials = set(bgp_serials)
         print(f"BGPStatus 匹配: {len(bgp_serials)} 条")
 
-        # 3) GCOC_use 匹配集
-        gcoc = fmap.get("GCOC_use")
-        gcoc_serials, fell_back = await agent._nms_api_serials(page, gcoc)
-        gcoc_set = set(gcoc_serials)
-        print(f"GCOC_use 匹配: {len(gcoc_set)} 条 (fallback={fell_back})")
+        # 3) OPSCORE_use 匹配集
+        opscore = fmap.get("OPSCORE_use")
+        opscore_serials, fell_back = await agent._nms_api_serials(page, opscore)
+        opscore_set = set(opscore_serials)
+        print(f"OPSCORE_use 匹配: {len(opscore_set)} 条 (fallback={fell_back})")
 
-        # 4) 交集：GCOC_use 里的 BGP 告警
-        inter = gcoc_set & bgp_serials
-        print(f"\n交集 (GCOC_use ∩ BGPStatus): {len(inter)} 条")
+        # 4) 交集：OPSCORE_use 里的 BGP 告警
+        inter = opscore_set & bgp_serials
+        print(f"\n交集 (OPSCORE_use ∩ BGPStatus): {len(inter)} 条")
         if inter:
             print("\n=== 交集样本（前 15 条）===")
             for srl in list(inter)[:15]:
@@ -69,9 +69,9 @@ async def main():
                 print(f"  {k!r}: {v}")
 
             # 6) 非 BGP 交集样本的 EventGroup 分布（对照）
-            non_bgp = gcoc_set - bgp_serials
+            non_bgp = opscore_set - bgp_serials
             eg2 = Counter(merged[s].get("event_group") for s in non_bgp if s in merged)
-            print(f"\n=== GCOC_use 非BGP 部分 EventGroup Top 10 (共 {len(non_bgp)}) ===")
+            print(f"\n=== OPSCORE_use 非BGP 部分 EventGroup Top 10 (共 {len(non_bgp)}) ===")
             for k, v in eg2.most_common(10):
                 print(f"  {k!r}: {v}")
 

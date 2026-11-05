@@ -10,7 +10,7 @@ r = redis.Redis(host="127.0.0.1", port=6379, decode_responses=True)
 msg_id = f"verify-{int(time.time()*1000)}"
 reply_ch = f"zops:reply:{msg_id}"
 payload = {
-    "msg_id": msg_id, "source": "verify_script", "target": "gcoc_agent",
+    "msg_id": msg_id, "source": "verify_script", "target": "opscore_agent",
     "action": "smartops_vms", "params": {"search": "ESXI-02"},
     "text": "查询 ESXI-02 主机上的虚拟机列表",
     "timestamp": time.time(), "reply_to": "",
@@ -21,7 +21,7 @@ print(f">>> 发送查询 (msg_id={msg_id}), 订阅 {reply_ch}")
 t0 = time.time()
 first_delta_at = None
 delta_bytes = 0
-r.publish("zops:gcoc_agent", json.dumps(payload))
+r.publish("zops:opscore_agent", json.dumps(payload))
 
 deadline = time.time() + 180
 while time.time() < deadline:

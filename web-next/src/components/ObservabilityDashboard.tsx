@@ -1019,7 +1019,7 @@ function ToolPoolTab() {
   useEffect(() => { load(); }, [load]);
 
   // Tool distribution pie (注册面: 各 agent 注册工具数)
-  // 口径说明: 仅统计注册了可执行工具 (ToolDef) 的 Agent —— 当前工具执行面集中在 gcoc_agent
+  // 口径说明: 仅统计注册了可执行工具 (ToolDef) 的 Agent —— 当前工具执行面集中在 opscore_agent
   // (数据查询/CMDB/备份等 21 个工具); kb/general/nms/orchestrator 等为对话/动作型 Agent,
   // 能力经消息路由委派 (Agents-as-Tools), 本身无本地工具 → tool_count=0 属正常, 不计入分布
   const toolDist = agents

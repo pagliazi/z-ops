@@ -31,25 +31,25 @@ interface ArchitectureViewProps {
 
 const allAgents = [
   'general_agent', 'ops_agent', 'network_agent', 'vm_agent', 
-  'dev_agent', 'browser_agent', 'gcoc_agent', 'kb_agent'
+  'dev_agent', 'browser_agent', 'opscore_agent', 'kb_agent'
 ];
 
 const agentToServices: Record<string, string[]> = {
   general_agent: ['llm', 'kb'],
-  ops_agent: ['llm', 'gcoc1', 'gcoc2'],
-  network_agent: ['llm', 'gcoc1'],
-  vm_agent: ['llm', 'vmware', 'gcoc2'],
+  ops_agent: ['llm', 'opscore1', 'opscore2'],
+  network_agent: ['llm', 'opscore1'],
+  vm_agent: ['llm', 'vmware', 'opscore2'],
   dev_agent: ['llm'],
   browser_agent: ['llm'],
-  gcoc_agent: ['llm', 'gcoc1', 'gcoc2'],
+  opscore_agent: ['llm', 'opscore1', 'opscore2'],
   kb_agent: ['llm', 'kb']
 };
 
 const services = [
   { id: 'llm', icon: Cpu, label: 'LLM API', color: '#10b981' },
   { id: 'kb', icon: BookOpen, label: '知识库', color: '#8b5cf6' },
-  { id: 'gcoc1', icon: Server, label: 'GCOC信息', color: '#3b82f6' },
-  { id: 'gcoc2', icon: Database, label: 'GCOC资源', color: '#6366f1' },
+  { id: 'opscore1', icon: Server, label: 'OPS-CORE信息', color: '#3b82f6' },
+  { id: 'opscore2', icon: Database, label: 'OPS-CORE资源', color: '#6366f1' },
   { id: 'vmware', icon: Cloud, label: 'VMware', color: '#f97316' },
 ];
 

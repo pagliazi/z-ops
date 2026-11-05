@@ -185,7 +185,7 @@ async def api_notify_test(
     <table style="width:100%; border-collapse:collapse; margin:16px 0;">
       <tr><td style="padding:8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">发送时间</td><td style="padding:8px; border:1px solid #e5e7eb;">{now}</td></tr>
       <tr><td style="padding:8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">发件人</td><td style="padding:8px; border:1px solid #e5e7eb;">{config.SMTP_FROM}</td></tr>
-      <tr><td style="padding:8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">服务器</td><td style="padding:8px; border:1px solid #e5e7eb;">gcoc-ai.example.com</td></tr>
+      <tr><td style="padding:8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">服务器</td><td style="padding:8px; border:1px solid #e5e7eb;">opscore-ai.example.com</td></tr>
       <tr><td style="padding:8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">MX 直投</td><td style="padding:8px; border:1px solid #e5e7eb;">{"开启" if config.SMTP_MX_DIRECT else "关闭"}</td></tr>
       <tr><td style="padding:8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">测试操作人</td><td style="padding:8px; border:1px solid #e5e7eb;">{current_user}</td></tr>
       <tr><td style="padding:8px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:600;">结果</td><td style="padding:8px; border:1px solid #e5e7eb; color:green; font-weight:600;">✅ 邮件通知功能正常</td></tr>

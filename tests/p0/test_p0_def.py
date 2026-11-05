@@ -36,7 +36,7 @@ async def test_wiki_visibility(tmp):
     syn.get_wiki_store = lambda: store   # 隔离: 不碰生产 wiki 单例
 
     # 私聊显式记忆 (audience 空) → private 仅本人可见
-    pid_priv = syn.save_explicit_memory("GCOC 管理台我的账号是 op8888", "alice")
+    pid_priv = syn.save_explicit_memory("OPS-CORE 管理台我的账号是 op8888", "alice")
     # 群聊显式记忆 → group 仅该群可见
     pid_grp = syn.save_explicit_memory("本群值班电话 12345", "bob",
                                        audience="feishu:group:oc_g1")

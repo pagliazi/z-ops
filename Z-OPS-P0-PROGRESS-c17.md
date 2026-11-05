@@ -56,7 +56,7 @@
 | 飞书群受众 (P0-D) | `feishu/gateway.py`、`conversation.py`、`core/memory/wiki_query.py`、`synthesizer.py`、`orchestrator.py` | 入口透传 chat_type；群聊 audience=`feishu:group:{chat_id}`（缺失按群 fail-closed）；**私聊显式记忆 visibility=private、群记忆 group+audience，检索前过滤**——修复「私聊『记住…』落全局 wiki 后被注入任何人/群回复」的真实泄漏链；公共经验页不受影响；orchestrator 保存记忆带 audience 并在回复注明可见范围 |
 | NMS 服务主体 (P0-E) | `agents/nms_agent.py`、`api/routers/agents.py` | **移除跨用户 SSO 会话借用**（周期任务只认服务账号会话 → zops.env 显式服务凭据）；无会话且无服务凭据 → 暂停并推送原因（4h 去重）；全局 NMS 快照 API 收权（`/api/nms/groups` admin-only、`/api/nms/channels` admin/notify.manage）；会话失效告警恢复指引改为服务账号 |
 | n8n 回调签名 (P0-F) | `core/n8n_callback_auth.py`（新增）、`api/routers/n8n.py`、`config.py` | HMAC-SHA256(方法+路径+原始body+ts+nonce)、±5min 窗口、nonce 防重放、事件持久幂等去重（7d）、approval 绑定真实审批单、workflow 绑定 execution_id；**密钥未配置 → 503 暂停不开放匿名回退**；回调主体为 n8n 服务（approver 不再作为自报 username）；`zops.env` 已生成 `N8N_CALLBACK_SECRET`——**未升级签名的 n8n 工作流回调将被 401 拒绝**，升级配方见轮换清单 |
-| 硬编码凭据 (P0-G) | 全仓扫描 | 可执行代码（py/sh/yaml）无硬编码凭据字面量（env 受控引用机制已在 `core/secret_ref.py`）；`zops.env.bak-20260805` 含 13+ 真实凭据且全局可读 → 已收 600（内容未动）；轮换清单已出（JWT_SECRET/LLM keys/VCENTER/GCOC/NMS 等 13 项，管理员执行） |
+| 硬编码凭据 (P0-G) | 全仓扫描 | 可执行代码（py/sh/yaml）无硬编码凭据字面量（env 受控引用机制已在 `core/secret_ref.py`）；`zops.env.bak-20260805` 含 13+ 真实凭据且全局可读 → 已收 600（内容未动）；轮换清单已出（JWT_SECRET/LLM keys/VCENTER/OPS-CORE/NMS 等 13 项，管理员执行） |
 
 ## 部署记录（2026-10-13）
 

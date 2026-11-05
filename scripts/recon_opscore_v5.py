@@ -1,4 +1,4 @@
-"""侦察 v5：同 serial 在主集 Default 视图 vs GCOC_use GroupByDevice 视图的内容对比。"""
+"""侦察 v5：同 serial 在主集 Default 视图 vs OPSCORE_use GroupByDevice 视图的内容对比。"""
 import asyncio
 import json
 import sys
@@ -40,8 +40,8 @@ async def main():
                 for k in ("EventGroup", "AlertGroup", "Summary", "Node", "NodeAlias"):
                     print(f"    {k} = {str(d.get(k))[:60]!r}")
 
-        # 2) GCOC_use GroupByDevice 视图
-        f = fmap.get("GCOC_use")
+        # 2) OPSCORE_use GroupByDevice 视图
+        f = fmap.get("OPSCORE_use")
         url = agent._nms_api_url(f["name"], "global", f["view"], "false")
         resp = await page.request.get(url, headers={"Accept-Encoding": "identity"})
         obj = json.loads(await resp.text())
@@ -50,19 +50,19 @@ async def main():
         grows = obj["rows"][0] if obj.get("rows") else []
         gserials = [x for x in str(ds0.get("identifierList") or "").split(",")
                     if x.strip()]
-        print(f"\nGCOC_use rows={len(grows)} serials={len(gserials)} fields={gfields}")
+        print(f"\nOPSCORE_use rows={len(grows)} serials={len(gserials)} fields={gfields}")
         for s in targets:
             if s in gserials:
                 idx = gserials.index(s)
                 row = grows[idx] if idx < len(grows) else None
-                print(f"\nGCOC_use serial={s} @idx={idx}: {'ROW' if row else 'NO ROW'}")
+                print(f"\nOPSCORE_use serial={s} @idx={idx}: {'ROW' if row else 'NO ROW'}")
                 if row:
                     d = dict(zip(gfields, row))
                     for k in ("EventGroup", "AlertGroup", "Summary", "Node", "NodeAlias", "Service", "Customer"):
                         if k in d:
                             print(f"    {k} = {str(d[k])[:60]!r}")
             else:
-                print(f"\nGCOC_use serial={s}: NOT IN LIST")
+                print(f"\nOPSCORE_use serial={s}: NOT IN LIST")
 
         await browser.close()
 

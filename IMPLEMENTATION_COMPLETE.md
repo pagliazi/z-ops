@@ -95,13 +95,13 @@ SandboxConfig(
 - ❌ `JWT_SECRET` (原默认值: "")
 - ❌ `VCENTER_PASS` (原默认值: None)
 - ❌ `WEBCHAT_AUTH_PASS` (原默认值: "")
-- ❌ `GCOC_INFO_PASS` (原默认值: None)
-- ❌ `GCOC_MGT_PASS` (原默认值: None)
+- ❌ `OPSCORE_INFO_PASS` (原默认值: None)
+- ❌ `OPSCORE_MGT_PASS` (原默认值: None)
 - ❌ `KB_API_TOKEN` (原默认值: "")
 - ❌ `HA_API_TOKEN` (原默认值: "")
 - ❌ `SMTP_USER` (原默认值: "")
 - ❌ `SMTP_PASSWORD` (原默认值: "")
-- ❌ `LDAP_ADMIN_USERS` (原默认值: "svc-gcoc")
+- ❌ `LDAP_ADMIN_USERS` (原默认值: "svc-opscore")
 
 **支持的 SecretRef 格式**:
 ```bash
@@ -276,8 +276,8 @@ zops dry-run                  # Dry-run 配置验证
 - [ ] `LDAP_BIND_PASSWORD`
 - [ ] `VCENTER_PASS`
 - [ ] `PVE_TOKEN_SECRET`
-- [ ] `GCOC_INFO_PASS`
-- [ ] `GCOC_MGT_PASS`
+- [ ] `OPSCORE_INFO_PASS`
+- [ ] `OPSCORE_MGT_PASS`
 - [ ] `KB_API_TOKEN`
 - [ ] `HA_API_TOKEN`
 - [ ] `SMTP_USER`

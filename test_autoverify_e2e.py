@@ -27,7 +27,7 @@ async def main():
     r = sr.from_url(cfg.REDIS_URL, decode_responses=True)
     backup = open(LEDGER).read()
     tok = f"av-{int(now)}"
-    r.set(cfg.key_token(tok), "svc-gcoc", ex=600)
+    r.set(cfg.key_token(tok), "svc-opscore", ex=600)
     H = {"Authorization": f"Bearer {tok}"}
     try:
         async with httpx.AsyncClient(timeout=30) as c:

@@ -7,7 +7,7 @@
 ### 一、 核心优化方向：重新定位 n8n 与 Agent 的关系
 
 在目前的架构中，Agent 和 N8N 可能是并行的，或者是 Agent 偶尔调用 N8N。优化后，它们应该形成**双向互动**的闭环：
-1. **n8n as Tools (执行器)**：Agent 将复杂、标准化、跨系统的操作（如：在 VMware 建机并配置 DNS，然后更新 GCOC）交由 n8n 工作流执行，而不是自己写一堆 Python API 请求代码。
+1. **n8n as Tools (执行器)**：Agent 将复杂、标准化、跨系统的操作（如：在 VMware 建机并配置 DNS，然后更新 OPS-CORE）交由 n8n 工作流执行，而不是自己写一堆 Python API 请求代码。
 2. **n8n as Triggers (感知器)**：将系统从“人问机器答”变为“机器主动巡检”。系统告警（如 Zabbix/Prometheus Webhook）先打到 n8n，n8n 预处理后主动唤醒 `ops_agent` 进行诊断，最后推送到飞书。
 
 ---
@@ -15,9 +15,9 @@
 ### 二、 具体优化方案拆解
 
 #### 1. 技能层的解耦与外包 (Skill Offloading)
-目前你的 `skills/` 目录下有大量纯手写的 Python 脚本（如 `vm/`, `network/`, `gcoc/`）。随着对接系统增多，这部分代码会极难维护。
+目前你的 `skills/` 目录下有大量纯手写的 Python 脚本（如 `vm/`, `network/`, `opscore/`）。随着对接系统增多，这部分代码会极难维护。
 
-* **优化策略**：保留 `dev_agent` 中的沙箱脚本执行能力（用于处理临时性、非标准需求），但将**标准化的平台对接（GCOC、AD、VMware）全部迁移到 n8n**。
+* **优化策略**：保留 `dev_agent` 中的沙箱脚本执行能力（用于处理临时性、非标准需求），但将**标准化的平台对接（OPS-CORE、AD、VMware）全部迁移到 n8n**。
 * **实现方式**：
     * 在 n8n 中编排好标准化动作（例如：`Create_VM_Workflow`，`Query_AD_User_Workflow`）。
     * 在 Z-OPS 的 `skill_base.py` 中，封装一个通用的 `call_n8n_webhook(workflow_id, payload)` 方法。
@@ -71,7 +71,7 @@
 │         ▼                                        ▼               │
 │  ┌─────────────┐                          ┌─────────────┐        │
 │  │ 内部设施 API │                          │ Orchestrator│        │
-│  │ (VM/GCOC等) │                          └──────┬──────┘        │
+│  │ (VM/OPS-CORE等) │                          └──────┬──────┘        │
 │  └─────────────┘                                 │               │
 │                                                  ▼               │
 │                                           ┌─────────────┐        │

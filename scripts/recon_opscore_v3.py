@@ -1,4 +1,4 @@
-"""侦察 v3：GCOC_use 重名/类型/多次抓取漂移 + identifierList 与 BGPStatus 交集。"""
+"""侦察 v3：OPSCORE_use 重名/类型/多次抓取漂移 + identifierList 与 BGPStatus 交集。"""
 import asyncio
 import json
 import re
@@ -20,17 +20,17 @@ async def main():
 
         filters = await agent._nms_fetch_filters_meta(page)
         print(f"共 {len(filters)} 个 filter")
-        gcocs = [f for f in filters if f["name"] == "GCOC_use"]
-        print(f"\n=== GCOC_use 定义条目数: {len(gcocs)} ===")
-        for i, f in enumerate(gcocs):
+        opscores = [f for f in filters if f["name"] == "OPSCORE_use"]
+        print(f"\n=== OPSCORE_use 定义条目数: {len(opscores)} ===")
+        for i, f in enumerate(opscores):
             print(f"  [{i}] type={f['type']!r} view={f['view']!r} "
                   f"sql_len={len(f['sql'])}")
             print(f"      sql 开头: {f['sql'][:120]!r}")
 
-        # 所有名字含 GCOC/BGP 的 filter
-        print("\n=== 名称含 GCOC/BGP 的 filter ===")
+        # 所有名字含 OPS-CORE/BGP 的 filter
+        print("\n=== 名称含 OPS-CORE/BGP 的 filter ===")
         for f in filters:
-            if "GCOC" in f["name"] or "BGP" in f["name"]:
+            if "OPS-CORE" in f["name"] or "BGP" in f["name"]:
                 print(f"  {f['name']!r} type={f['type']!r} view={f['view']!r} "
                       f"sql_len={len(f['sql'])}")
 
@@ -51,13 +51,13 @@ async def main():
             merged[serials[i]] = agent._nms_row_to_alarm(fields, rows[i], serials[i])
         print(f"主集 AllEvents: {len(merged)} 条")
 
-        # GCOC_use 连续抓 3 次，看漂移
+        # OPSCORE_use 连续抓 3 次，看漂移
         for rnd in range(3):
-            gcoc_serials, fell_back = await agent._nms_api_serials(
-                page, fmap.get("GCOC_use"))
-            gcoc_set = set(gcoc_serials)
-            inter = gcoc_set & bgp_set
-            print(f"\n[第{rnd+1}次] GCOC_use 匹配 {len(gcoc_set)} "
+            opscore_serials, fell_back = await agent._nms_api_serials(
+                page, fmap.get("OPSCORE_use"))
+            opscore_set = set(opscore_serials)
+            inter = opscore_set & bgp_set
+            print(f"\n[第{rnd+1}次] OPSCORE_use 匹配 {len(opscore_set)} "
                   f"(fallback={fell_back}), 与 BGP 交集 {len(inter)}")
             if inter:
                 for srl in list(inter)[:6]:
@@ -65,13 +65,13 @@ async def main():
                     print(f"    srl={srl} EventGroup={a.get('event_group')!r} "
                           f"Summary={str(a.get('summary'))[:60]!r}")
 
-        # 原始响应结构：GCOC_use 用 global 类型请求，看 datasource 名
+        # 原始响应结构：OPSCORE_use 用 global 类型请求，看 datasource 名
         root = config.NMS_CONSOLE_URL.split("/ibm/console")[0].rstrip("/")
-        f = fmap.get("GCOC_use")
+        f = fmap.get("OPSCORE_use")
         url = agent._nms_api_url(f["name"], "global", f["view"], "false")
         resp = await page.request.get(url, headers={"Accept-Encoding": "identity"})
         body = await resp.text()
-        print(f"\nGCOC_use global 请求 status={resp.status}, body_len={len(body)}")
+        print(f"\nOPSCORE_use global 请求 status={resp.status}, body_len={len(body)}")
         m = re.search(r'"identifierList":"([^"]*)"', body)
         if m:
             ids = [x for x in m.group(1).split(",") if x.strip()]

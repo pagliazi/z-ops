@@ -42,20 +42,20 @@ class N8nToolConfig:
             "category": "vm"
         },
         
-        # GCOC 平台类
+        # OPS-CORE 平台类
         "backup_check": {
             "workflow_id": "backup_check_workflow",
             "description": "检查备份状态",
             "params": ["gid", "site"],
             "require_approval": False,
-            "category": "gcoc"
+            "category": "opscore"
         },
         "cmdb_sync": {
             "workflow_id": "cmdb_sync_workflow",
             "description": "同步 CMDB 主机信息",
             "params": [],
             "require_approval": False,
-            "category": "gcoc"
+            "category": "opscore"
         },
         
         # AD/LDAP 类

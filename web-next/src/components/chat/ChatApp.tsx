@@ -130,7 +130,7 @@ export async function* recoverSessionReply(taskId: string, signal: AbortSignal):
 
 const AGENTS = [
   { id: '', label: '智能助手', icon: Sparkles, desc: '自动路由到最合适的专家' },
-  { id: 'gcoc_agent', label: '数据查询', icon: Cpu, desc: 'VM/备份/CMDB 实时生产数据' },
+  { id: 'opscore_agent', label: '数据查询', icon: Cpu, desc: 'VM/备份/CMDB 实时生产数据' },
   { id: 'ops_agent', label: '运维诊断', icon: PenLine, desc: '主机检查/日志分析/健康报告' },
   { id: 'kb_agent', label: '知识库', icon: MessageSquare, desc: '内部知识库检索问答' },
   { id: 'dev_agent', label: '脚本执行', icon: PenLine, desc: '脚本生成与登记执行' },

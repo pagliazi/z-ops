@@ -226,7 +226,7 @@ background: linear-gradient(135deg, #667eea, #764ba2);  // ✅ 渐变
 - [GSAP](https://greensock.com)
 
 ### 灵感来源
-- [GCOC 管理平台](https://gcoc-mgt.example.com/vcd)
+- [OPS-CORE 管理平台](https://opscore-mgt.example.com/vcd)
 - [Dribbble](https://dribbble.com)
 - [Behance](https://behance.net)
 
@@ -247,4 +247,4 @@ background: linear-gradient(135deg, #667eea, #764ba2);  // ✅ 渐变
 
 *优化完成时间：2026-03-09*  
 *优化版本：v2.0*  
-*参考设计：GCOC 管理平台*
+*参考设计：OPS-CORE 管理平台*

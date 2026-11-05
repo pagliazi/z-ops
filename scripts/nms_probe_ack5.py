@@ -1,6 +1,6 @@
 """端到端验证：Build Quick Filter 构建 Acknowledged=0（未确认）快速过滤。
 
-流程：切 GCOC_use → 记录表格指纹 → 展开 quickfilter 菜单 → Build Quick Filter
+流程：切 OPSCORE_use → 记录表格指纹 → 展开 quickfilter 菜单 → Build Quick Filter
 → Field 选 Acknowledged → Operator 选 Equals → Term=0 → Apply → 对比指纹 → 截图。
 """
 import asyncio
@@ -46,7 +46,7 @@ async def main():
             print("FAIL: 未找到 content frame")
             await browser.close()
             return
-        await agent._nms_select_filter(frame, "GCOC_use")
+        await agent._nms_select_filter(frame, "OPSCORE_use")
         await asyncio.sleep(3)
         before = await agent._nms_table_snapshot(frame)
         print(f"[1] 过滤前表格指纹长度: {len(before)}")

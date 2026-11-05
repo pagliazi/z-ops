@@ -1,27 +1,27 @@
-"""GCOC 对外 API 客户端（Token 版）。
+"""OPS-CORE 对外 API 客户端（Token 版）。
 
-用途：替代 gcoc-ai 上「用 op 个人 AD 账号登录 → 拿 sessionid → 带 Cookie 调接口」的实现。
+用途：替代 opscore-ai 上「用 op 个人 AD 账号登录 → 拿 sessionid → 带 Cookie 调接口」的实现。
 那个做法有两个硬伤：每天重复登录会在 AD 侧累计失败绑定次数把账号锁死；
 session 只有 24 小时，过期就中断调用（401 后再登录，循环往复）。
 
 用法：
-    export GCOC_BASE_URL='https://gcoc-info.example.com'
-    export GCOC_API_TOKEN='<向 GCOC 管理员索取，145 上 manage.py dns_token list 可查>'
+    export OPSCORE_BASE_URL='https://opscore-info.example.com'
+    export OPSCORE_API_TOKEN='<向 OPS-CORE 管理员索取，145 上 manage.py dns_token list 可查>'
 
-    python3 gcoc_ai_client.py        # 自检：逐个接口各打一发
+    python3 opscore_ai_client.py        # 自检：逐个接口各打一发
 
-    from gcoc_ai_client import gcoc
-    page = gcoc.cmdb_page(search='TWTCHFET3112CEPH', page_size=500)
-    ans = gcoc.dns_query(['qq.com'], 'A')
+    from opscore_ai_client import opscore
+    page = opscore.cmdb_page(search='TWTCHFET3112CEPH', page_size=500)
+    ans = opscore.dns_query(['qq.com'], 'A')
 
-已封装 GCOC 全部对外只读接口（gcoc-ai 实际用到的 7 个）：
+已封装 OPS-CORE 全部对外只读接口（opscore-ai 实际用到的 7 个）：
     cmdb_page / site_info / alarm_info / monitor_info / case_info / dns_query / dns_compare
-未封装的接口用 gcoc.get('/api/xxx/', **params) 或 gcoc.post(path, payload) 直调。
+未封装的接口用 opscore.get('/api/xxx/', **params) 或 opscore.post(path, payload) 直调。
 
-依赖：httpx（gcoc-ai 现有 0.26.x 即可）
+依赖：httpx（opscore-ai 现有 0.26.x 即可）
 错误码约定：
     401 Token 缺失/无效/被吊销     -> 不要重试，更不要改用账号密码登录
-    403 Token 无该 scope 或来源 IP 不在白名单 -> 找 GCOC 管理员调 Token
+    403 Token 无该 scope 或来源 IP 不在白名单 -> 找 OPS-CORE 管理员调 Token
     429 超过 30 次/分钟            -> 退避后重试（本客户端自动做 3 次退避）
 """
 import os
@@ -29,11 +29,11 @@ import time
 
 import httpx
 
-DEFAULT_BASE_URL = 'https://gcoc-info.example.com'
+DEFAULT_BASE_URL = 'https://opscore-info.example.com'
 
 
-class GCOCError(RuntimeError):
-    """GCOC 接口调用失败（鉴权类错误不重试）。"""
+class OpscoreError(RuntimeError):
+    """OPS-CORE 接口调用失败（鉴权类错误不重试）。"""
 
     def __init__(self, status_code, message, payload=None):
         super().__init__(f'[{status_code}] {message}')
@@ -41,12 +41,12 @@ class GCOCError(RuntimeError):
         self.payload = payload
 
 
-class GCOCClient:
+class OpscoreClient:
     def __init__(self, token=None, base_url=None, timeout=60.0, max_retries=3):
-        token = token or os.environ.get('GCOC_API_TOKEN', '').strip()
+        token = token or os.environ.get('OPSCORE_API_TOKEN', '').strip()
         if not token:
-            raise GCOCError(0, '缺少 GCOC_API_TOKEN 环境变量或 token 参数')
-        self.base_url = (base_url or os.environ.get('GCOC_BASE_URL', DEFAULT_BASE_URL)).rstrip('/')
+            raise OpscoreError(0, '缺少 OPSCORE_API_TOKEN 环境变量或 token 参数')
+        self.base_url = (base_url or os.environ.get('OPSCORE_BASE_URL', DEFAULT_BASE_URL)).rstrip('/')
         self.max_retries = max_retries
         self._client = httpx.Client(
             base_url=self.base_url,
@@ -72,7 +72,7 @@ class GCOCClient:
                 time.sleep(5 * (attempt + 1))
                 continue
             if resp.status_code >= 500:               # 服务端错误：退避重试
-                last_exc = GCOCError(resp.status_code, resp.text[:200])
+                last_exc = OpscoreError(resp.status_code, resp.text[:200])
                 time.sleep(2 * (attempt + 1))
                 continue
 
@@ -83,20 +83,20 @@ class GCOCClient:
                     detail = resp.text[:200]
                 hint = '请检查 Token 是否有效' if resp.status_code == 401 else \
                     '请确认 Token 已授予对应 scope 且来源 IP 在白名单'
-                raise GCOCError(resp.status_code, f'{detail}（{hint}）')
+                raise OpscoreError(resp.status_code, f'{detail}（{hint}）')
 
             try:
                 body = resp.json()
             except ValueError:
-                raise GCOCError(resp.status_code, f'响应非 JSON: {resp.text[:200]}')
+                raise OpscoreError(resp.status_code, f'响应非 JSON: {resp.text[:200]}')
 
             if resp.status_code >= 400 or body.get('success') is False:
-                raise GCOCError(resp.status_code, body.get('error', '接口返回失败'), body)
+                raise OpscoreError(resp.status_code, body.get('error', '接口返回失败'), body)
             return body
 
-        if isinstance(last_exc, GCOCError):
+        if isinstance(last_exc, OpscoreError):
             raise last_exc
-        raise GCOCError(0, f'请求 {path} 重试 {self.max_retries} 次仍失败: {last_exc}')
+        raise OpscoreError(0, f'请求 {path} 重试 {self.max_retries} 次仍失败: {last_exc}')
 
     # ---------- 业务接口 ----------
     def get(self, path, **params):
@@ -138,7 +138,7 @@ class GCOCClient:
         """DNS 解析查询（scope=dns）。
 
         domains: 字符串或列表，多域名会自动按行拼接批量查询。
-        server : 指定 DNS 服务器 IP，默认 GCOC 侧 223.5.5.5。
+        server : 指定 DNS 服务器 IP，默认 OPS-CORE 侧 223.5.5.5。
         """
         if isinstance(domains, (list, tuple)):
             domains = '\n'.join(domains)
@@ -173,14 +173,14 @@ class GCOCClient:
         self.close()
 
 
-# 进程内单例：147 现有代码直接 from gcoc_ai_client import gcoc 即可复用连接
-gcoc = None
-if os.environ.get('GCOC_API_TOKEN'):
-    gcoc = GCOCClient()
+# 进程内单例：147 现有代码直接 from opscore_ai_client import opscore 即可复用连接
+opscore = None
+if os.environ.get('OPSCORE_API_TOKEN'):
+    opscore = OpscoreClient()
 
 
 if __name__ == '__main__':
-    client = gcoc or GCOCClient()
+    client = opscore or OpscoreClient()
     print(f'BASE = {client.base_url}')
 
     page = client.cmdb_page(page_size=1)

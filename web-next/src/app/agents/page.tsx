@@ -30,14 +30,14 @@ interface AgentsResponse {
 
 // ═══ Icons & Colors ═══
 const ICON_MAP: Record<string, React.ElementType> = {
-  orchestrator: Brain, general_agent: HelpCircle, gcoc_agent: Database,
+  orchestrator: Brain, general_agent: HelpCircle, opscore_agent: Database,
   kb_agent: BookOpen, ops_agent: Server, network_agent: Network,
   vm_agent: Cloud, dev_agent: Code, browser_agent: Globe, nms_agent: Activity,
 };
 const COLOR_MAP: Record<string, { main: string; light: string; ring: string }> = {
   orchestrator:   { main: '#8b5cf6', light: '#ede9fe', ring: 'ring-violet-400' },
   general_agent:  { main: '#06b6d4', light: '#cffafe', ring: 'ring-cyan-400' },
-  gcoc_agent:     { main: '#ec4899', light: '#fce7f3', ring: 'ring-pink-400' },
+  opscore_agent:     { main: '#ec4899', light: '#fce7f3', ring: 'ring-pink-400' },
   kb_agent:       { main: '#6366f1', light: '#e0e7ff', ring: 'ring-indigo-400' },
   ops_agent:      { main: '#f97316', light: '#ffedd5', ring: 'ring-orange-400' },
   network_agent:  { main: '#3b82f6', light: '#dbeafe', ring: 'ring-blue-400' },
@@ -50,16 +50,16 @@ const DEF_COLOR = { main: '#6b7280', light: '#f3f4f6', ring: 'ring-gray-400' };
 
 // Agent-to-Service mapping for architecture view
 const AGENT_SERVICES: Record<string, string[]> = {
-  orchestrator: [], general_agent: ['llm', 'kb'], gcoc_agent: ['llm', 'gcoc_info', 'gcoc_res'],
-  kb_agent: ['llm', 'kb'], ops_agent: ['llm', 'gcoc_info', 'n8n'], network_agent: ['llm', 'gcoc_info'],
-  vm_agent: ['llm', 'vmware', 'gcoc_res', 'n8n'], dev_agent: ['llm'], browser_agent: ['llm'],
-  nms_agent: ['llm', 'gcoc_info'],
+  orchestrator: [], general_agent: ['llm', 'kb'], opscore_agent: ['llm', 'opscore_info', 'opscore_res'],
+  kb_agent: ['llm', 'kb'], ops_agent: ['llm', 'opscore_info', 'n8n'], network_agent: ['llm', 'opscore_info'],
+  vm_agent: ['llm', 'vmware', 'opscore_res', 'n8n'], dev_agent: ['llm'], browser_agent: ['llm'],
+  nms_agent: ['llm', 'opscore_info'],
 };
 const SERVICES = [
   { id: 'llm', icon: Cpu, label: 'LLM API', color: '#10b981' },
   { id: 'kb', icon: BookOpen, label: '知识库', color: '#8b5cf6' },
-  { id: 'gcoc_info', icon: Server, label: 'GCOC 信息', color: '#3b82f6' },
-  { id: 'gcoc_res', icon: Database, label: 'GCOC 资源', color: '#6366f1' },
+  { id: 'opscore_info', icon: Server, label: 'OPS-CORE 信息', color: '#3b82f6' },
+  { id: 'opscore_res', icon: Database, label: 'OPS-CORE 资源', color: '#6366f1' },
   { id: 'vmware', icon: Cloud, label: 'VMware', color: '#f97316' },
   { id: 'n8n', icon: Zap, label: 'N8N 工作流', color: '#ef4444' },
 ];

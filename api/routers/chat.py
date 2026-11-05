@@ -114,7 +114,7 @@ async def chat(request: Request, current_user: str = Depends(verify_token)):
     route_target = target_agent if target_agent else "orchestrator"
     # 续跑路由 (chat harness): 本会话存在挂起的结构化问询 → 用户回复直达发起问询的 agent。
     # zops:ask:pending (通用, 带 agent 归属) 优先; 兼容旧 zops:cu:pending (归属 computer_agent)。
-    # 否则像 "svc-gcoc" 这类裸回复会被关键词路由到无关 agent (10-21 "收到指令编号"事故)
+    # 否则像 "svc-opscore" 这类裸回复会被关键词路由到无关 agent (10-21 "收到指令编号"事故)
     if not target_agent:
         try:
             _pend_raw = await r.get(f"{config.REDIS_PREFIX}:ask:pending:{session_id}")
@@ -190,8 +190,8 @@ async def chat(request: Request, current_user: str = Depends(verify_token)):
     runtime = get_task_runtime()
     # 旧客户端未提供幂等键则生成并返回 (不承诺识别该类未知重复 POST)
     idem_key = (request.headers.get("Idempotency-Key") or "").strip() or str(uuid.uuid4())
-    # P1 GCOC 试点: readiness 达标 + 开关开启时, gcoc_agent (多对象只读) 走 Streams 队列消费
-    use_streams = (route_target == "gcoc_agent"
+    # P1 OPS-CORE 试点: readiness 达标 + 开关开启时, opscore_agent (多对象只读) 走 Streams 队列消费
+    use_streams = (route_target == "opscore_agent"
                    and await runtime.streams_enabled())
     try:
         if use_streams:

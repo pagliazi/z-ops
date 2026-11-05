@@ -28,10 +28,10 @@ async def main():
         "time": "2026-08-22 23:30:00",
         "total": 57062, "new": 2139,
         "severity": {"critical": 282, "major": 27038, "minor": 18895, "warning": 5786},
-        "top_groups": [{"name": "GCOC_use", "count": 57062}],
+        "top_groups": [{"name": "OPSCORE_use", "count": 57062}],
         "checklists": [{"name": "Zerto VPG Journal空间不足", "count": 14},
                        {"name": "存储控制器故障", "count": 7}],
-        "push_groups": ["GCOC_use"],
+        "push_groups": ["OPSCORE_use"],
         "console_url": "https://nms.example.com:16311/ibm/console/",
         "analysis": "测试分析摘要",
         "incidents": [
@@ -46,9 +46,9 @@ async def main():
         ],
         "new_alarms": [],
         "shots": [
-            {"group": "GCOC_use", "severity": "", "unack": True,
-             "file": f.name, "url": "https://gcoc-ai.example.com/static/nms_shots/" + f.name},
-            {"group": "GCOC_use", "severity": "critical", "unack": True,
+            {"group": "OPSCORE_use", "severity": "", "unack": True,
+             "file": f.name, "url": "https://opscore-ai.example.com/static/nms_shots/" + f.name},
+            {"group": "OPSCORE_use", "severity": "critical", "unack": True,
              "file": "", "url": "https://example.com/x.png"},
         ],
     }

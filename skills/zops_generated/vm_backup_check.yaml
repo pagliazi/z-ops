@@ -7,20 +7,20 @@ author: zops-system
 platforms: [linux]
 metadata:
   zops:
-    tags: [运维, GCOC, 备份]
+    tags: [运维, OPS-CORE, 备份]
     category: ops
-    requires_tools: [gcoc_api]
+    requires_tools: [opscore_api]
     requires_agent: [ops_agent]
     n8n_workflow: backup_check
 when_to_use: |
   用户询问虚拟机备份状态，或定时巡检需要检查备份
 quick_reference: |
   - 获取 GID 列表
-  - 调用 GCOC API 查询备份状态
+  - 调用 OPS-CORE API 查询备份状态
   - 分析备份结果
 procedure: |
   1. 获取 GID 列表或指定 GID
-  2. 调用 GCOC API (POST /api/backup/status)
+  2. 调用 OPS-CORE API (POST /api/backup/status)
   3. 解析返回的备份状态
   4. 返回格式化的备份报告
 pitfalls: |

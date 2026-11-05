@@ -490,7 +490,7 @@ const MATCH_BADGES: Record<string, { label: string; cls: string }> = {
   semantic: { label: '语义相关', cls: 'text-[#6B7280] bg-[#F3F4F6] border-[#E5E7EB]' },
 };
 
-// breadcrumb 去掉末段（文档自身标题）后作为路径标签: "GCOC / 故障排除… / O365备份报告导出" → "GCOC › 故障排除…"
+// breadcrumb 去掉末段（文档自身标题）后作为路径标签: "OPS-CORE / 故障排除… / O365备份报告导出" → "OPS-CORE › 故障排除…"
 const pathLabel = (bc?: string) => {
   if (!bc) return '';
   const segs = bc.split('/').map((s) => s.trim()).filter(Boolean);

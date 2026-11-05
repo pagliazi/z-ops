@@ -180,7 +180,7 @@ class ToolDef:
     """
     name: str = ""                              # 工具名称 (唯一标识)
     description: str = ""                       # 工具描述 (LLM 可见)
-    category: str = ""                          # 分类: gcoc/ops/network/vm/general/kb
+    category: str = ""                          # 分类: opscore/ops/network/vm/general/kb
     input_schema: ToolInputSchema = field(default_factory=ToolInputSchema)
     permission: PermissionLevel = PermissionLevel.PUBLIC
     agent_id: str = ""                          # 所属 agent (空=全局)

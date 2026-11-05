@@ -132,7 +132,7 @@ tail -f logs/daemon_stdout.log
 ```bash
 # companion 要求 Python 3.11+；源码用仓库内 venv，交付用打包好的可执行文件
 companion/.venv/bin/python -m companion --config ~/.config/zops/config.json \
-  --server https://gcoc-ai.example.com --pair <一次性配对码> --name "$(hostname)"
+  --server https://opscore-ai.example.com --pair <一次性配对码> --name "$(hostname)"
 
 # 只授权该进程的窗口；未列出的应用与安全桌面一律不可操作
 companion/.venv/bin/python -m companion --config ~/.config/zops/config.json --allow-desktop-app firefox

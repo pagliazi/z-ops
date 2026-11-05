@@ -1,6 +1,6 @@
 """NMS CMDB 资产与客户影响查询 — 从 api/routers/agents.py 抽出, 解除循环导入。
 
-依赖: redis + agents.gcoc_api.get_mgt_client (懒加载), 无 FastAPI / webchat_api 依赖。
+依赖: redis + agents.opscore_api.get_mgt_client (懒加载), 无 FastAPI / webchat_api 依赖。
 被 nms_agent.prompt_builder 与 api/routers/agents.py 的 checklist 端点共用。
 """
 import json
@@ -40,7 +40,7 @@ def _nms_nimble_to_device(a: dict, key: str) -> dict:
             'site': a.get('system_name') or '', 'status': 'ok'}
 
 
-# ── 通用 GCOC-MGT 列表端点缓存 (10 分钟) ──
+# ── 通用 OPS-CORE-MGT 列表端点缓存 (10 分钟) ──
 async def _nms_mgt_list_cached(r, ck: str, path: str):
     try:
         cached = await r.get(ck)
@@ -49,7 +49,7 @@ async def _nms_mgt_list_cached(r, ck: str, path: str):
     except Exception:
         pass
     try:
-        from agents.gcoc_api import get_mgt_client
+        from agents.opscore_api import get_mgt_client
         data = await get_mgt_client().request(
             "GET", path, params={"page_size": 200})
         if isinstance(data, dict) and 'error' not in data:
@@ -87,7 +87,7 @@ async def _nms_query_esxi_host(r, name: str):
         pass
     dev = None
     try:
-        from agents.gcoc_api import get_mgt_client
+        from agents.opscore_api import get_mgt_client
         data = await get_mgt_client().request(
             "GET", "/api/smart-ops/vms/", params={"search": ku, "page_size": 50})
         if isinstance(data, dict) and 'error' not in data:
@@ -122,7 +122,7 @@ async def _nms_vms_by_ip(r, ip: str) -> List[Dict]:
         pass
     vms = []
     try:
-        from agents.gcoc_api import get_mgt_client
+        from agents.opscore_api import get_mgt_client
         data = await get_mgt_client().request(
             "GET", "/api/vcenter/vms/", params={"search": ip, "page_size": 100})
         if isinstance(data, dict) and 'error' not in data:
@@ -207,7 +207,7 @@ async def _nms_query_cmdb_device(r, key: str):
                     'model': h.get('model') or '未采集',
                     'firmware': fw or '未采集', 'site': loc, 'status': 'ok'}
     if _sources_ok == 0:
-        return {'key': key, 'status': 'GCOC-MGT 资产查询失败'}
+        return {'key': key, 'status': 'OPS-CORE-MGT 资产查询失败'}
     return {'key': key, 'status': 'not_found'}
 
 

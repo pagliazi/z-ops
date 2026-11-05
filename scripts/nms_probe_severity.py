@@ -40,7 +40,7 @@ async def main():
             print("FAIL: 未找到 content frame")
             await browser.close()
             return
-        r = await agent._nms_select_filter(frame, "GCOC_use")
+        r = await agent._nms_select_filter(frame, "OPSCORE_use")
         print("切换分组:", json.dumps(r, ensure_ascii=False))
         await asyncio.sleep(3)
         before = await agent._nms_table_snapshot(frame)

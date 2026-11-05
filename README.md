@@ -10,7 +10,7 @@
 
 ## ✨ 核心特性
 
-- **8 Agent 专业分工** — general / ops / network / vm / dev / browser / kb / gcoc
+- **8 Agent 专业分工** — general / ops / network / vm / dev / browser / kb / opscore
 - **Agents-as-Tools 编排** — LLM function_calling 路由，多轮上下文感知
 - **OneAPI 统一网关** — 7 Provider / 20+ 模型，Qwen3-235B 主力
 - **自我进化闭环** — LLM 反思失败 → 根因分析 → 技能改进 → A/B 验证

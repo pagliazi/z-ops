@@ -56,7 +56,7 @@ function formatLastLogin(ts?: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-const USER_GROUPS = ['GCOC', 'GNOC', 'PSC', 'COPS', 'NQA', 'SOC', 'NSC', 'CNS', 'PROV'];
+const USER_GROUPS = ['OPS-CORE', 'GNOC', 'PSC', 'COPS', 'NQA', 'SOC', 'NSC', 'CNS', 'PROV'];
 
 interface Overview {
   version?: string;
@@ -568,7 +568,7 @@ function CUCredentialsPanel() {
             <label className="text-xs text-gray-500">用户名</label>
             <input value={form.username}
               onChange={e => setForm({ ...form, username: e.target.value })}
-              placeholder="svc-gcoc"
+              placeholder="svc-opscore"
               className={input} />
           </div>
           <div className="relative">
@@ -649,7 +649,7 @@ function MemoriesAdminPanel() {
       <SectionHeader icon={Brain} title="记忆管理" subtitle="全部用户的跨会话记忆 · 完整内容 · 可删可清 (后台审计)" color="#7C3AED" />
       {msg && <div className="mb-3 text-sm text-gray-700 bg-gray-50 border rounded-lg px-3 py-2">{msg}</div>}
       <div className="flex gap-2 mb-4">
-        <input value={user} onChange={e => setUser(e.target.value)} placeholder="按用户名过滤 (如 svc-gcoc)"
+        <input value={user} onChange={e => setUser(e.target.value)} placeholder="按用户名过滤 (如 svc-opscore)"
           className="flex-1 px-3 py-2 rounded-lg border text-sm" style={{ borderColor: '#E5E7EB' }} />
         <input value={q} onChange={e => setQ(e.target.value)} onKeyDown={e => e.key === 'Enter' && load()}
           placeholder="关键词…" className="flex-1 px-3 py-2 rounded-lg border text-sm" style={{ borderColor: '#E5E7EB' }} />
@@ -1039,7 +1039,7 @@ function UsersManagement({ groups = USER_GROUPS }: { groups?: string[] }) {
   const [permUser, setPermUser] = useState<string | null>(null);      // 权限编辑弹层目标用户
   const [permDraft, setPermDraft] = useState<Set<string>>(new Set()); // 弹层草稿
   const [scopeDraft, setScopeDraft] = useState<BizScope>({ sites: [], customers: [] }); // 范围约束草稿 (L4)
-  const { siteOptions, custOptions, loading: scopeLoading } = useScopeOptions();  // GCOC 站点/客户字典
+  const { siteOptions, custOptions, loading: scopeLoading } = useScopeOptions();  // OPS-CORE 站点/客户字典
   const [ttlDraft, setTtlDraft] = useState<Record<string, number>>({}); // 临时授权草稿 {perm: 天数; 0/缺省=永久}
   const [permMetrics, setPermMetrics] = useState<{ key: string; label: string; group: string; holders: number; used: number; denied: number; advice: string }[]>([]);
   const [metricsOpen, setMetricsOpen] = useState(false);
@@ -1475,7 +1475,7 @@ function UsersManagement({ groups = USER_GROUPS }: { groups?: string[] }) {
               {bizCatalog.length === 0 && <div className="text-xs text-[#9CA3AF] text-center py-4">权限点目录加载中...</div>}
             </div>
 
-            {/* 范围约束 (L4): GCOC 字典候选选择, 存三字码/GID; 空=不限; 与组 scope 取更严 (交集) */}
+            {/* 范围约束 (L4): OPS-CORE 字典候选选择, 存三字码/GID; 空=不限; 与组 scope 取更严 (交集) */}
             <div className="px-5 pt-3 border-t border-[#F3F4F6]">
               <div className="text-[10px] font-semibold uppercase tracking-widest text-[#6B7280] mb-2">范围约束（留空 = 不限 · 与组范围取更严）</div>
               <div className="grid grid-cols-2 gap-3 pb-1">
@@ -1498,7 +1498,7 @@ function UsersManagement({ groups = USER_GROUPS }: { groups?: string[] }) {
   );
 }
 
-// ═══ 范围约束标签编辑器: GCOC 字典候选下拉 + 回车手输自定义 (站点存三字码/客户存 GID) ═══
+// ═══ 范围约束标签编辑器: OPS-CORE 字典候选下拉 + 回车手输自定义 (站点存三字码/客户存 GID) ═══
 function ScopeTags({ label, hint, options, values, onChange, loading, tone }: {
   label: string; hint: string; options: { value: string; label: string }[];
   values: string[]; onChange: (v: string[]) => void; loading?: boolean; tone: 'blue' | 'teal';
@@ -1550,7 +1550,7 @@ function ScopeTags({ label, hint, options, values, onChange, loading, tone }: {
   );
 }
 
-// GCOC 字典候选懒加载 hook (站点=机房中文名/三字码; 客户=GID/名称; 后端有缓存, 两个组件各自拉取代价低)
+// OPS-CORE 字典候选懒加载 hook (站点=机房中文名/三字码; 客户=GID/名称; 后端有缓存, 两个组件各自拉取代价低)
 function useScopeOptions() {
   const [siteOptions, setSiteOptions] = useState<{ value: string; label: string }[]>([]);
   const [custOptions, setCustOptions] = useState<{ value: string; label: string }[]>([]);
@@ -1587,7 +1587,7 @@ const ALL_TABS = [
 
 function GroupPermissions({ initialGroup, groups = USER_GROUPS, customGroups = [], onGroupsChanged }: { initialGroup?: string; groups?: string[]; customGroups?: string[]; onGroupsChanged?: () => void }) {
   const [selectedGroup, setSelectedGroup] = useState(initialGroup || groups[0]);
-  const { siteOptions, custOptions, loading: scopeLoading } = useScopeOptions();  // GCOC 站点/客户字典
+  const { siteOptions, custOptions, loading: scopeLoading } = useScopeOptions();  // OPS-CORE 站点/客户字典
   const [perms, setPerms] = useState<Record<string, GroupPerm>>({});
   const [savedPerms, setSavedPerms] = useState<Record<string, GroupPerm>>({});
   const [saving, setSaving] = useState(false);
@@ -2113,7 +2113,7 @@ function GroupPermissions({ initialGroup, groups = USER_GROUPS, customGroups = [
               ))}
               {bizCatalog.length === 0 && <div className="text-xs text-[#9CA3AF] col-span-5 py-2">权限点目录加载中...</div>}
             </div>
-            {/* 组级范围约束: GCOC 字典候选选择 (站点存三字码/客户存 GID); 空=不限; 与个人 scope 取更严 (交集) */}
+            {/* 组级范围约束: OPS-CORE 字典候选选择 (站点存三字码/客户存 GID); 空=不限; 与个人 scope 取更严 (交集) */}
             <div className="mt-4 pt-3 border-t border-[#F3F4F6]">
               <div className="text-[10px] font-semibold uppercase tracking-widest text-teal-700 mb-2">范围约束（成员继承 · 留空 = 不限 · 与个人范围取更严）</div>
               <div className="grid grid-cols-2 gap-3">
@@ -3275,14 +3275,14 @@ function NotifyConfig() {
             </div>
             <div>
               <label className="text-xs text-[#6B7280] mb-1 block">推送分组（逗号分隔，留空=推送全部分组；只推这些组的告警）</label>
-              <input value={nmsForm?.push_groups || ''} onChange={e => setNmsForm({ ...nmsForm, push_groups: e.target.value })} placeholder="GCOC_use" className="w-full px-3 py-2 border border-[#D1D5DB] rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C]" />
+              <input value={nmsForm?.push_groups || ''} onChange={e => setNmsForm({ ...nmsForm, push_groups: e.target.value })} placeholder="OPSCORE_use" className="w-full px-3 py-2 border border-[#D1D5DB] rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C]" />
             </div>
           </div>
           {/* 截图设置 */}
           <div className="space-y-3">
             <div>
               <label className="text-xs text-[#6B7280] mb-1 block">截图分组（逗号分隔，留空=关闭分组截图）</label>
-              <input value={nmsForm?.snapshot_groups || ''} onChange={e => setNmsForm({ ...nmsForm, snapshot_groups: e.target.value })} placeholder="GCOC_use,GCOC_core" className="w-full px-3 py-2 border border-[#D1D5DB] rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C]" />
+              <input value={nmsForm?.snapshot_groups || ''} onChange={e => setNmsForm({ ...nmsForm, snapshot_groups: e.target.value })} placeholder="OPSCORE_use,OPSCORE_core" className="w-full px-3 py-2 border border-[#D1D5DB] rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#EA580C]/30 focus:border-[#EA580C]" />
             </div>
             <div>
               <label className="text-xs text-[#6B7280] mb-1 block">告警级别筛选（每个级别单独截图；留空=只截整组图）</label>
@@ -3337,7 +3337,7 @@ function NotifyConfig() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs text-[#6B7280] mb-1 block">通道名称 *</label>
-                  <input value={chEditing.name} onChange={e => setChEditing({ ...chEditing, name: e.target.value })} placeholder="如：GCOC 值班群" className="w-full px-3 py-2 border border-[#D1D5DB] rounded-lg text-sm focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]" />
+                  <input value={chEditing.name} onChange={e => setChEditing({ ...chEditing, name: e.target.value })} placeholder="如：OPS-CORE 值班群" className="w-full px-3 py-2 border border-[#D1D5DB] rounded-lg text-sm focus:ring-2 focus:ring-[#16A34A]/30 focus:border-[#16A34A]" />
                 </div>
                 <div>
                   <label className="text-xs text-[#6B7280] mb-1 block">类型</label>

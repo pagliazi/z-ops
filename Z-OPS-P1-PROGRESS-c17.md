@@ -1,14 +1,14 @@
 # Z-OPS P1 落地进度 — task-c17 (2026-10-13 晚, 第二批更新 23:5x)
 
 对应 SPEC P1「可靠任务、永久事件与断线恢复」。**P1 全部核心+尾项已落地部署**，
-含 Redis 升级至 7.2.10 与 Streams 消费激活（GCOC 试点已生产验证）。
+含 Redis 升级至 7.2.10 与 Streams 消费激活（OPS-CORE 试点已生产验证）。
 
 ## 第二批更新（2026-10-13 深夜）
 
 | 项 | 结果 |
 |---|---|
 | **Redis 6.0.16 → 7.2.10** | 源码构建+二进制替换；隔离演练通过；修复两个升级坑（无 sd_notify → Type=simple drop-in；旧 ACL 行致 `resetchannels` 全员无法 SUBSCRIBE → `&*` 修复, agents 5 秒自愈）。readiness 全绿 `streams_allowed=True`。详见 `Z-OPS-REDIS-UPGRADE-20261013.md`（含回退手册） |
-| **Streams 消费激活（GCOC 试点）** | `ZOPS_TR_STREAMS=true`；backend lifespan 启动 TaskConsumer + AgentDispatch；gcoc_agent 路由的 chat 走 `submit_stream`（原子幂等+入队）→ 消费者 claim → 派发 agent → progress/delta 进事件 → 回复落会话+终态+交付。SSE 走事件跟随（单一执行方）。**生产验证**：GCOC 只读查询经队列全链路 succeeded/delivered/归档 |
+| **Streams 消费激活（OPS-CORE 试点）** | `ZOPS_TR_STREAMS=true`；backend lifespan 启动 TaskConsumer + AgentDispatch；opscore_agent 路由的 chat 走 `submit_stream`（原子幂等+入队）→ 消费者 claim → 派发 agent → progress/delta 进事件 → 回复落会话+终态+交付。SSE 走事件跟随（单一执行方）。**生产验证**：OPS-CORE 只读查询经队列全链路 succeeded/delivered/归档 |
 | **容量监测+受控拒收** | `capacity_check`：内存 8G 线 / 活跃任务 1000 线，超限拒收不删历史；活跃索引 `tr:active` 由提交/终态维护 |
 | **孤儿任务回收** | `reclaim_loop`（backend 常驻）：running+失租超 3×lease → **UNKNOWN 闭合**（写操作绝不自动重做，人工核查）——backend 崩溃后任务不再悬死 |
 | **NMS 命令解耦** | 修复「告警无变化→跳过整轮」挡在命令消费之前的 bug：飞书「nms 分析/截图」在告警静默期现在必然执行（队列有命令/强制分析不跳过） |
@@ -17,11 +17,11 @@
 
 ## 验收汇总
 
-`tests/p1/` **51/51**（新增 GCOC 试点 7 项：队列提交/consumer→agent→回复全链路/事件链/会话落库/幂等重提/容量守卫）；P0 三套 93/93；审批门 26/26；服务 0 failed。
+`tests/p1/` **51/51**（新增 OPS-CORE 试点 7 项：队列提交/consumer→agent→回复全链路/事件链/会话落库/幂等重提/容量守卫）；P0 三套 93/93；审批门 26/26；服务 0 failed。
 
 ## 仍未完（P1 收尾 → P2）
 
-1. 飞书/n8n 入口迁移到 task_runtime（webchat 已迁移+GCOC 试点）。
+1. 飞书/n8n 入口迁移到 task_runtime（webchat 已迁移+OPS-CORE 试点）。
 2. P2 主体：技能生命周期（candidate→published+内容 hash 版本）、可核验成功率证据、复盘队列隔离、知识 ACL 全量（wiki 已有 visibility 基础）、Hermes reference 标签。
 3. P3：MCP SDK stdio/HTTP transport、子任务预算结算、统一模型调用层。
 
@@ -70,7 +70,7 @@ P0 回归：50+13+30 全绿；审批门 26/26。
 ## 遗留（P1 尾项 → 下一批）
 
 1. **Redis ≥6.2 升级**（管理员变更流程）→ 激活 Streams 消费（consumer 已就绪）。
-2. 入口迁移：GCOC 多对象只读试点（agent 侧消费 runtime）→ 飞书/n8n/NMS 入口。
+2. 入口迁移：OPS-CORE 多对象只读试点（agent 侧消费 runtime）→ 飞书/n8n/NMS 入口。
 3. web-next（api.ts/Dashboard.tsx）迁移到事件游标（webchat_stable.html 已完成）。
 4. 容量监测与受控拒收；session_engine 上下文投影 CAS；NMS 命令与告警变化解耦。
 5. 恢复演练报告（Redis 恢复/归档重建）随 P1 验收补做。

@@ -6,8 +6,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import warnings; warnings.filterwarnings("ignore")
 import logging; logging.basicConfig(level=logging.WARNING)
 import httpx
-from agents.gcoc_api import query_vms_on_esxi_host, _get_mcp_gateway_client
-from agents.gcoc_agent import GCOC_ANALYSIS_PROMPT
+from agents.opscore_api import query_vms_on_esxi_host, _get_mcp_gateway_client
+from agents.opscore_agent import OPSCORE_ANALYSIS_PROMPT
 
 BASE = "https://aigw-noc.example.com/v1"
 KEY = "8j4JI2X7W2yrG1vU0fD6A64c87404a39B3F5F154Bd296d4e"
@@ -29,7 +29,7 @@ def fmt_compact(vms):
 
 async def call(client, prompt, label):
     body = {"model": "deepseek-v3-0324", "temperature": 0.7, "stream": False,
-            "messages": [{"role": "system", "content": GCOC_ANALYSIS_PROMPT},
+            "messages": [{"role": "system", "content": OPSCORE_ANALYSIS_PROMPT},
                          {"role": "user", "content": prompt}]}
     t0 = time.time()
     r = await client.post(f"{BASE}/chat/completions", json=body,

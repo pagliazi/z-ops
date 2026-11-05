@@ -646,7 +646,7 @@ def decide_approval(approval_id: str, decision: str, approver: str = "",
                         "approver": approver or "admin",
                         "decision_ver": str(int(float(data.get("decision_ver") or 0)) + 1),
                     }
-                    if level:  # 分级审批流终态: 记录轨迹 (如 "ds=approve:svc-gcoc;admin=approve:user-1856")
+                    if level:  # 分级审批流终态: 记录轨迹 (如 "ds=approve:svc-opscore;admin=approve:user-1856")
                         log = (data.get("level_log") or "")
                         upd["level_log"] = (f"{log};{level}={decision}:{approver or 'admin'}@{time.time():.0f}"
                                             if log else f"{level}={decision}:{approver or 'admin'}@{time.time():.0f}")

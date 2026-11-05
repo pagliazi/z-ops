@@ -1,4 +1,4 @@
-"""P1 Streams 消费派发 — GCOC 多对象只读试点
+"""P1 Streams 消费派发 — OPS-CORE 多对象只读试点
 
 消费者认领任务后: 构造 AgentMessage → 订阅 reply 频道 → 发布给目标 agent →
 progress/delta 转发进任务事件 → 最终回复落会话历史 + emit reply + 终态。

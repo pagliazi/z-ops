@@ -275,7 +275,7 @@ Z-OPS 配置验证 v2.0.0
    ✓ WEBCHAT_AUTH_PASS: ***
    ✓ LDAP_BIND_PASSWORD: SecretRef(env)
    ✓ VCENTER_PASS: SecretRef(file)
-   ❌ GCOC_INFO_PASS: 未配置
+   ❌ OPSCORE_INFO_PASS: 未配置
 
 ✅ 所有配置验证通过
 ```
@@ -302,7 +302,7 @@ Z-OPS 配置验证 v2.0.0
 ```python
 Experience(
     id="abc123",
-    skill_name="gcoc_query",
+    skill_name="opscore_query",
     action="execute",
     success=True,
     input_params={"query_type": "site"},
@@ -316,7 +316,7 @@ Experience(
 #### SkillInsight（洞察）
 ```python
 SkillInsight(
-    skill_name="gcoc_query",
+    skill_name="opscore_query",
     pattern_type="success_pattern",
     pattern_description="成功执行 query_type=site",
     frequency=15,
@@ -379,11 +379,11 @@ class MySkill(BaseSkill):
 
 ### 示例技能
 
-#### 1. GCOC 智能查询技能
+#### 1. OPS-CORE 智能查询技能
 
 ```python
-class GcocQuerySkill(BaseSkill):
-    name = "gcoc_query_optimized"
+class OpscoreQuerySkill(BaseSkill):
+    name = "opscore_query_optimized"
     enable_learning = True
     
     async def on_before_execute(self, params, context):
@@ -424,16 +424,16 @@ from core.self_improving import ExperienceDatabase
 db = ExperienceDatabase()
 
 # 获取经验
-experiences = db.get_experiences("gcoc_query", limit=100)
+experiences = db.get_experiences("opscore_query", limit=100)
 
 # 获取相似经验
 similar = db.get_similar_experiences(
-    "gcoc_query",
+    "opscore_query",
     input_params={"query_type": "site"}
 )
 
 # 获取统计
-stats = db.get_statistics("gcoc_query")
+stats = db.get_statistics("opscore_query")
 # {
 #   "total": 150,
 #   "success": 135,

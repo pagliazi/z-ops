@@ -436,7 +436,7 @@ class QueryEngine:
             context_id: 请求标识 (msg_id，checkpoint 关联用)
             agent_hint: 发起 agent 名 (审计/恢复通知用)
             session_hint: 会话 ID (审批挂起恢复用)
-            lazy_tool_schemas: v4.0 (Phase 2.3) 工具 schema 延迟加载 (gcoc_agent 试点)
+            lazy_tool_schemas: v4.0 (Phase 2.3) 工具 schema 延迟加载 (opscore_agent 试点)
             actor_hint: 发起用户 (P0: write 权限门/引用归属; 缺省取 RequestContext)
 
         Returns:

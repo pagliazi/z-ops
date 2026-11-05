@@ -242,12 +242,12 @@ async def test_stream_event_helper_publishes_to_redis(monkeypatch=None):
     fake = FakeRedis()
     await agent._nms_publish_stream_event(
         fake, "abc123",
-        {"type": "queued", "group": "GCOC_use", "ts": 1.0})
+        {"type": "queued", "group": "OPSCORE_use", "ts": 1.0})
     assert len(fake.published) == 1
     ch, msg = fake.published[0]
     assert ch.endswith(":abc123")
     evt = json.loads(msg)
-    assert evt["type"] == "queued" and evt["group"] == "GCOC_use"
+    assert evt["type"] == "queued" and evt["group"] == "OPSCORE_use"
     print("PASS sse-a: 流式事件发布到正确 Redis 频道")
 
 
@@ -487,12 +487,12 @@ def test_impact_formatter_renders_customer_and_asset():
     out = NmsAgent._nms_format_impact_block(
         devices=[{'name': 'core-rtr-01', 'vendor': 'Cisco', 'model': 'ASR 9001',
                   'site': '上海-DC1', 'status': 'ok'}],
-        impact_data={'vms': 12, 'customers': {'中信银行': 5, '中国移动': 7},
+        impact_data={'vms': 12, 'customers': {'客户A': 5, '客户B': 7},
                      'src': '存储卷映射命中 2 台阵列；vCenter 虚机 12 台'},
         all_ips=['198.19.40.85'])
     assert '资产与影响面' in out
     assert 'Cisco ASR 9001' in out and '上海-DC1' in out
-    assert '中信银行' in out and '中国移动' in out
+    assert '客户A' in out and '客户B' in out
     assert NmsAgent._nms_format_impact_block([], {}, []) == ''
     print("PASS A1: 影响面 formatter (CMDB + 客户)")
 

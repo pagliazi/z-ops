@@ -1,7 +1,7 @@
 name: backup_status
-description: "GCOC 备份作业查询 — 按站点/GID 预聚合"
-summary: "按站点/GID 查询 GCOC 备份作业状态与失败汇总"
-domain: gcoc
+description: "OPS-CORE 备份作业查询 — 按站点/GID 预聚合"
+summary: "按站点/GID 查询 OPS-CORE 备份作业状态与失败汇总"
+domain: opscore
 parameters:
   - name: search
     type: string

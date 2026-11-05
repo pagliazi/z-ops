@@ -12,7 +12,7 @@ echo "════════════════════════�
 # 1. 复制Nginx配置
 echo ""
 echo ">>> 1. 更新 Nginx 配置..."
-sudo cp /opt/zops/deploy/nginx-nextjs.conf /etc/nginx/sites-available/gcoc-ai.example.com
+sudo cp /opt/zops/deploy/nginx-nextjs.conf /etc/nginx/sites-available/opscore-ai.example.com
 
 # 2. 测试Nginx配置
 echo ""
@@ -49,7 +49,7 @@ echo ""
 echo "═══════════════════════════════════════════"
 echo "  ✅ 部署完成！"
 echo ""
-echo "  访问地址: https://gcoc-ai.example.com"
+echo "  访问地址: https://opscore-ai.example.com"
 echo ""
 echo "  架构说明:"
 echo "    /      → Next.js 前端 (端口 3000)"

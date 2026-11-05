@@ -39,19 +39,19 @@ async def fresh_runtime(tmp):
 
 
 async def test_submit_idempotency(rt):
-    tid1, created1, f1, o1 = await rt.submit_for_chat("alice", "s1", "key-1", "查 VM 状态", "gcoc")
+    tid1, created1, f1, o1 = await rt.submit_for_chat("alice", "s1", "key-1", "查 VM 状态", "opscore")
     check("提交: 首次创建", created1 is True)
-    tid2, created2, f2, o2 = await rt.submit_for_chat("alice", "s1", "key-1", "查 VM 状态", "gcoc")
+    tid2, created2, f2, o2 = await rt.submit_for_chat("alice", "s1", "key-1", "查 VM 状态", "opscore")
     check("幂等: 同键同内容返回原任务 (不新建)", tid1 == tid2 and created2 is False)
     # 同键不同内容 → 409
     from core.task_runtime import IdempotencyConflict
     try:
-        await rt.submit_for_chat("alice", "s1", "key-1", "删除 VM", "gcoc")
+        await rt.submit_for_chat("alice", "s1", "key-1", "删除 VM", "opscore")
         check("幂等: 同键不同内容拒绝 (409 语义)", False)
     except IdempotencyConflict:
         check("幂等: 同键不同内容拒绝 (409 语义)", True)
     # 不同键/用户 → 新任务
-    tid3, created3, _, _ = await rt.submit_for_chat("bob", "s1", "key-1", "查 VM 状态", "gcoc")
+    tid3, created3, _, _ = await rt.submit_for_chat("bob", "s1", "key-1", "查 VM 状态", "opscore")
     check("幂等: 不同 actor 隔离", created3 is True and tid3 != tid1)
     task = await rt.get_task(tid1)
     check("账本: 登记原子完整 (status/protocol/actor)", task["status"] == "running"
@@ -337,7 +337,7 @@ async def test_api_endpoints(tmp):
 
 
 async def test_agent_dispatch_pilot(tmp):
-    """GCOC 试点: submit_stream → consumer → AgentDispatch → fake agent 应答 → 终态+会话落库"""
+    """OPS-CORE 试点: submit_stream → consumer → AgentDispatch → fake agent 应答 → 终态+会话落库"""
     import core.task_runtime.runtime as rt_mod
     from core.task_runtime import archive as ta
     from core.task_runtime.consumer import TaskConsumer, queue_key, GROUP
@@ -354,14 +354,14 @@ async def test_agent_dispatch_pilot(tmp):
     except Exception:
         pass
 
-    # fake gcoc_agent: 订阅频道, 收到消息后回 progress + AgentReply
+    # fake opscore_agent: 订阅频道, 收到消息后回 progress + AgentReply
     import redis.asyncio as aioredis
     from agents.base import AgentMessage, AgentReply
 
     async def fake_agent():
         pr = aioredis.from_url(config.REDIS_URL, decode_responses=True)
         ps = pr.pubsub()
-        await ps.subscribe(config.channel("gcoc_agent"))
+        await ps.subscribe(config.channel("opscore_agent"))
         # 注: redis-py 7.2.1 + Redis 7.2 首次 get_message 可能返回 None, 循环取
         m = None
         for _ in range(10):
@@ -372,23 +372,23 @@ async def test_agent_dispatch_pilot(tmp):
         if m is None:
             raise AssertionError("fake_agent 未收到派发消息")
         await pr.publish(config.reply_channel(m.msg_id), json.dumps({
-            "_type": "progress", "source": "gcoc_agent", "text": "查询中"}, ensure_ascii=False))
-        reply = AgentReply(source="gcoc_agent", reply_to=m.msg_id,
+            "_type": "progress", "source": "opscore_agent", "text": "查询中"}, ensure_ascii=False))
+        reply = AgentReply(source="opscore_agent", reply_to=m.msg_id,
                            result={"text": f"共 3 台 VM 匹配 {m.text[:10]}", "count": 3})
         await pr.publish(config.reply_channel(m.msg_id), reply.to_json())
-        await ps.unsubscribe(config.channel("gcoc_agent"))
+        await ps.unsubscribe(config.channel("opscore_agent"))
         await ps.aclose()
         await pr.aclose()
 
     # 会话预置 (assistant 消息要能落进去)
-    await r.hset(config.key_session_meta("sess-gcoc"),
+    await r.hset(config.key_session_meta("sess-opscore"),
                  mapping={"username": "pilot", "title": "t"})
 
     consumer = TaskConsumer(ledger, AgentDispatch(rt), owner="pilot-w", lease_s=5)
     await consumer.ensure_group()
     tid, created = await rt.submit_stream(
-        actor="pilot", session_id="sess-gcoc", client_key="pilot-1",
-        message="ESXI-HK-8025 等 3 台主机备份状态", target="gcoc_agent")
+        actor="pilot", session_id="sess-opscore", client_key="pilot-1",
+        message="ESXI-HK-8025 等 3 台主机备份状态", target="opscore_agent")
     check("试点: Streams 提交创建", created is True)
 
     agent_task = asyncio.create_task(fake_agent())
@@ -417,12 +417,12 @@ async def test_agent_dispatch_pilot(tmp):
     check("试点: 事件链完整 (started→dispatch→progress→reply→terminal)",
           "dispatch_started" in types and "progress" in types
           and "reply" in types and types[-1] == "task_terminal", str(types))
-    msgs = await r.lrange(config.key_session_msgs("sess-gcoc"), 0, -1)
+    msgs = await r.lrange(config.key_session_msgs("sess-opscore"), 0, -1)
     check("试点: 回复已落会话历史", any("3 台 VM" in m for m in msgs))
     # 幂等: 同键同内容重复提交 → 同一任务
     tid2, created2 = await rt.submit_stream(
-        actor="pilot", session_id="sess-gcoc", client_key="pilot-1",
-        message="ESXI-HK-8025 等 3 台主机备份状态", target="gcoc_agent")
+        actor="pilot", session_id="sess-opscore", client_key="pilot-1",
+        message="ESXI-HK-8025 等 3 台主机备份状态", target="opscore_agent")
     check("试点: 幂等重提同键同内容命中原任务", tid2 == tid and created2 is False)
     # 容量守卫存在
     check("试点: 容量守卫接口可用", isinstance(await rt.capacity_check(), tuple))

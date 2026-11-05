@@ -1,6 +1,6 @@
-"""skills/gcoc/backup_status.py — GCOC 备份状态查询 Skill
+"""skills/opscore/backup_status.py — OPS-CORE 备份状态查询 Skill
 
-GCOC 备份作业查询技能，支持按站点、GID、作业名称进行备份状态查询。
+OPS-CORE 备份作业查询技能，支持按站点、GID、作业名称进行备份状态查询。
 支持全量查询和关键词搜索，返回备份和作业的统计信息。
 
 适用场景:
@@ -10,8 +10,8 @@ GCOC 备份作业查询技能，支持按站点、GID、作业名称进行备份
     - 按站点预聚合备份数据，减少前端计算压力
 
 前置条件:
-    - GCOC 平台可访问 (gcoc-info.example.com / 198.18.18.146)
-    - 已配置 GCOC_API_TOKEN (信息平台) 或 GCOC_MGT_USER/PASS (管理平台)
+    - OPS-CORE 平台可访问 (opscore-info.example.com / 198.18.18.146)
+    - 已配置 OPSCORE_API_TOKEN (信息平台) 或 OPSCORE_MGT_USER/PASS (管理平台)
     - 网络连接正常
 
 参数说明:
@@ -43,7 +43,7 @@ GCOC 备份作业查询技能，支持按站点、GID、作业名称进行备份
     - 定期清理过期备份数据
 
 常见问题:
-    - 问题：认证失败 → 解决：检查 GCOC 凭据配置
+    - 问题：认证失败 → 解决：检查 OPS-CORE 凭据配置
     - 问题：连接超时 → 解决：检查网络连通性和防火墙规则
     - 问题：结果为空 → 解决：确认关键词拼写和平台数据存在性
 
@@ -69,7 +69,7 @@ from core.skill_base import BaseSkill, SkillResult, SkillParam
 
 class BackupStatusSkill(BaseSkill):
     """
-    GCOC 备份状态查询技能
+    OPS-CORE 备份状态查询技能
     
     属性:
         name: 技能名称 "backup_status"
@@ -85,7 +85,7 @@ class BackupStatusSkill(BaseSkill):
         - 提供查询优化建议 (如常用关键词、过滤条件)
     """
     name = "backup_status"
-    description = "GCOC 备份作业查询 — 按站点预聚合，支持关键词搜索"
+    description = "OPS-CORE 备份作业查询 — 按站点预聚合，支持关键词搜索"
     parameters = [
         SkillParam(
             name="search", 
@@ -97,7 +97,7 @@ class BackupStatusSkill(BaseSkill):
     ]
 
     async def execute(self, params: Dict[str, Any], context: Dict[str, Any] = None) -> SkillResult:
-        from agents.gcoc_api import query_api
+        from agents.opscore_api import query_api
         import asyncio
 
         search = params.get("search", "")

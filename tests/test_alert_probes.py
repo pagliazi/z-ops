@@ -106,7 +106,7 @@ class TestDispatch(unittest.IsolatedAsyncioTestCase):
 
 
 class TestBackupFiltering(unittest.IsolatedAsyncioTestCase):
-    """GCOC-MGT search 不支持完整 IP：必须按前 3 段搜索后客户端精确过滤。"""
+    """OPS-CORE-MGT search 不支持完整 IP：必须按前 3 段搜索后客户端精确过滤。"""
 
     class _Client:
         def __init__(self, rows):
@@ -118,7 +118,7 @@ class TestBackupFiltering(unittest.IsolatedAsyncioTestCase):
 
     async def _run(self, ip, rows, ep_rows=None):
         client = self._Client(rows)
-        with patch("agents.gcoc_api.get_mgt_client", lambda: client):
+        with patch("agents.opscore_api.get_mgt_client", lambda: client):
             status = await probes._backup_once(ip, 5)
         return status, client
 

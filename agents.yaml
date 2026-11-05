@@ -63,7 +63,7 @@ agents:
       - n8n_health_check
       - n8n_notification
     tools:
-      allow: [ssh_exec, gcoc_api, shell_exec, n8n_workflow]
+      allow: [ssh_exec, opscore_api, shell_exec, n8n_workflow]
       deny: [script_exec]
     soul: ./workspaces/ops_agent/SOUL.md
     bindings:
@@ -82,11 +82,11 @@ agents:
 
   - id: network_agent
     name: 网络运维
-    description: 网络拓扑 / 连通性检测 / 配置审计 + GCOC DNS/网络数据查询
+    description: 网络拓扑 / 连通性检测 / 配置审计 + OPS-CORE DNS/网络数据查询
     capability_summary: |
       网络运维 Agent。能力: 网络连通性检测、端口扫描、路由追踪、DNS 解析测试、交换机/路由器配置审计。
       适用: ping 检测、端口扫描、traceroute、链路分析、设备配置备份与审计。
-      边界: DNS 记录数据查询属 gcoc_agent; DNS 原理/配置方法问题属 kb_agent。
+      边界: DNS 记录数据查询属 opscore_agent; DNS 原理/配置方法问题属 kb_agent。
     routing_hints: [连通性测试, 交换机配置备份, 路由追踪]
     workspace: ./workspaces/network_agent
     model: ""
@@ -96,7 +96,7 @@ agents:
       - config_backup
       - route_trace
     tools:
-      allow: [ssh_exec, gcoc_api, nmap, ping]
+      allow: [ssh_exec, opscore_api, nmap, ping]
       deny: []
     soul: ./workspaces/network_agent/SOUL.md
     bindings:
@@ -111,12 +111,12 @@ agents:
 
   - id: vm_agent
     name: 虚拟化
-    description: VMware/KVM/PVE 虚拟化管理 + GCOC 虚拟机数据查询 + N8N 工作流
+    description: VMware/KVM/PVE 虚拟化管理 + OPS-CORE 虚拟机数据查询 + N8N 工作流
     capability_summary: |
       虚拟化直接操作 Agent。能力: 对具体已知 VM 名称执行开机/关机/重启/快照/迁移。
       适用: 对某台具名 VM 下达操作指令 (重启/开关机/创建快照/迁移到某宿主机);
       「能关掉吗/可以重启吗/帮我开机」等动作确认/请求类消息即使未写具体名称也发本 Agent (由它反问确认目标)。
-      边界: 查询/列出/搜索虚拟机信息应使用 gcoc_agent;
+      边界: 查询/列出/搜索虚拟机信息应使用 opscore_agent;
       "怎么/如何给某台VM做快照/操作"及"为什么不建议关机/有什么风险/原因"类请教原因/方法的提问属知识问题应发 kb_agent。
     routing_hints: [能关掉吗, 能关机吗, 可以关掉吗, 可以关机吗, 能重启吗, 可以重启吗, 能开机吗, 可以开机吗, 帮我开机, 帮我关机]
     workspace: ./workspaces/vm_agent
@@ -131,7 +131,7 @@ agents:
       - n8n_vm_power
       - n8n_vm_snapshot
     tools:
-      allow: [vcenter_api, pve_api, kvm_exec, gcoc_api, n8n_workflow]
+      allow: [vcenter_api, pve_api, kvm_exec, opscore_api, n8n_workflow]
       deny: []
     soul: ./workspaces/vm_agent/SOUL.md
     bindings:
@@ -181,7 +181,7 @@ agents:
       浏览器自动化 Agent。能力: Web 管理页面截图、自动登录、页面操作。
       适用: 截图管理后台、打开/进入某管理页面、自动登录系统、页面点击操作等
       需要真实浏览器执行的动作性请求。
-      边界: 仅处理需要真实浏览器交互的任务; 查询平台数据属 gcoc_agent。
+      边界: 仅处理需要真实浏览器交互的任务; 查询平台数据属 opscore_agent。
     routing_hints: [截图, 自动登录, 网页操作]
     workspace: ./workspaces/browser_agent
     model: ""
@@ -211,7 +211,7 @@ agents:
     capability_summary: |
       IBM Netcool NMS 告警 Agent。能力: NMS/网管告警查询、分析、立即抓取、告警监控报告。
       适用: NMS 告警怎么样、查网管告警、立即抓取 NMS 告警、告警分析报告。
-      边界: 仅限 NMS/网管告警; GCOC 平台监控告警记录查询属 gcoc_agent。
+      边界: 仅限 NMS/网管告警; OPS-CORE 平台监控告警记录查询属 opscore_agent。
     routing_hints: []
     workspace: ./workspaces/nms_agent
     model: ""
@@ -230,11 +230,11 @@ agents:
         keywords: ["立即抓取NMS", "马上查告警", "刷新NMS告警"]
         priority: 6
 
-  - id: gcoc_agent
-    name: GCOC
-    description: GCOC 信息管理系统 + 资源管理平台数据查询 + N8N 工作流
+  - id: opscore_agent
+    name: OPS-CORE
+    description: OPS-CORE 信息管理系统 + 资源管理平台数据查询 + N8N 工作流
     capability_summary: |
-      GCOC 平台数据查询 Agent。能力: CMDB 主机/服务器信息、备份作业(BRR/Veeam)状态、
+      OPS-CORE 平台数据查询 Agent。能力: CMDB 主机/服务器信息、备份作业(BRR/Veeam)状态、
       快照管理、VCD 云平台资源、Smart-Ops 虚拟机、运维事件/迁移记录、DNS 记录、
       Aria Ops 容量/性能、M365 备份、HA 高可用事件、监控告警、CRM 客户信息、
       机柜/IDC/数据中心、vCenter 集群资源概览、资源池使用情况。
@@ -251,7 +251,7 @@ agents:
       概念解释措辞 (如 "3103 这个数字什么意思") 及不含编号值的概念提问
       (如 "什么是站点编号"/"GID 是什么意思") 均属 general_agent。
     routing_hints: [cmdb, veeam, brr, vcd, smart-ops, smartops, aria, m365, crm, 机柜, 数据中心, 高可用]
-    workspace: ./workspaces/gcoc_agent
+    workspace: ./workspaces/opscore_agent
     model: ""
     skills:
       - cmdb_query
@@ -281,9 +281,9 @@ agents:
       - n8n_backup_check
       - n8n_cmdb_sync
     tools:
-      allow: [gcoc_api, n8n_workflow]
+      allow: [opscore_api, n8n_workflow]
       deny: [shell_exec, ssh_exec]
-    soul: ./workspaces/gcoc_agent/SOUL.md
+    soul: ./workspaces/opscore_agent/SOUL.md
     bindings:
       - action: backup_status
         keywords: ["备份", "Veeam", "BRR", "备份作业"]
@@ -320,8 +320,8 @@ agents:
       边界: 问'怎么做/怎么处理/排查方法/操作指南'且不要求编写产出物时发此 Agent;
       要求编写脚本/起草变更方案/修开发环境是 dev_agent 的任务;
       长篇故障现象描述请求排查分析是 ops_agent 的任务;
-      问'有哪些故障事件/告警记录'是数据查询应发 gcoc_agent;
-      用户列出对象清单查询实时状态/备份结果是数据查询应发 gcoc_agent。
+      问'有哪些故障事件/告警记录'是数据查询应发 opscore_agent;
+      用户列出对象清单查询实时状态/备份结果是数据查询应发 opscore_agent。
     routing_hints: [知识库, 查文档, 运维手册, 操作指南, 最佳实践]
     workspace: ./workspaces/kb_agent
     model: ""

@@ -45,7 +45,7 @@ async def check_projection():
     key = config.key_session_msgs(sid)
     msgs = [
         {"role": "user", "content": "查一下所有虚拟机的状态" + "x" * 200},
-        {"role": "assistant", "content": "好的，正在查询 GCOC…" + "y" * 400},
+        {"role": "assistant", "content": "好的，正在查询 OPS-CORE…" + "y" * 400},
         {"role": "user", "content": "顺便看看备份"},
         {"role": "assistant", "content": json.dumps({"rows": [{"vm": f"vm-{i}", "state": "running"} for i in range(200)]}, ensure_ascii=False)},
         {"role": "user", "content": "再查 GID 12345"},

@@ -241,6 +241,6 @@ Logo 浮动：3 秒循环
 
 **优化完成时间**: 2026-03-09  
 **优化版本**: v2.0  
-**参考设计**: GCOC 管理平台 (https://gcoc-mgt.example.com/vcd)
+**参考设计**: OPS-CORE 管理平台 (https://opscore-mgt.example.com/vcd)
 
 **立即体验**: http://localhost:8000

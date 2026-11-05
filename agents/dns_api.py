@@ -1,8 +1,8 @@
 """
-Z-OPS — dns_api: GCOC 信息管理系统 DNS API 客户端
-参考 https://gcoc-info.example.com/dns/api-doc (Swagger: /api/docs/ → /api/openapi.json)
+Z-OPS — dns_api: OPS-CORE 信息管理系统 DNS API 客户端
+参考 https://opscore-info.example.com/dns/api-doc (Swagger: /api/docs/ → /api/openapi.json)
 
-认证: Authorization: Bearer <GCOC_API_TOKEN>
+认证: Authorization: Bearer <OPSCORE_API_TOKEN>
   (2026-10-27 起 145 关闭 AD 账号本地密码兜底, 脚本不再走 /api/auth/login/ 登录)
 端点 (全部 POST JSON):
   /api/dns/query/    DNS 查询 (支持多行批量域名 + PTR 反向, record_type: A/AAAA/CNAME/MX/TXT/NS/SOA/PTR/SRV)
@@ -13,7 +13,7 @@ Z-OPS — dns_api: GCOC 信息管理系统 DNS API 客户端
   /api/dns/dmarc/    DMARC 记录检查
   /api/dns/zone/     Zone Transfer (AXFR)
 
-供 gcoc_agent (chat DNS 工具) 与 nms_agent (告警分析自动解析) 共享使用。
+供 opscore_agent (chat DNS 工具) 与 nms_agent (告警分析自动解析) 共享使用。
 """
 
 import asyncio
@@ -50,7 +50,7 @@ _DOMAIN_RE = re.compile(
 _DOMAIN_BLACKLIST = {"http", "https", "www.com", "com.cn", "v1.0", "v2.0", "v1.1"}
 
 # ── DNS 告警专项提取正则 (来自 NMS 实际告警格式) ──
-# RelayDNS 告警: position=192.168.168.3_sunnexchina.com → server=192.168.168.3, domain=sunnexchina.com
+# RelayDNS 告警: position=198.18.168.3_customer-a.example.com → server=198.18.168.3, domain=customer-a.example.com
 _POSITION_SRV_DOMAIN_RE = re.compile(
     r"position[=:]\s*(\d{1,3}(?:\.\d{1,3}){3})_"
     r"([A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+)"
@@ -166,7 +166,7 @@ def format_dns_test_result(domain: str, record_type: str, server: str,
                            data: dict, label: str = "") -> str:
     """把单次 DNS 查询结果格式化为一行报告 (简化但准确，供 LLM 分析引用)。
 
-    示例: "RelayDNS critical: sunnexchina.com [MX, server=192.168.168.3] → 10.1.1.1"
+    示例: "RelayDNS critical: customer-a.example.com [MX, server=198.18.168.3] → 10.1.1.1"
     """
     srv = f"server={server}" if server else "默认server"
     prefix = f"{label} " if label else ""
@@ -185,16 +185,16 @@ def format_dns_test_result(domain: str, record_type: str, server: str,
 
 
 class DnsApiClient:
-    """GCOC DNS API 客户端 (Token 鉴权 + 内存缓存)
+    """OPS-CORE DNS API 客户端 (Token 鉴权 + 内存缓存)
 
     Token 是无状态凭据: 没有 24h 过期、没有并发 session 竞态, 因此不再需要
     登录/重登/请求串行化; 401/403 属鉴权类错误, 直接失败并告警,
-    绝不回退账号密码登录 (每次试密都是一次 AD 绑定, 会把 svc-gcoc 锁死)。
+    绝不回退账号密码登录 (每次试密都是一次 AD 绑定, 会把 svc-opscore 锁死)。
     """
 
     def __init__(self, base_url: str = None, token: str = ""):
         self.base_url = (base_url or config.DNS_API_URL).rstrip("/")
-        self.token = (token or config.GCOC_API_TOKEN or "").strip()
+        self.token = (token or config.OPSCORE_API_TOKEN or "").strip()
         self._client: Optional[httpx.Client] = None
         self._auth_warned = False   # 401/403 只告警一次, 避免刷日志
         # 解析结果缓存: (endpoint, body_key) -> (ts, data)
@@ -233,13 +233,13 @@ class DnsApiClient:
     def _auth_error(self, status_code: int, detail: str) -> dict:
         """鉴权类错误: 告警一次并直接失败, 不回退账号密码登录"""
         if status_code == 0:
-            hint = "未配置 GCOC_API_TOKEN (见 zops.env)"
+            hint = "未配置 OPSCORE_API_TOKEN (见 zops.env)"
         elif status_code == 401:
-            hint = "GCOC Token 无效/被吊销, 找 GCOC 管理员核对"
+            hint = "OPS-CORE Token 无效/被吊销, 找 OPS-CORE 管理员核对"
         else:
-            hint = "Token 缺 scope 或来源 IP 不在白名单(198.18.18.147), 找 GCOC 管理员"
+            hint = "Token 缺 scope 或来源 IP 不在白名单(198.18.18.147), 找 OPS-CORE 管理员"
         if not self._auth_warned:
-            logger.error(f"[dns_api] GCOC 鉴权失败 ({status_code}): {detail[:120]} — {hint}")
+            logger.error(f"[dns_api] OPS-CORE 鉴权失败 ({status_code}): {detail[:120]} — {hint}")
             self._auth_warned = True
         return {"success": False, "error": f"鉴权失败 HTTP {status_code}: {hint}"}
 
@@ -252,7 +252,7 @@ class DnsApiClient:
             if cached is not None:
                 return cached
         if not self.token:
-            return self._auth_error(0, "未配置 GCOC_API_TOKEN (zops.env)")
+            return self._auth_error(0, "未配置 OPSCORE_API_TOKEN (zops.env)")
         data = self._post_with_retry(url, body)
         if use_cache and data.get("success") is not False:
             self._cache_put(cache_key, data)

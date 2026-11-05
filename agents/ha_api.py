@@ -27,7 +27,7 @@ logger = logging.getLogger("zops")
 # ═══════════════════════════════════════════════
 
 HA_API_BASE_URL = config.HA_API_URL
-HA_API_TOKEN = config.HA_API_TOKEN or "gcoc-ha-vm-query"  # 默认 API Key
+HA_API_TOKEN = config.HA_API_TOKEN or "opscore-ha-vm-query"  # 默认 API Key
 
 
 class HaApiClient:

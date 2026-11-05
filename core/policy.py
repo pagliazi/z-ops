@@ -38,7 +38,7 @@ class PolicyEngine:
 
     每个 Agent 在 agents.yaml 中可配置:
       tools:
-        allow: [ssh_exec, gcoc_api]   # 允许列表 (白名单)
+        allow: [ssh_exec, opscore_api]   # 允许列表 (白名单)
         deny: [script_exec]           # 禁止列表 (黑名单)
 
     校验逻辑:

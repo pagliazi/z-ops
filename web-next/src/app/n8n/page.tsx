@@ -26,13 +26,13 @@ interface N8nExecution {
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
-  vm: '🖥️', gcoc: '📦', ad: '👤', notification: '🔔',
+  vm: '🖥️', opscore: '📦', ad: '👤', notification: '🔔',
   report: '📊', ops: '🔧', approval: '🔐', event: '⚡',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
   vm: 'bg-blue-50 text-blue-700 border-blue-200',
-  gcoc: 'bg-green-50 text-[#16A34A] border-[#BBF7D0]',
+  opscore: 'bg-green-50 text-[#16A34A] border-[#BBF7D0]',
   ad: 'bg-purple-50 text-purple-700 border-purple-200',
   notification: 'bg-yellow-50 text-yellow-700 border-yellow-200',
   report: 'bg-indigo-50 text-indigo-700 border-indigo-200',

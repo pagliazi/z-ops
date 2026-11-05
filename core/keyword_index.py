@@ -68,7 +68,7 @@ _STOP_WORDS: Set[str] = {
 # ═══ Agent 关键词亲和度映射 ═══
 
 AGENT_KEYWORDS: Dict[str, List[str]] = {
-    "gcoc_agent": [
+    "opscore_agent": [
         "备份", "backup", "brr", "gid", "客户", "站点", "site",
         "快照", "snapshot", "虚拟机", "vm", "vcd", "vcloud",
         "cmdb", "主机", "服务器", "机柜", "idc", "数据中心",

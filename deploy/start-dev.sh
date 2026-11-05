@@ -47,7 +47,7 @@ cleanup_old_processes() {
 
     # 按进程名清理残留的 Z-OPS 进程
     local zops_pids
-    zops_pids=$(pgrep -f "python3.*agents\.(orchestrator|general_agent|ops_agent|network_agent|vm_agent|dev_agent|browser_agent|gcoc_agent|kb_agent)" 2>/dev/null || true)
+    zops_pids=$(pgrep -f "python3.*agents\.(orchestrator|general_agent|ops_agent|network_agent|vm_agent|dev_agent|browser_agent|opscore_agent|kb_agent)" 2>/dev/null || true)
     if [ -n "$zops_pids" ]; then
         echo "    发现残留 Z-OPS Agent 进程，正在清理..."
         echo "$zops_pids" | xargs kill 2>/dev/null || true
@@ -110,7 +110,7 @@ save_pid "orchestrator" $!
 sleep 1
 
 # 启动 Agents
-for agent in general_agent ops_agent network_agent vm_agent dev_agent browser_agent gcoc_agent kb_agent; do
+for agent in general_agent ops_agent network_agent vm_agent dev_agent browser_agent opscore_agent kb_agent; do
     echo ">>> 启动 ${agent}..."
     python3 -m agents.${agent} &
     save_pid "$agent" $!

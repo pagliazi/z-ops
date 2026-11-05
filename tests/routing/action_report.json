@@ -32,24 +32,24 @@
     {
       "id": "cmd-004",
       "text": "action=backup_status",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "COMMAND_ROUTES"
     },
     {
       "id": "cmd-005",
       "text": "action=backup_sessions",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "COMMAND_ROUTES"
     },
     {
       "id": "cmd-006",
       "text": "action=snapshot_check",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "COMMAND_ROUTES"
     },
@@ -144,8 +144,8 @@
     {
       "id": "cmd-018",
       "text": "action=cmdb_query",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "COMMAND_ROUTES"
     }

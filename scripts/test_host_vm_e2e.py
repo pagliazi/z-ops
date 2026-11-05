@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-from agents.gcoc_api import (
+from agents.opscore_api import (
     query_vms_on_esxi_host, expand_host_code, mcp_smartops_vms_all,
     get_mgt_client, _get_mcp_gateway_client,
 )
@@ -69,12 +69,12 @@ async def main():
     print(f"  vm_agent 耗时: {time.time()-t0:.2f}s count={expanded['count']} source={expanded['_source']}")
     assert expanded["count"] >= 15
 
-    print("=== 6. gcoc_agent 路径 (_expand_site_search) ===")
-    from agents.gcoc_agent import GcocAgent
-    g = GcocAgent.__new__(GcocAgent)
+    print("=== 6. opscore_agent 路径 (_expand_site_search) ===")
+    from agents.opscore_agent import OpscoreAgent
+    g = OpscoreAgent.__new__(OpscoreAgent)
     t0 = time.time()
     items, text = await g._expand_site_search("ESXI-02")
-    print(f"  gcoc_agent 耗时: {time.time()-t0:.2f}s items={len(items)}")
+    print(f"  opscore_agent 耗时: {time.time()-t0:.2f}s items={len(items)}")
     print("  输出预览:")
     for line in text.split("\n")[:5]:
         print(f"    {line[:150]}")

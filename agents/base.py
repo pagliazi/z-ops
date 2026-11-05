@@ -47,7 +47,7 @@ _harness_controller = None
 
 # ═══ 数据查询类问题边界识别 (kb_agent/general_agent 共用) ═══
 # 知识库/通用问答 Agent 无真实数据能力，用户列出具体对象清单 (VM名/主机名/IP)
-# 要求查询实时状态时，必须转发给 gcoc_agent 数据查询助手，
+# 要求查询实时状态时，必须转发给 opscore_agent 数据查询助手，
 # 绝不能编造"请用户自行登录第三方系统核查"式踢皮球回答。
 
 # 主机名模式: 至少两个字母开头 + 必须含数字 (如 ESXI-HK-8025)，避免误匹配纯英文单词 (Veeam/Backup 等)
@@ -362,7 +362,7 @@ class BaseAgent:
                 'vm_agent': '\033[1;32m',      # bold green
                 'dev_agent': '\033[37m',       # white
                 'browser_agent': '\033[36m',   # cyan
-                'gcoc_agent': '\033[35m',      # magenta
+                'opscore_agent': '\033[35m',      # magenta
                 'kb_agent': '\033[34m',        # blue
             }
 
@@ -1041,33 +1041,33 @@ class BaseAgent:
                     return found
         return ""
 
-    async def forward_to_gcoc(self, msg: AgentMessage, raw_query: str) -> bool:
-        """把数据查询类问题转发给 gcoc_agent 数据查询助手 (保持原 msg_id 回复到原频道)
+    async def forward_to_opscore(self, msg: AgentMessage, raw_query: str) -> bool:
+        """把数据查询类问题转发给 opscore_agent 数据查询助手 (保持原 msg_id 回复到原频道)
 
         知识库/通用问答 Agent 无真实数据能力，检测到数据查询类问题 (VM清单/备份状态等)
-        时调用此方法，让 gcoc_agent 用 GCOC API 查真实数据并回复。
+        时调用此方法，让 opscore_agent 用 OPS-CORE API 查真实数据并回复。
 
-        返回 True=已转发, False=gcoc_agent 离线或转发异常 (调用方降级为边界说明)
+        返回 True=已转发, False=opscore_agent 离线或转发异常 (调用方降级为边界说明)
         """
         try:
             r = await self.get_redis()
-            # 心跳在线检测: 避免 gcoc_agent 宕机时用户收不到任何回复
-            hb_raw = await r.hget(config.KEY_HEARTBEATS, "gcoc_agent")
-            gcoc_online = False
+            # 心跳在线检测: 避免 opscore_agent 宕机时用户收不到任何回复
+            hb_raw = await r.hget(config.KEY_HEARTBEATS, "opscore_agent")
+            opscore_online = False
             if hb_raw:
                 try:
                     hb = json.loads(hb_raw)
-                    gcoc_online = hb.get("status") == "online" and \
+                    opscore_online = hb.get("status") == "online" and \
                         (time.time() - float(hb.get("last_heartbeat", 0))) < 120
                 except Exception:
                     pass
-            if not gcoc_online:
-                logger.warning(f"[{self.name}] gcoc_agent 离线，无法转发数据查询")
+            if not opscore_online:
+                logger.warning(f"[{self.name}] opscore_agent 离线，无法转发数据查询")
                 return False
 
             forward = AgentMessage(
                 source=self.name,
-                target="gcoc_agent",
+                target="opscore_agent",
                 action="chat",
                 text=raw_query,
                 params=dict(msg.params or {}),
@@ -1084,11 +1084,11 @@ class BaseAgent:
                 route.append(self.name)
             forward.provenance["route_path"] = route
 
-            await r.publish(config.channel("gcoc_agent"), forward.to_json())
-            logger.info(f"[{self.name}] 数据查询已转发 gcoc_agent: {raw_query[:60]}")
+            await r.publish(config.channel("opscore_agent"), forward.to_json())
+            logger.info(f"[{self.name}] 数据查询已转发 opscore_agent: {raw_query[:60]}")
             return True
         except Exception as e:
-            logger.warning(f"[{self.name}] 转发 gcoc_agent 异常: {e}")
+            logger.warning(f"[{self.name}] 转发 opscore_agent 异常: {e}")
             return False
 
     async def send_progress(self, msg: AgentMessage, text: str):

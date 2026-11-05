@@ -44,11 +44,11 @@ fi
 # 3. 检查 Redis 数据
 echo ""
 echo "3. 检查 Redis 数据..."
-SESSION_COUNT=$(redis-cli -h 127.0.0.1 -p 6379 ZCARD "zops:sessions:svc-gcoc" 2>&1)
+SESSION_COUNT=$(redis-cli -h 127.0.0.1 -p 6379 ZCARD "zops:sessions:svc-opscore" 2>&1)
 if [ "$SESSION_COUNT" -gt 0 ]; then
-  check_pass "svc-gcoc 用户有 $SESSION_COUNT 个会话"
+  check_pass "svc-opscore 用户有 $SESSION_COUNT 个会话"
 else
-  check_fail "svc-gcoc 用户无会话数据"
+  check_fail "svc-opscore 用户无会话数据"
 fi
 
 # 4. 测试会话 API
@@ -83,6 +83,6 @@ echo "=== 验证完成 ==="
 echo ""
 echo "提示："
 echo "  - 访问前端：http://localhost:3000"
-echo "  - 使用 svc-gcoc 登录"
+echo "  - 使用 svc-opscore 登录"
 echo "  - 如果还是没数据，请清除浏览器缓存 (Ctrl+Shift+R 强制刷新)"
 echo ""

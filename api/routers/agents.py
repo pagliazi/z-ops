@@ -37,8 +37,8 @@ async def list_tools(current_user: str = Depends(verify_token)):
         # 确保工具已注册 (跨进程场景下 webchat_api 进程也能查到)
         if len(reg.get_tools()) == 0:
             auto_register_all_skills(reg)
-            # 手动注册 gcoc_agent 工具定义 (元数据, 不含 handler)
-            _register_gcoc_tool_metadata(reg)
+            # 手动注册 opscore_agent 工具定义 (元数据, 不含 handler)
+            _register_opscore_tool_metadata(reg)
         tools = reg.get_tools()
         return {
             "count": len(tools),
@@ -57,11 +57,11 @@ async def list_tools(current_user: str = Depends(verify_token)):
     except Exception as e:
         return {"count": 0, "tools": [], "error": str(e)}
 
-def _register_gcoc_tool_metadata(reg):
-    """在 webchat_api 进程中注册 gcoc_agent 工具元数据 (仅描述信息, 不含实际 handler)"""
+def _register_opscore_tool_metadata(reg):
+    """在 webchat_api 进程中注册 opscore_agent 工具元数据 (仅描述信息, 不含实际 handler)"""
     try:
         from core.tool_schema import ToolDef, ToolInputSchema, ToolParam, ParamType, PermissionLevel
-        gcoc_tools = [
+        opscore_tools = [
             ("cmdb_query", "查询 CMDB 主机/服务器信息", ["search"]),
             ("backup_status", "查询 BRR 备份作业状态", ["search"]),
             ("backup_objects", "查询备份对象 (VM 级别)", ["search"]),
@@ -79,12 +79,12 @@ def _register_gcoc_tool_metadata(reg):
             ("aria_ops", "查询 Aria Ops 仪表盘", ["search", "type"]),
             ("m365_status", "查询 M365 备份状态", []),
         ]
-        for name, desc, params in gcoc_tools:
+        for name, desc, params in opscore_tools:
             td = ToolDef(
-                name=f"gcoc_agent.{name}",
+                name=f"opscore_agent.{name}",
                 description=desc,
-                agent_id="gcoc_agent",
-                category="gcoc",
+                agent_id="opscore_agent",
+                category="opscore",
                 input_schema=ToolInputSchema(
                     params=[ToolParam(name=p, type=ParamType.STRING, description=p) for p in params]
                 ),
@@ -93,7 +93,7 @@ def _register_gcoc_tool_metadata(reg):
             )
             reg.register(td)
     except Exception as e:
-        logger.warning(f"[tools] gcoc 元数据注册失败: {e}")
+        logger.warning(f"[tools] opscore 元数据注册失败: {e}")
 
 @router.get("/api/overview")
 async def overview(current_user: str = Depends(verify_token)):
@@ -921,7 +921,7 @@ async def nms_config_test_feishu(request: Request, current_user: str = Depends(v
             "elements": [
                 {"tag": "div", "text": {"content": "🧪 **Z-OPS 飞书通道连通性测试**\n"
                  "✅ 若您收到此消息，说明告警通知链路已打通（配置来自前端管理页）。\n"
-                 "**重点分组**: GCOC_use\n**预案命中**: SSL证书过期\n"
+                 "**重点分组**: OPSCORE_use\n**预案命中**: SSL证书过期\n"
                  f"**时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", "tag": "lark_md"}}
             ]
         }
@@ -1305,7 +1305,7 @@ async def nms_set_default_groups(request: Request, current_user: str = Depends(v
 
 def _nms_resolve_owner(cred_raw, current_user):
     """根据用户 NMS 凭据决定读取键前缀。返回 (base, is_personal, creds)。
-    无凭据或凭据为全局账号(svc-gcoc) -> 全局共享键。"""
+    无凭据或凭据为全局账号(svc-opscore) -> 全局共享键。"""
     creds = None
     if cred_raw:
         try:
@@ -1438,7 +1438,7 @@ def _nms_step_annotation(step, b, impact, devices, tool_checks=None, state=None)
         segs.append(f"固件 {fw}" if fw and fw != '未采集' else '固件未采集')
         return ' '.join(segs)
 
-    # 工具实测（GCOC DNS API）：解析/测试类步骤优先标注实测结果
+    # 工具实测（OPS-CORE DNS API）：解析/测试类步骤优先标注实测结果
     dns_tests = (tool_checks or {}).get("dns") or []
     if dns_tests and any(k in low for k in ('解析', '测试', '查询', 'resolve', 'dns')):
         return ('DNS API 实测：' + '；'.join(t['summary'] for t in dns_tests[:3])
@@ -1468,7 +1468,7 @@ def _nms_step_annotation(step, b, impact, devices, tool_checks=None, state=None)
         if any(k in low for k in ('proxy', '服务器', 'vcenter', 'esxi')):
             servers = sorted({s for t in bk_tests for s in (t.get('servers') or [])})
             if servers:
-                return '备份服务器（GCOC-MGT BRR）：' + '、'.join(servers[:3])
+                return '备份服务器（OPS-CORE-MGT BRR）：' + '、'.join(servers[:3])
         if any(k in low for k in ('空间', '限额', '订单', '链', '还原')):
             rp = max((t.get('latest_rp') or '' for t in bk_tests), key=len)
             if rp:
@@ -1476,10 +1476,10 @@ def _nms_step_annotation(step, b, impact, devices, tool_checks=None, state=None)
 
     if any(k in low for k in ('sn', '型号', '厂商', '固件')):
         return f'设备：{dev_info(ok_devs[0])}' if ok_devs else \
-            '设备：GCOC资源管理平台未收录该告警 IP（严格精确匹配）'
+            '设备：OPS-CORE资源管理平台未收录该告警 IP（严格精确匹配）'
     if any(k in low for k in ('维保', '报障', '更换', 'change')):
-        return f'{dev_info(ok_devs[0])}；维保未登记（GCOC资源管理平台无维保数据）' \
-            if ok_devs else '维保未登记（GCOC资源管理平台无维保数据）'
+        return f'{dev_info(ok_devs[0])}；维保未登记（OPS-CORE资源管理平台无维保数据）' \
+            if ok_devs else '维保未登记（OPS-CORE资源管理平台无维保数据）'
     if any(k in step for k in ('客户', '业务')):
         cus = (impact or {}).get('customers') or {}
         if cus:
@@ -1543,16 +1543,16 @@ def _nms_build_real_analysis(title, b, tenant, variants, group_name, impact=None
             names = sorted(cus, key=lambda x: -cus[x])
             if names:
                 top_c = '、'.join(f'{c}（{cus[c]} 台）' for c in names[:3])
-                line += (f'；客户影响（GCOC资源管理平台）：关联资源 {vms} 台，涉及客户 {len(names)} 家：'
+                line += (f'；客户影响（OPS-CORE资源管理平台）：关联资源 {vms} 台，涉及客户 {len(names)} 家：'
                          f'{top_c}' + (' 等' if len(names) > 3 else ''))
                 line += '；判定：' + ('多客户受损，按平台侧处置' if len(names) > 1
                                      else '仅 1 家客户，按单客户侧处置')
             else:
-                line += f'；客户影响（GCOC资源管理平台）：关联资源 {vms} 台，未登记客户归属'
+                line += f'；客户影响（OPS-CORE资源管理平台）：关联资源 {vms} 台，未登记客户归属'
     elif tenant != 'unknown':
-        line += ('；IP 未关联到 GCOC 虚机/卷映射，客户归属无法自动识别（按告警网段判定单客户侧）'
+        line += ('；IP 未关联到 OPS-CORE 虚机/卷映射，客户归属无法自动识别（按告警网段判定单客户侧）'
                  if tenant == 'single' else
-                 '；IP 未关联到 GCOC 虚机/卷映射（平台内网段）')
+                 '；IP 未关联到 OPS-CORE 虚机/卷映射（平台内网段）')
     pts.append(line)
     # 5 处置核对：按预案步骤逐条给出真实数据（解析类步骤优先标注工具实测结果）
     parsed = _nms_parse_steps(checklist_steps) if checklist_steps else []
@@ -1571,7 +1571,7 @@ def _nms_build_real_analysis(title, b, tenant, variants, group_name, impact=None
             n_ok = sum(1 for t in dns_tests if t.get('status') == 'ok')
             n_bad = len(dns_tests) - n_ok
             verdict = '解析均正常' if n_bad == 0 else f'{n_bad} 个目标解析失败/无记录'
-            pts.append(f'　工具初步判断（GCOC DNS API 实测）：{len(dns_tests)} 个目标，'
+            pts.append(f'　工具初步判断（OPS-CORE DNS API 实测）：{len(dns_tests)} 个目标，'
                        f'正常 {n_ok}，{verdict}')
         ssl_tests = (tool_checks or {}).get("ssl") or []
         if ssl_tests:
@@ -1639,7 +1639,7 @@ def _nms_netapp_to_device(a, key):
             'site': a.get('cluster_name') or '', 'status': 'ok'}
 
 async def _nms_mgt_list_cached(r, ck, path):
-    """GCOC-MGT 列表端点全量拉取（Redis 缓存 10 分钟），失败返回 None"""
+    """OPS-CORE-MGT 列表端点全量拉取（Redis 缓存 10 分钟），失败返回 None"""
     try:
         cached = await r.get(ck)
         if cached:
@@ -1647,7 +1647,7 @@ async def _nms_mgt_list_cached(r, ck, path):
     except Exception:
         pass
     try:
-        from agents.gcoc_api import get_mgt_client
+        from agents.opscore_api import get_mgt_client
         data = await get_mgt_client().request("GET", path, params={"page_size": 200})
         if isinstance(data, dict) and 'error' not in data:
             items = data.get('results') or []
@@ -1665,7 +1665,7 @@ def _nms_compellent_to_device(a, key):
             'site': a.get('system_name') or '', 'status': 'ok'}
 
 async def _nms_query_esxi_host(r, name):
-    """ESXi 主机精确匹配：GCOC-MGT smartops_vms（host_name 严格相等，IP 不查主机）。
+    """ESXi 主机精确匹配：OPS-CORE-MGT smartops_vms（host_name 严格相等，IP 不查主机）。
     命中返回主机归属（vCenter/数据中心/集群），无 SN 字段。单主机结果缓存 10 分钟。"""
     ku = name.strip()
     if not ku or _IP4_RE.fullmatch(ku):
@@ -1679,7 +1679,7 @@ async def _nms_query_esxi_host(r, name):
         pass
     dev = None
     try:
-        from agents.gcoc_api import get_mgt_client
+        from agents.opscore_api import get_mgt_client
         data = await get_mgt_client().request(
             "GET", "/api/smart-ops/vms/", params={"search": ku, "page_size": 50})
         if isinstance(data, dict) and 'error' not in data:
@@ -1702,7 +1702,7 @@ async def _nms_query_esxi_host(r, name):
     return dev
 
 async def _nms_query_cmdb_device(r, key):
-    """按 IP/主机名/SN 查询设备资产：走 GCOC-MGT，告警中的 IP 为严格设备标识，
+    """按 IP/主机名/SN 查询设备资产：走 OPS-CORE-MGT，告警中的 IP 为严格设备标识，
     全链路仅精确匹配，不做模糊关联。数据源链（2026-09 实测端点，
     旧 /api/storage/arrays/ 已 404 下架）：
     compellent-arrays（磁盘故障告警的管理 IP/SN）→ netapp-arrays → nimble 存储
@@ -1751,7 +1751,7 @@ async def _nms_query_cmdb_device(r, key):
     if dev:
         return dev
     if _sources_ok == 0:
-        return {'key': key, 'status': 'GCOC-MGT 资产查询失败'}
+        return {'key': key, 'status': 'OPS-CORE-MGT 资产查询失败'}
     return {'key': key, 'status': 'not_found'}
 
 async def _nms_lookup_cmdb_devices(r, targets):
@@ -1795,7 +1795,7 @@ async def _nms_vms_by_ip(r, ip):
         pass
     vms = []
     try:
-        from agents.gcoc_api import get_mgt_client
+        from agents.opscore_api import get_mgt_client
         data = await get_mgt_client().request(
             "GET", "/api/vcenter/vms/", params={"search": ip, "page_size": 100})
         if isinstance(data, dict) and 'error' not in data:
@@ -1814,7 +1814,7 @@ async def _nms_vms_by_ip(r, ip):
     return vms
 
 async def _nms_mcp_customer_impact(r, ips):
-    """基于 GCOC资源管理平台数据分析受影响客户：
+    """基于 OPS-CORE资源管理平台数据分析受影响客户：
     storage/mappings（storage_array_ip → 卷映射客户）+ vcenter/vms（guest_ip → 虚机客户）。
     返回 {'vms': 关联虚机数, 'customers': {客户: 虚机数}, 'src': 命中数据源说明}"""
     ips = list(dict.fromkeys(i for i in ips if i))[:8]
@@ -2473,7 +2473,7 @@ async def nms_get_checklist(groups: str = '',
                 for a in buckets_alarms.get(t, []):
                     tgts.extend(_HOSTNAME_RE.findall(a.get('summary') or ''))
                 hw_targets[t] = tgts
-        # 硬件类预案: 并发查 GCOC-MGT 资产系统补设备 SN（全量数组 Redis 缓存 10min）
+        # 硬件类预案: 并发查 OPS-CORE-MGT 资产系统补设备 SN（全量数组 Redis 缓存 10min）
         if hw_targets:
             dev_results = await asyncio.gather(
                 *[_nms_lookup_cmdb_devices(r, tgts) for tgts in hw_targets.values()])
@@ -2496,12 +2496,12 @@ async def nms_get_checklist(groups: str = '',
                             v['matched_by'] = [v.get('key')]
                             merged[ident] = v
                     m['devices'] = list(merged.values())
-        # GCOC资源管理平台客户影响分析（按受影响 IP 关联虚机/卷映射客户量区分单客户/平台）
+        # OPS-CORE资源管理平台客户影响分析（按受影响 IP 关联虚机/卷映射客户量区分单客户/平台）
         impacts = await asyncio.gather(
             *[_nms_mcp_customer_impact(r, m['ips']) for m in matches])
         for m, impact in zip(matches, impacts):
             b = m.pop('_bucket')
-            # 影响面细化：优先按 GCOC资源管理平台分析的受影响客户量判定单客户/平台，
+            # 影响面细化：优先按 OPS-CORE资源管理平台分析的受影响客户量判定单客户/平台，
             # 关联到多家 → 平台侧、仅 1 家 → 单客户侧；未关联客户时保持网段判定
             cus_n = len(impact.get('customers') or {})
             if cus_n > 1:

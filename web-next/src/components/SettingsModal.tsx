@@ -18,7 +18,7 @@ type SettingsTab = 'general' | 'memory' | 'web' | 'data';
 
 const ASSISTANTS = [
   { id: '', label: '智能', icon: Sparkles },
-  { id: 'gcoc_agent', label: '数据', icon: Cpu },
+  { id: 'opscore_agent', label: '数据', icon: Cpu },
   { id: 'ops_agent', label: '运维', icon: Activity },
   { id: 'kb_agent', label: '知识', icon: MessageSquare },
   { id: 'computer_agent', label: '电脑操作', icon: Monitor },

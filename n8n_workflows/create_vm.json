@@ -58,7 +58,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:7789/api/gcoc/vm/create",
+        "url": "http://localhost:7789/api/opscore/vm/create",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

@@ -47,7 +47,7 @@ def test_skill_consumption(tmp):
     admin = lambda: True
     # 三个版本: v1 published; v2 candidate (不注入); v3 approved (不注入)
     s1 = {"name": "vm_backup_v2", "description": "备份核对", "version": "1.0.0",
-          "summary": "核对虚拟机备份覆盖", "procedure": "查 GCOC 备份接口",
+          "summary": "核对虚拟机备份覆盖", "procedure": "查 OPS-CORE 备份接口",
           "metadata": {"zops": {"tags": ["备份"]}}}
     v1 = lc.submit_candidate(dict(s1), author="retro")
     lc.evaluate("vm_backup_v2", v1, True, tests=["t"])
@@ -64,7 +64,7 @@ def test_skill_consumption(tmp):
     check("消费端: published 技能按关键词注入", names == ["vm_backup_v2"] and "参考步骤" in block,
           f"{names} {block[:60]}")
     check("消费端: 注入的是 published 内容 (v1 procedure)",
-          "查 GCOC 备份接口" in block and "v2 改" not in block and "v3 草" not in block)
+          "查 OPS-CORE 备份接口" in block and "v2 改" not in block and "v3 草" not in block)
     check("消费端: 无关任务不注入", lc.prompt_for_task("今天天气如何") == ([], "")[1] or
           lc.prompt_for_task("今天天气如何")[0] == "")
 

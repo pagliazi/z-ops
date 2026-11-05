@@ -72,15 +72,15 @@
 
 | 顺序 | 类型 | 探针实现 | 数据真源 | 健康判据 |
 | --- | --- | --- | --- | --- |
-| 1 | 备份作业 | `core/alert_probes.probe_backup` | GCOC-MGT `/api/brr/backups/`、`/api/veeam-m365/backup-jobs/` | 该主机 `server_url` 精确匹配的作业无 `Failed` |
-| 2 | DNS 解析 | `probe_dns` | `agents.dns_api`（GCOC DNS） | 解析出 ≥1 条 A 记录 |
+| 1 | 备份作业 | `core/alert_probes.probe_backup` | OPS-CORE-MGT `/api/brr/backups/`、`/api/veeam-m365/backup-jobs/` | 该主机 `server_url` 精确匹配的作业无 `Failed` |
+| 2 | DNS 解析 | `probe_dns` | `agents.dns_api`（OPS-CORE DNS） | 解析出 ≥1 条 A 记录 |
 | 3 | TCP 端口 | `probe_tcp` | socket 连接 | 端口可建立连接 |
 | 4 | NTP 同步 | `probe_ntp` | UDP/123 标准 48 字节查询 | `stratum` 1–15 且 mode 4/5 |
 
 要点：
 
 - 证书仍走 SSL 专有工作流（单元上标 `handoff=nms_ssl_workflow`），不重复实现。
-- 备份探针必须「前 3 段搜索 + `server_url` 精确过滤」：GCOC-MGT 的 `search` 不支持完整 IP，
+- 备份探针必须「前 3 段搜索 + `server_url` 精确过滤」：OPS-CORE-MGT 的 `search` 不支持完整 IP，
   直接搜 `198.18.16.222` 返回 0 条（实测），按 `198.18.16` 搜索再过滤才准。
 - 连续 3 次「无法取证」（如该主机没有备份作业数据）自动回退簇级判据，
   并在 `recovery_evidence` 标注 `probe_unavailable=N+cluster_clear=Ns`，不把未知当健康。

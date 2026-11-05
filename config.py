@@ -59,7 +59,7 @@ REDIS_URL = get("REDIS_URL", "redis://127.0.0.1:6379/0")
 # Token 只能用别名请求，展示层通过 MODEL_ALIASES 映射真实模型名
 LLM_PROVIDER = get("LLM_PROVIDER", "oneapi")
 LLM_MODEL = get("LLM_MODEL", "deepseek-v3-0324")
-MODEL_ALIASES = {"deepseek-v3-0324": "glm5-pg1", "openclaw:svc-gcoc": "(不可用)"}
+MODEL_ALIASES = {"deepseek-v3-0324": "glm5-pg1", "openclaw:svc-opscore": "(不可用)"}
 # 网关验证过的模型名映射 (hash: 请求名 → 网关返回的真实 model 名), 展示层优先于 MODEL_ALIASES
 KEY_MODEL_NAMES = f"{REDIS_PREFIX}:model_names"
 DEEPSEEK_API_KEY = get("DEEPSEEK_API_KEY")
@@ -74,7 +74,7 @@ WEBCHAT_PORT = get_int("WEBCHAT_PORT", 7789)
 WEBCHAT_HOST = get("WEBCHAT_HOST", "0.0.0.0")
 WEBCHAT_AUTH_USER = get("WEBCHAT_AUTH_USER", "admin")
 WEBCHAT_AUTH_PASS = get("WEBCHAT_AUTH_PASS")  # ⚠️ 必须通过环境变量注入，无默认值
-REPLY_TIMEOUT = get_int("REPLY_TIMEOUT", 360)  # gcoc_agent 多轮 LLM + 工具调用可能需要 4-5 分钟
+REPLY_TIMEOUT = get_int("REPLY_TIMEOUT", 360)  # opscore_agent 多轮 LLM + 工具调用可能需要 4-5 分钟
 # 备用模型降级: 主模型网络超时后自动切换的重试模型 (空 = 同模型重试)
 LLM_FALLBACK_MODEL = get("LLM_FALLBACK_MODEL", "")
 # v4.0 备用模型链 (逗号分隔, 优先级从左到右; 自动兼容单模型 LLM_FALLBACK_MODEL)
@@ -111,7 +111,7 @@ N8N_CALLBACK_SECRET = (get("N8N_CALLBACK_SECRET") or "").strip()
 N8N_WEBHOOK_KEY = (get("N8N_WEBHOOK_KEY") or "").strip()   # P0 体检补漏: trigger 端点鉴权
 
 # ═══ P1: 任务运行时 Streams 消费开关 (readiness 达标 Redis>=6.2 才实际生效) ═══
-# GCOC 多对象只读试点: 开启后 route=gcoc_agent 的 chat 任务经队列消费派发。
+# OPS-CORE 多对象只读试点: 开启后 route=opscore_agent 的 chat 任务经队列消费派发。
 TR_STREAMS_ENABLED = get_bool("ZOPS_TR_STREAMS", False)
 
 # P2 收尾: 用户画像 (Hermes Honcho) — 默认关闭; 开启后仅显式记忆写入, 推断不转授权
@@ -132,7 +132,7 @@ CU_SCRIPT_CEILING = get_bool("ZOPS_CU_SCRIPT_CEILING", True)
 # ═══ v4.0 确定性优先分析 (Phase 4.4, 借鉴 K8sGPT 先规则后 LLM) ═══
 DETERMINISTIC_FIRST = get_bool("DETERMINISTIC_FIRST", True)  # NMS 告警分析: 规则引擎先出分类/优先级结论, LLM 只做解释
 
-# ═══ v4.0 工具 schema 延迟加载 (Phase 2.3, gcoc_agent 试点) ═══
+# ═══ v4.0 工具 schema 延迟加载 (Phase 2.3, opscore_agent 试点) ═══
 TOOL_SCHEMA_LAZY_LOAD = get_bool("TOOL_SCHEMA_LAZY_LOAD", True)  # True: 只注入工具名+一句话描述 + search_tool_detail 元工具
 TOOL_SCHEMA_LAZY_MIN_TOOLS = get_int("TOOL_SCHEMA_LAZY_MIN_TOOLS", 10)  # 工具数低于此值不启用 (schema 本身不大)
 
@@ -183,20 +183,20 @@ KVM_HOSTS = get("KVM_HOSTS")
 NETMIKO_DEVICE_TYPE = get("NETMIKO_DEVICE_TYPE", "cisco_ios")
 SNMP_COMMUNITY = get("SNMP_COMMUNITY", "public")
 
-# ═══ GCOC 平台 ═══
+# ═══ OPS-CORE 平台 ═══
 # 2026-10-27 起 145 改为 Token 鉴权, 并已关闭 AD 账号本地密码兜底:
-# 脚本一律 Authorization: Bearer <token>; 401/403 直接失败, 禁止回退 svc-gcoc + 密码登录
+# 脚本一律 Authorization: Bearer <token>; 401/403 直接失败, 禁止回退 svc-opscore + 密码登录
 # (每次密码登录都是一次 AD 绑定, 密码一变更并发重试就会锁号; session 也只有 24h)
-# 迁移说明: https://gcoc-info.example.com/handoff/GCOC_AI_TOKEN_MIGRATION.md
-GCOC_INFO_URL = get("GCOC_INFO_URL", "https://gcoc-info.example.com")  # 信息管理系统
-GCOC_API_TOKEN = get("GCOC_API_TOKEN")  # ⚠️ 必须通过环境变量注入 (scope all + IP 白名单)
-GCOC_MGT_URL = get("GCOC_MGT_URL", "https://198.18.18.146")     # 管理平台
-GCOC_MGT_USER = get("GCOC_MGT_USER")
-GCOC_MGT_PASS = get("GCOC_MGT_PASS")  # ⚠️ 必须通过环境变量注入
+# 迁移说明: https://opscore-info.example.com/handoff/OPSCORE_AI_TOKEN_MIGRATION.md
+OPSCORE_INFO_URL = get("OPSCORE_INFO_URL", "https://opscore-info.example.com")  # 信息管理系统
+OPSCORE_API_TOKEN = get("OPSCORE_API_TOKEN")  # ⚠️ 必须通过环境变量注入 (scope all + IP 白名单)
+OPSCORE_MGT_URL = get("OPSCORE_MGT_URL", "https://198.18.18.146")     # 管理平台
+OPSCORE_MGT_USER = get("OPSCORE_MGT_USER")
+OPSCORE_MGT_PASS = get("OPSCORE_MGT_PASS")  # ⚠️ 必须通过环境变量注入
 
-# ═══ GCOC DNS API (信息管理系统 /api/dns/* 新接口, 与 GCOC_INFO 共用同一 Token) ═══
-# 接口为 POST JSON；鉴权同 GCOC_API_TOKEN (Bearer)；文档: /api/docs/ (Swagger) → /api/openapi.json
-DNS_API_URL = get("DNS_API_URL", "https://gcoc-info.example.com")
+# ═══ OPS-CORE DNS API (信息管理系统 /api/dns/* 新接口, 与 OPSCORE_INFO 共用同一 Token) ═══
+# 接口为 POST JSON；鉴权同 OPSCORE_API_TOKEN (Bearer)；文档: /api/docs/ (Swagger) → /api/openapi.json
+DNS_API_URL = get("DNS_API_URL", "https://opscore-info.example.com")
 DNS_API_TIMEOUT = get_int("DNS_API_TIMEOUT", 20)           # 单次 DNS API 超时 (秒)
 DNS_API_CACHE_TTL = get_int("DNS_API_CACHE_TTL", 300)      # 解析结果内存缓存 (秒)
 # NMS 告警分析自动 DNS 解析 (从告警摘要/节点提取 IP 与域名 → 反向/正向解析注入分析上下文)
@@ -217,7 +217,7 @@ KB_RAG_SEM_MIN = get_float("KB_RAG_SEM_MIN", 0.55)
 # Outline 原生 API — 用于将 KB 包装器返回的截断短链接 (/doc/{urlId})
 # 解析为带 slug 的规范链接 (/doc/{slug}-{urlId})，避免用户点击 404。
 KB_URL_RESOLVE = get_bool("KB_URL_RESOLVE", True)  # 是否解析规范文档链接
-OUTLINE_API_URL = get("OUTLINE_API_URL", "https://gcoc-outline.example.com/api")
+OUTLINE_API_URL = get("OUTLINE_API_URL", "https://opscore-outline.example.com/api")
 OUTLINE_API_TOKEN = get("OUTLINE_API_TOKEN")  # ⬆ 通过环境变量注入
 
 # ═══ HA VM 高可用信息 (HA Agent) ═══
@@ -299,7 +299,7 @@ DEFAULT_ADMIN_USER = WEBCHAT_AUTH_USER                # 默认管理员账号
 DEFAULT_ADMIN_PASS = WEBCHAT_AUTH_PASS                # 默认管理员密码（来自环境变量）
 
 # 用户组定义
-USER_GROUPS = ["GCOC", "GNOC", "PSC", "COPS", "NQA", "SOC", "NSC", "CNS", "PROV"]
+USER_GROUPS = ["OPS-CORE", "GNOC", "PSC", "COPS", "NQA", "SOC", "NSC", "CNS", "PROV"]
 
 # ═══ 安全配置 (v2.0.0 增强) ═══
 # 所有敏感配置必须通过环境变量或 SecretRef 注入，禁止硬编码默认值
@@ -324,7 +324,7 @@ SMTP_USE_TLS = get_bool("SMTP_USE_TLS", False)
 SMTP_USER = get("SMTP_USER")  # MX 直投模式下无需认证
 SMTP_PASSWORD = get("SMTP_PASSWORD")
 SMTP_FROM = get("SMTP_FROM", "zops-notify@example.com")  # 必须使用 MX 能解析的域
-SMTP_EHLO_DOMAIN = get("SMTP_EHLO_DOMAIN", "gcoc-ai.example.com")
+SMTP_EHLO_DOMAIN = get("SMTP_EHLO_DOMAIN", "opscore-ai.example.com")
 ADMIN_NOTIFY_EMAIL = get("ADMIN_NOTIFY_EMAIL", "ops-admin@example.com")
 
 # ═══ 预置 AD 管理员账号 ═══
@@ -387,8 +387,8 @@ NMS_ANOMALY_HISTORY_WINDOW_DAYS = get_int(
     "NMS_ANOMALY_HISTORY_WINDOW_DAYS", 14)
 # /api/nms/alarms 单次返回告警上限（活跃告警优先，避免超大响应拖垮前端）
 NMS_API_ALARM_LIMIT = get_int("NMS_API_ALARM_LIMIT", 3000)
-# 要监控的告警视图分组（顶部 Filter 下拉，逗号分隔）；默认聚焦 GCOC_use
-NMS_FILTERS = [f.strip() for f in get("NMS_FILTERS", "GCOC_use").split(",") if f.strip()]
+# 要监控的告警视图分组（顶部 Filter 下拉，逗号分隔）；默认聚焦 OPSCORE_use
+NMS_FILTERS = [f.strip() for f in get("NMS_FILTERS", "OPSCORE_use").split(",") if f.strip()]
 # 说明: 设置 NMS_FILTERS=* 可自动枚举 NMS 页面中全部可用 filter 并逐个抓取
 NMS_FILTER_SETTLE = get_int("NMS_FILTER_SETTLE", 10)            # 切换分组后等待表格刷新秒数
 NMS_AUTO_CHECK_ENABLED = get_bool("NMS_AUTO_CHECK_ENABLED", False)  # 新告警驱动自动化检查工作流（默认关闭）
@@ -397,14 +397,14 @@ NMS_PUSH_ONLY_ON_NEW = get_bool("NMS_PUSH_ONLY_ON_NEW", True)         # 仅有�
 # 关联降噪：把海量原始告警归并为少量「事件簇」
 NMS_NOTIFY_BY_INCIDENT = get_bool("NMS_NOTIFY_BY_INCIDENT", True)     # 飞书按事件簇汇总推送（关闭则回退逐条新增告警）
 NMS_SYSTEMIC_MIN_SOURCES = get_int("NMS_SYSTEMIC_MIN_SOURCES", 5)    # 系统级事件的最小跨源数
-NMS_CHECKLIST_PATH = get("NMS_CHECKLIST_PATH", "/data/jupyter/GCOC_Check_list.xlsx")  # GCOC 故障处置 checklist（xlsx，sheet=单客户/平台）
+NMS_CHECKLIST_PATH = get("NMS_CHECKLIST_PATH", "/data/jupyter/OPSCORE_Check_list.xlsx")  # OPS-CORE 故障处置 checklist（xlsx，sheet=单客户/平台）
 NMS_INCIDENT_TOP = get_int("NMS_INCIDENT_TOP", 10)                   # 飞书/接口 top 事件数
 # /api/nms/alarms 分页页大小（前端无虚拟化，按分组分页返回，避免超大响应卡死浏览器）
 NMS_PAGE_SIZE = get_int("NMS_PAGE_SIZE", 500)
 NMS_PAGE_SIZE_MAX = get_int("NMS_PAGE_SIZE_MAX", 2000)
 # 后台预算「分组维度」LLM 分析的目标分组：优先取各用户组的 NMS 分组映射(KEY_GROUP_NMS)之并集，
 # 都为空时回退到此列表；也作为页面「用户默认分组」的兵底默认（避免展示全部重叠视图）
-NMS_DEFAULT_GROUPS = [g.strip() for g in get("NMS_DEFAULT_GROUPS", "GCOC_use").split(",") if g.strip()]
+NMS_DEFAULT_GROUPS = [g.strip() for g in get("NMS_DEFAULT_GROUPS", "OPSCORE_use").split(",") if g.strip()]
 # 补充 system scope filter 清单：TYPE=system 的 filter 不在默认元数据列表中返回
 # （如 GNOC_use，owner=system，EventDataService 需 filtertype=system 查询），
 # 采集时按此清单补充查询并归属；后续发现新的 system filter 在此追加即可
@@ -454,7 +454,7 @@ NMS_LLM_BUCKET_MAX = get_int("NMS_LLM_BUCKET_MAX", 2)
 NMS_SCHED_YIELD_ON_DEMAND = get_bool("NMS_SCHED_YIELD_ON_DEMAND", True)
 
 # NMS 抓取后按分组截图的视图列表（逗号分隔，空则关闭截图）
-NMS_SNAPSHOT_GROUPS = get("NMS_SNAPSHOT_GROUPS", "GCOC_use")
+NMS_SNAPSHOT_GROUPS = get("NMS_SNAPSHOT_GROUPS", "OPSCORE_use")
 # NMS 平台内置视图组（catch-all/状态/时间视图，非用户业务组）：
 # 飞书分组清单与状态摘要展示时业务组优先，这些系统视图后置，避免淹没业务组
 NMS_SYSTEM_VIEW_GROUPS = [g.strip() for g in get(
@@ -466,7 +466,7 @@ NMS_SYSTEM_VIEW_GROUPS = [g.strip() for g in get(
 NMS_SNAPSHOT_SEVERITIES = get("NMS_SNAPSHOT_SEVERITIES", "critical,major,minor")
 NMS_SNAPSHOT_UNACK_ONLY = get_bool("NMS_SNAPSHOT_UNACK_ONLY", True)
 # 对外访问基础地址（飞书卡片中截图/控制台链接前缀，需公网可达，对应 nginx server_name）
-ZOPS_PUBLIC_BASE_URL = get("ZOPS_PUBLIC_BASE_URL", "https://gcoc-ai.example.com")
+ZOPS_PUBLIC_BASE_URL = get("ZOPS_PUBLIC_BASE_URL", "https://opscore-ai.example.com")
 # 飞书 bot 交互命令队列键（Redis list）
 NMS_CMD_KEY = f"{REDIS_PREFIX}:nms:cmd"
 # bot 命令唤醒频道（feishu_bot 入队命令后 publish，nms_agent 监听后可立即开下一轮，无需等满周期）
@@ -542,14 +542,14 @@ NMS_CLOSURE_FORGET_S = get_int("NMS_CLOSURE_FORGET_S", 604800)
 NMS_CLOSURE_MAX_UNITS = get_int("NMS_CLOSURE_MAX_UNITS", 3000)
 
 # ═══ MCP (Model Context Protocol) 外部工具集成 ═══
-MCP_SSE_ENDPOINT = get("MCP_SSE_ENDPOINT", "https://gcoc-mgt.example.com/mcp/sse")
+MCP_SSE_ENDPOINT = get("MCP_SSE_ENDPOINT", "https://opscore-mgt.example.com/mcp/sse")
 MCP_API_KEY = get("MCP_API_KEY", "")  # MCP REST 调用鉴权 Key
-MCP_REST_BASE = get("MCP_REST_BASE", "https://gcoc-mgt.example.com/api/snapshot/mcp/tools")
+MCP_REST_BASE = get("MCP_REST_BASE", "https://opscore-mgt.example.com/api/snapshot/mcp/tools")
 MCP_TIMEOUT = get_int("MCP_TIMEOUT", 30)  # MCP 工具调用超时 (秒)
 MCP_VERIFY_SSL = get_bool("MCP_VERIFY_SSL", True)  # 是否验证 SSL 证书
 MCP_ENABLED = get_bool("MCP_ENABLED", True)  # 是否启用 MCP 工具集成
 # P3 (task-c17): 已批准 MCP server 白名单 (JSON 数组; 未登记一律拒绝, fail-closed)
-#   [{"id":"gcoc","transport":"rest","url":"https://...","allowed_tools":["*"]}]
+#   [{"id":"opscore","transport":"rest","url":"https://...","allowed_tools":["*"]}]
 #   stdio server: {"id":"local","transport":"stdio","command":"/abs/path","args":[...]}
 #   官方 SDK transport (stdio/http) 经隔离 venv 验证 (mcp==2.3.0), 生产启用需按部署流程装 SDK
 MCP_APPROVED_SERVERS = (get("MCP_APPROVED_SERVERS") or "").strip()

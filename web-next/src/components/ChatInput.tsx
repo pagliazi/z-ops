@@ -15,7 +15,7 @@ interface AgentOption {
 const AGENT_OPTIONS: AgentOption[] = [
   { value: '', label: '自动', icon: <Sparkles size={13} />, color: 'var(--cf-orange)', activeBg: 'rgba(37,99,235,0.08)', activeBorder: 'rgba(37,99,235,0.3)' },
   { value: 'kb_agent', label: '知识库', icon: <BookOpen size={13} />, color: '#6366F1', activeBg: 'rgba(99,102,241,0.08)', activeBorder: 'rgba(99,102,241,0.3)' },
-  { value: 'gcoc_agent', label: 'GCOC', icon: <Database size={13} />, color: '#059669', activeBg: 'rgba(5,150,105,0.08)', activeBorder: 'rgba(5,150,105,0.3)' },
+  { value: 'opscore_agent', label: 'OPS-CORE', icon: <Database size={13} />, color: '#059669', activeBg: 'rgba(5,150,105,0.08)', activeBorder: 'rgba(5,150,105,0.3)' },
   { value: 'ops_agent', label: '运维', icon: <Terminal size={13} />, color: '#D97706', activeBg: 'rgba(217,119,6,0.08)', activeBorder: 'rgba(217,119,6,0.3)' },
   { value: 'dev_agent', label: '脚本', icon: <Code size={13} />, color: '#0891B2', activeBg: 'rgba(8,145,178,0.08)', activeBorder: 'rgba(8,145,178,0.3)' },
   { value: 'general_agent', label: '通用', icon: <MessageSquare size={13} />, color: '#6B7280', activeBg: 'rgba(107,114,128,0.08)', activeBorder: 'rgba(107,114,128,0.3)' },

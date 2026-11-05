@@ -6,7 +6,7 @@ SPEC P3「工具发现和标准 MCP」:
   - Schema 不兼容或风险上升时停用旧注册并重新审核, 不自动继承权限。
 
 配置 (zops.env):
-  MCP_APPROVED_SERVERS=[{"id":"gcoc","transport":"rest|stdio|http",
+  MCP_APPROVED_SERVERS=[{"id":"opscore","transport":"rest|stdio|http",
                           "url":"... 或 command":"/path/to/bin","args":[...],
                           "allowed_tools":["*"]}, ...]   # JSON 数组
 

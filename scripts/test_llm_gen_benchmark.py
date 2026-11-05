@@ -12,8 +12,8 @@ import warnings; warnings.filterwarnings("ignore")
 import logging; logging.basicConfig(level=logging.WARNING)
 
 import httpx
-from agents.gcoc_api import query_vms_on_esxi_host, _get_mcp_gateway_client
-from agents.gcoc_agent import GCOC_ANALYSIS_PROMPT
+from agents.opscore_api import query_vms_on_esxi_host, _get_mcp_gateway_client
+from agents.opscore_agent import OPSCORE_ANALYSIS_PROMPT
 
 BASE = "https://aigw-noc.example.com/v1"
 KEY = "8j4JI2X7W2yrG1vU0fD6A64c87404a39B3F5F154Bd296d4e"
@@ -65,24 +65,24 @@ async def main():
     async with httpx.AsyncClient(verify=False) as client:
         # A. 生产基线: deepseek-v3-0324 无限制
         print(">>> A. 基线 deepseek-v3-0324 (生产现状)")
-        a = await call_llm(client, "deepseek-v3-0324", prompt, GCOC_ANALYSIS_PROMPT, label="A.基线")
+        a = await call_llm(client, "deepseek-v3-0324", prompt, OPSCORE_ANALYSIS_PROMPT, label="A.基线")
         results.append(a); print(f"    {a['dt']}s, {a.get('out_chars')} 字符, completion={a.get('completion_tokens')}, finish={a.get('finish')}\n")
 
         # B. 限制输出: max_tokens=1024
         print(">>> B. deepseek-v3-0324 + max_tokens=1024")
-        b = await call_llm(client, "deepseek-v3-0324", prompt, GCOC_ANALYSIS_PROMPT, max_tokens=1024, label="B.限1024")
+        b = await call_llm(client, "deepseek-v3-0324", prompt, OPSCORE_ANALYSIS_PROMPT, max_tokens=1024, label="B.限1024")
         results.append(b); print(f"    {b['dt']}s, {b.get('out_chars')} 字符, completion={b.get('completion_tokens')}, finish={b.get('finish')}\n")
 
-        # C. 备用模型 openclaw:svc-gcoc
-        print(">>> C. openclaw:svc-gcoc (备用)")
-        c = await call_llm(client, "openclaw:svc-gcoc", prompt, GCOC_ANALYSIS_PROMPT, label="C.svc-gcoc")
+        # C. 备用模型 openclaw:svc-opscore
+        print(">>> C. openclaw:svc-opscore (备用)")
+        c = await call_llm(client, "openclaw:svc-opscore", prompt, OPSCORE_ANALYSIS_PROMPT, label="C.svc-opscore")
         results.append(c)
         cmsg = c.get("error") or f"{c.get('dt')}s, {c.get('out_chars')} 字符, completion={c.get('completion_tokens')}"
         print(f"    {cmsg}\n")
 
         # D. 快模型? deepseek 别名再来一次 (网络波动对照)
         print(">>> D. 基线复测 deepseek-v3-0324 (波动对照)")
-        d = await call_llm(client, "deepseek-v3-0324", prompt, GCOC_ANALYSIS_PROMPT, label="D.基线复测")
+        d = await call_llm(client, "deepseek-v3-0324", prompt, OPSCORE_ANALYSIS_PROMPT, label="D.基线复测")
         results.append(d); print(f"    {d['dt']}s, {d.get('out_chars')} 字符, completion={d.get('completion_tokens')}, finish={d.get('finish')}\n")
 
     # 质检: VM 台数是否说对 + 表格行数

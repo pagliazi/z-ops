@@ -25,8 +25,8 @@
 
 ### MCP 端点
 
-- **SSE**: `https://gcoc-mgt.example.com/mcp/sse` (16 tools)
-- **REST**: `https://gcoc-mgt.example.com/api/snapshot/mcp/tools/<name>/` (全部可用)
+- **SSE**: `https://opscore-mgt.example.com/mcp/sse` (16 tools)
+- **REST**: `https://opscore-mgt.example.com/api/snapshot/mcp/tools/<name>/` (全部可用)
 
 ### 架构设计
 
@@ -63,7 +63,7 @@
                │
                ▼
 ┌─────────────────────────────────────────┐
-│    外部 MCP 服务 (gcoc-mgt)              │
+│    外部 MCP 服务 (opscore-mgt)              │
 │  SSE: /mcp/sse                          │
 │  REST: /api/snapshot/mcp/tools/<name>/  │
 └─────────────────────────────────────────┘
@@ -100,8 +100,8 @@ print(f"注册了 {count} 个 MCP 工具")
 ```bash
 # zops.env
 MCP_ENABLED=true
-MCP_SSE_ENDPOINT=https://gcoc-mgt.example.com/mcp/sse
-MCP_REST_BASE=https://gcoc-mgt.example.com/api/snapshot/mcp/tools
+MCP_SSE_ENDPOINT=https://opscore-mgt.example.com/mcp/sse
+MCP_REST_BASE=https://opscore-mgt.example.com/api/snapshot/mcp/tools
 MCP_TIMEOUT=30
 MCP_VERIFY_SSL=true
 ```
@@ -120,7 +120,7 @@ python scripts/mcp_integration_example.py
 ### 工具数量
 
 - **内置工具**: 2 个 (query_kb, check_host)
-- **MCP 工具**: 16 个 (从 gcoc-mgt 服务发现)
+- **MCP 工具**: 16 个 (从 opscore-mgt 服务发现)
 - **总计**: 18 个工具
 
 ### 可用工具列表
@@ -167,7 +167,7 @@ python scripts/mcp_integration_example.py
 ```
 1. 用户提问: "查询 VM-1234 的状态"
    ↓
-2. Orchestrator 路由到 gcoc_agent
+2. Orchestrator 路由到 opscore_agent
    ↓
 3. LLM 决定使用 query_vm 工具
    ↓
@@ -231,5 +231,5 @@ MCP 工具集成已完成，现在 Z-OPS 可以:
 ---
 
 *最后更新: 2026-06-25*  
-*MCP 端点: https://gcoc-mgt.example.com/mcp/sse (16 tools)*  
+*MCP 端点: https://opscore-mgt.example.com/mcp/sse (16 tools)*  
 *状态: ✅ 已完成并测试*

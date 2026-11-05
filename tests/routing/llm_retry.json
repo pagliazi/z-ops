@@ -8,7 +8,7 @@
     {
       "id": "kw-205",
       "text": "G123456 的DNS记录",
-      "expect": "gcoc_agent",
+      "expect": "opscore_agent",
       "got": "general_agent",
       "ok": false,
       "reasoning": "no_tool_call_fallback",
@@ -17,7 +17,7 @@
     {
       "id": "kw-206",
       "text": "88381 站点上有什么资源",
-      "expect": "gcoc_agent",
+      "expect": "opscore_agent",
       "got": "general_agent",
       "ok": false,
       "reasoning": "no_tool_call_fallback",
@@ -35,7 +35,7 @@
     {
       "id": "kw-401",
       "text": "找到ESXI-03的虚拟机列表",
-      "expect": "gcoc_agent",
+      "expect": "opscore_agent",
       "got": "general_agent",
       "ok": false,
       "reasoning": "no_tool_call_fallback",
@@ -53,7 +53,7 @@
     {
       "id": "kw-701",
       "text": "198.18.96.169上有哪些备份",
-      "expect": "gcoc_agent",
+      "expect": "opscore_agent",
       "got": "general_agent",
       "ok": false,
       "reasoning": "no_tool_call_fallback",
@@ -62,7 +62,7 @@
     {
       "id": "kw-702",
       "text": "192.168.1.100 这台虚拟机是谁的",
-      "expect": "gcoc_agent",
+      "expect": "opscore_agent",
       "got": "general_agent",
       "ok": false,
       "reasoning": "no_tool_call_fallback",
@@ -71,7 +71,7 @@
     {
       "id": "kw-703",
       "text": "172.16.0.5 的vm列表",
-      "expect": "gcoc_agent",
+      "expect": "opscore_agent",
       "got": "general_agent",
       "ok": false,
       "reasoning": "no_tool_call_fallback",
@@ -80,7 +80,7 @@
     {
       "id": "kw-704",
       "text": "10.0.0.8 上的快照有哪些",
-      "expect": "gcoc_agent",
+      "expect": "opscore_agent",
       "got": "general_agent",
       "ok": false,
       "reasoning": "no_tool_call_fallback",
@@ -143,7 +143,7 @@
     {
       "id": "hist-001",
       "text": "有几台？",
-      "expect": "gcoc_agent",
+      "expect": "opscore_agent",
       "got": "general_agent",
       "ok": false,
       "reasoning": "no_tool_call_fallback",

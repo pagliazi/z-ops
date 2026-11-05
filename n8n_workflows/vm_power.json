@@ -83,7 +83,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:7789/api/gcoc/vm/power",
+        "url": "http://localhost:7789/api/opscore/vm/power",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

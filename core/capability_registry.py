@@ -36,7 +36,7 @@ async def get_all_capabilities(redis_client=None) -> dict:
         {"id": "orchestrator", "name": "智能调度", "icon": "Sparkles",
          "description": "自动路由到最合适的专家", "type": "chat",
          "example": "帮我查一下 HKG 站点的备份状态"},
-        {"id": "gcoc_agent", "name": "GCOC 数据查询", "icon": "Database",
+        {"id": "opscore_agent", "name": "OPS-CORE 数据查询", "icon": "Database",
          "description": "VM/备份/CMDB 实时生产数据", "type": "chat",
          "example": "查 GID 47141 的虚拟机列表"},
         {"id": "ops_agent", "name": "运维诊断", "icon": "Terminal",

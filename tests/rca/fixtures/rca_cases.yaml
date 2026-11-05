@@ -15,8 +15,8 @@ cases:
     required_evidence: ["timeout"]
   - id: rca-002
     source: experiences
-    skill: gcoc_api
-    symptom: "调用 GCOC 接口查询备份状态超时, 客户端 deadline exceeded after 30s"
+    skill: opscore_api
+    symptom: "调用 OPS-CORE 接口查询备份状态超时, 客户端 deadline exceeded after 30s"
     expect_category: timeout
     required_evidence: ["超时"]
   - id: rca-003
@@ -42,7 +42,7 @@ cases:
   - id: rca-013
     source: checklist
     skill: dns_query
-    symptom: "socket 连接 GCOC 网关被拒: ECONNREFUSED 10.0.0.8:443"
+    symptom: "socket 连接 OPS-CORE 网关被拒: ECONNREFUSED 10.0.0.8:443"
     expect_category: connection
     required_evidence: ["econnrefused"]
 
@@ -55,8 +55,8 @@ cases:
     required_evidence: ["permission denied"]
   - id: rca-022
     source: experiences
-    skill: gcoc_api
-    symptom: "GCOC 接口 401 unauthorized: token 已过期 (客户反馈界面打不开为表象)"
+    skill: opscore_api
+    symptom: "OPS-CORE 接口 401 unauthorized: token 已过期 (客户反馈界面打不开为表象)"
     expect_category: auth
     required_evidence: ["unauthorized"]
   - id: rca-023

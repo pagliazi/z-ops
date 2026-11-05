@@ -105,11 +105,11 @@ fi
 # 5. 检查 Redis 数据
 echo ""
 echo "5. 检查 Redis 数据..."
-SESSION_COUNT=$(redis-cli -h 127.0.0.1 -p 6379 ZCARD "zops:sessions:svc-gcoc" 2>&1)
+SESSION_COUNT=$(redis-cli -h 127.0.0.1 -p 6379 ZCARD "zops:sessions:svc-opscore" 2>&1)
 if [ "$SESSION_COUNT" -gt 0 ]; then
-  check_pass "svc-gcoc 用户有 $SESSION_COUNT 个会话"
+  check_pass "svc-opscore 用户有 $SESSION_COUNT 个会话"
 else
-  check_fail "svc-gcoc 用户无会话数据"
+  check_fail "svc-opscore 用户无会话数据"
 fi
 
 # 6. 检查静态资源

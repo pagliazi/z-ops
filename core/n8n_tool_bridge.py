@@ -20,7 +20,7 @@ logger = logging.getLogger("zops.n8n_tool_bridge")
 def register_n8n_workflow_tools(registry=None):
     """
     将 n8n_workflows.WORKFLOW_REGISTRY 中的工作流
-    注册为 ToolDef，关联到 ops_agent / gcoc_agent
+    注册为 ToolDef，关联到 ops_agent / opscore_agent
     """
     if registry is None:
         registry = get_tool_registry()
@@ -30,7 +30,7 @@ def register_n8n_workflow_tools(registry=None):
     # 工作流分类 → Agent 映射
     CATEGORY_AGENT_MAP = {
         "vm": "ops_agent",
-        "gcoc": "gcoc_agent",
+        "opscore": "opscore_agent",
         "ad": "ops_agent",
         "notification": "orchestrator",
         "report": "orchestrator",

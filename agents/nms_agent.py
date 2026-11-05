@@ -70,7 +70,7 @@ _NMS_LOCAL_KB_HEADER = chr(10)+chr(10)+'### 🔧 修复方案核查（知识库�
 _NMS_KB_CONTEXT_HEADER = chr(10) + chr(10) + '【知识库检索结果（供修复方案核查参考）】' + chr(10)
 _NMS_KB_CHECK_INSTRUCTION = chr(10) + chr(10) + '请在上述输出基础上，额外增加一节【修复方案核查】：结合上方【知识库检索结果】逐条核查高优告警的处置/修复步骤，命中知识库的请标注来源链接，未命中的标注“KB无匹配，以下为通用建议”。' + chr(10)
 
-# ── GCOC 故障处置 Checklist（xlsx）：告警 → 处置步骤的确定性映射 ────────────────
+# ── OPS-CORE 故障处置 Checklist（xlsx）：告警 → 处置步骤的确定性映射 ────────────────
 # 规则表：(告警摘要正则, checklist 故障名称)，按序匹配，一条告警只取首个命中。
 # 原则：宁缺勿滥——禁止单一宽词（如裸 vcenter/mailbox/电源），特征词在前、泛词在后
 _NMS_CHECKLIST_RULES = [
@@ -276,7 +276,7 @@ async def nms_history_read(r, base: str, limit: int = 200, page: int = 1,
 
 
 def _nms_load_checklist() -> Dict[str, Dict]:
-    """加载 GCOC checklist xlsx → {故障名称: {steps, sheet, variants}}（mtime 缓存，可热更新）
+    """加载 OPS-CORE checklist xlsx → {故障名称: {steps, sheet, variants}}（mtime 缓存，可热更新）
 
     variants 按 sheet（单客户/平台）各保留一份处理建议；steps/sheet 为步骤最详细的主份（兼容旧引用）。
     """
@@ -1249,7 +1249,7 @@ class NmsAgent(BaseAgent):
         logger.info("[nms_agent] NMS 开始抓取...")
         r = await self.get_redis()
 
-        # 按 owner 计算键前缀：普通用户 -> per-user 独立快照；svc-gcoc/后台 -> 共享全局键
+        # 按 owner 计算键前缀：普通用户 -> per-user 独立快照；svc-opscore/后台 -> 共享全局键
         if nms_username and nms_username != config.NMS_USERNAME:
             base = f"{config.REDIS_PREFIX}:nms_alarms:user:{nms_username}"
             is_personal = True
@@ -1261,7 +1261,7 @@ class NmsAgent(BaseAgent):
         k_analysis = f"{base}:analysis"
         k_seen = f"{base}:seen"
         logger.info(
-            f"[nms_agent] NMS owner={'个人:'+nms_username if is_personal else '全局(svc-gcoc)'}"
+            f"[nms_agent] NMS owner={'个人:'+nms_username if is_personal else '全局(svc-opscore)'}"
         )
 
         browser = await self._ensure_browser()
@@ -1759,7 +1759,7 @@ class NmsAgent(BaseAgent):
                                 "nms_group_analysis", _g0, False, err=str(e),
                                 summary=f"分组 {g}")
 
-            # 8. 推送飞书通知（仅全局 svc-gcoc 抓取推送，per-user 不推，避免刷屏）
+            # 8. 推送飞书通知（仅全局 svc-opscore 抓取推送，per-user 不推，避免刷屏）
             if not is_personal:
                 await self._nms_notify_feishu(alarms, new_alarms, analysis_text,
                                               incidents=incidents,
@@ -2525,7 +2525,7 @@ class NmsAgent(BaseAgent):
                 logger.warning(f"[NMS-API] filter {name} 命中近全量({len(matched)}/{len(merged)}, fallback={fell_back})，判定过滤条件未生效，跳过归属")
                 continue
             # 通过 99% 守卫的 filter 抓完整行，用内容键归属：串行换手/identifierList 错位会产生假归属，
-            # 内容键 (Node,EventKey,Summary) 跨视图稳定，杜绝 BGP 串行被打 GCOC_use 之类的污染
+            # 内容键 (Node,EventKey,Summary) 跨视图稳定，杜绝 BGP 串行被打 OPSCORE_use 之类的污染
             try:
                 f_fields, f_rows, f_fell_back = await self._nms_api_filter_rows(page, f, expect_total=len(merged))
             except Exception as e:
@@ -2808,7 +2808,7 @@ class NmsAgent(BaseAgent):
             return []
         if len(configured) == 1 and configured[0].strip().lower() in ("*", "all"):
             labels = await self._nms_enum_filters(frame)
-            return labels or ["GCOC_use"]
+            return labels or ["OPSCORE_use"]
         return configured
 
 
@@ -3456,7 +3456,7 @@ class NmsAgent(BaseAgent):
         return formatted
 
     async def _nms_dns_probe(self, alarms: List[Dict], max_targets: int = 8) -> List[Dict]:
-        """对 DNS 类告警做解析测试（GCOC DNS API 实测），返回结构化结果列表
+        """对 DNS 类告警做解析测试（OPS-CORE DNS API 实测），返回结构化结果列表
         [{domain, server, record_type, status, label, summary}]，供快照持久化与处理分析引用。
         status: ok=解析出结果 / fail=解析失败 / no_record=无记录；失败/超时静默降级为空列表。"""
         if not alarms:
@@ -3637,13 +3637,13 @@ class NmsAgent(BaseAgent):
             return []
 
     async def _nms_backup_probe(self, alarms: List[Dict], max_targets: int = 6) -> List[Dict]:
-        """对备份失败类告警用 GCOC-MGT BRR/M365 API 实测备份作业状态，
+        """对备份失败类告警用 OPS-CORE-MGT BRR/M365 API 实测备份作业状态，
         返回结构化结果 [{ip, total, ok, failed, warning, latest_rp, servers,
         status, label, summary}]。status: ok=最近结果正常 / attention=存在失败作业 / fail=查询失败。"""
         if not alarms:
             return []
         try:
-            from agents.gcoc_api import get_mgt_client
+            from agents.opscore_api import get_mgt_client
             client = get_mgt_client()
             out: List[Dict] = []
             tested: set = set()   # ip 去重
@@ -3784,7 +3784,7 @@ class NmsAgent(BaseAgent):
             if test_lines:
                 logger.info(f"[nms_agent] DNS 专项告警解析测试: {len(test_lines)} 项")
                 dns_block = (
-                    "【DNS 告警解析测试（GCOC DNS API 实测）】\n"
+                    "【DNS 告警解析测试（OPS-CORE DNS API 实测）】\n"
                     + "\n".join(test_lines[:20]) + "\n"
                     + "说明：以上为告警涉及域名在指定 DNS 服务器上的实测解析结果，"
                       "用于判断解析异常是否仍存在及影响范围。\n"
@@ -3813,7 +3813,7 @@ class NmsAgent(BaseAgent):
             return (
                 dns_block +
                 f"【DNS 解析信息（自动富化，供告警对象定位参考）】\n{report}\n"
-                f"说明：解析结果来自 GCOC DNS 平台，用于辅助判断告警对象的主机名/IP 归属；"
+                f"说明：解析结果来自 OPS-CORE DNS 平台，用于辅助判断告警对象的主机名/IP 归属；"
                 f"无记录/解析失败属正常现象，不要据此推断故障。\n"
             )
         except asyncio.TimeoutError:
@@ -3954,7 +3954,7 @@ class NmsAgent(BaseAgent):
         for d in devices or []:
             if not d:
                 continue
-            if d.get("status") in ("not_found", "GCOC-MGT 资产查询失败"):
+            if d.get("status") in ("not_found", "OPS-CORE-MGT 资产查询失败"):
                 continue
             vendor = d.get("vendor") or ""
             model = d.get("model") or ""
@@ -4113,7 +4113,7 @@ class NmsAgent(BaseAgent):
         checklist_ctx = _nms_checklist_context(
             active_alarms, entries=await _nms_merged_checklist())
         checklist_block = (
-            f"【GCOC Checklist 处置预案（命中当前告警的标准检查步骤）】\n{checklist_ctx}\n\n"
+            f"【OPS-CORE Checklist 处置预案（命中当前告警的标准检查步骤）】\n{checklist_ctx}\n\n"
             if checklist_ctx else ""
         )
         det_block = ""
@@ -4287,7 +4287,7 @@ class NmsAgent(BaseAgent):
             f"  - 修复检查方向：具体检查步骤；\n"
             f"  - 证据：支撑本项的告警对象 / 实测结果 / 事件簇标题（缺一不可省略此行）。\n"
             f"预案使用铁律（必须遵守）：\n"
-            f"1. 只有样本中带“预案”字段的告警，才能引用对应的【GCOC Checklist 处置预案】步骤，并在行尾标注〔Checklist·故障名称〕；\n"
+            f"1. 只有样本中带“预案”字段的告警，才能引用对应的【OPS-CORE Checklist 处置预案】步骤，并在行尾标注〔Checklist·故障名称〕；\n"
             f"2. 严禁把预案套用到没有“预案”字段的告警上，严禁把不同预案的告警合并为同一项；\n"
             f"3. 无“预案”字段的告警标注〔Checklist无匹配〕，按告警对象给通用检查方向（如存储类登录存储管理页面、OS 类登录系统检查），网络类（BGP/MPLS/LSP/BFD/链路/icmp）建议同步 GNOC 检查；\n"
             f"4. 同一预案的多条告警归入同一项并列出受影响对象，不同类告警不得混合；\n"
@@ -5175,7 +5175,7 @@ class NmsAgent(BaseAgent):
         """告警驱动的自动化检查工作流编排钩子。
 
         将本轮新增告警汇总为运维检查请求 publish 给 orchestrator，由其 LLM 路由层
-        分派到 network/vm/gcoc 等 agent 做自动化检查（ping、查 VM、查备份）。
+        分派到 network/vm/opscore 等 agent 做自动化检查（ping、查 VM、查备份）。
         触发记录写入 zops:nms_alarms:workflow。仅全局监控账号触发，per-user 不触发。
         """
         if not new_alarms:
@@ -5278,8 +5278,8 @@ class NmsAgent(BaseAgent):
         """A2: 触发结构化处置动作分派 (orchestrator 路由)。
 
         动作类型 → orchestrator COMMAND_ROUTES:
-          ping_sweep → network_agent,  backup_status → gcoc_agent,
-          vm_list → vm_agent, dns_query → gcoc_agent.
+          ping_sweep → network_agent,  backup_status → opscore_agent,
+          vm_list → vm_agent, dns_query → opscore_agent.
         每个动作发一条独立 AgentMessage, 收集回复用 {base}:remediations:{action_id}.
         """
         actions = self._nms_extract_remediation_actions(new_alarms)
@@ -5297,7 +5297,7 @@ class NmsAgent(BaseAgent):
                     action=act["action_type"],
                     params=act["params"],
                     text=f"NMS 自动处置: {act['action_type']} on {act['params']}",
-                    username="svc-gcoc",
+                    username="svc-opscore",
                 )
                 # 确定性 msg_id → 固定 reply 频道 (config.reply_channel(msg_id))
                 # 后续可由 nms_agent 订阅回填结果, 当前为 dispatch-only

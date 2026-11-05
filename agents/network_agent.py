@@ -1,7 +1,7 @@
 """
 Z-OPS — network_agent: 网络运维 Agent
 职责: 连通性检测、端口扫描、配置审计、拓扑发现
-集成 GCOC API: 自动从 GCOC 平台检索 DNS 记录、网络相关 CMDB 数据
+集成 OPS-CORE API: 自动从 OPS-CORE 平台检索 DNS 记录、网络相关 CMDB 数据
 """
 
 import asyncio
@@ -11,7 +11,7 @@ import shlex
 from typing import List, Dict
 
 from agents.base import BaseAgent, AgentMessage, run_agent
-from agents.gcoc_api import smart_query, query_api
+from agents.opscore_api import smart_query, query_api
 
 import sys
 from pathlib import Path
@@ -22,7 +22,7 @@ logger = logging.getLogger("zops")
 
 NETWORK_ANALYSIS_PROMPT = """你是 Z-OPS 运维智能体的网络分析模块。
 
-你可以通过 GCOC 平台查询以下网络数据:
+你可以通过 OPS-CORE 平台查询以下网络数据:
 - DNS 记录: 域名解析记录查询
 - DNS SPF: SPF 记录检查
 - DNS DMARC: DMARC 记录检查
@@ -41,7 +41,7 @@ NET_DOMAINS = ["network_dns", "infra", "monitoring"]
 
 class NetworkAgent(BaseAgent):
     name = "network_agent"
-    description = "网络拓扑 / 连通性检测 / 配置审计 + GCOC DNS/网络数据查询"
+    description = "网络拓扑 / 连通性检测 / 配置审计 + OPS-CORE DNS/网络数据查询"
 
     async def handle(self, msg: AgentMessage):
         action = msg.action or "chat"
@@ -86,20 +86,20 @@ class NetworkAgent(BaseAgent):
             tasks.append(self._ping_one(target, cmd, results))
         await asyncio.gather(*tasks)
 
-        # 从 GCOC CMDB 补充目标信息
-        gcoc_extra = ""
+        # 从 OPS-CORE CMDB 补充目标信息
+        opscore_extra = ""
         for target in targets[:3]:
             try:
                 cmdb = await query_api("cmdb_info", {"search": target, "page_size": 3})
                 if "error" not in cmdb and cmdb.get("count", 0) > 0:
-                    gcoc_extra += f"\nCMDB 信息 ({target}): {json.dumps(cmdb.get('results', [])[:2], ensure_ascii=False)}"
+                    opscore_extra += f"\nCMDB 信息 ({target}): {json.dumps(cmdb.get('results', [])[:2], ensure_ascii=False)}"
             except Exception:
                 pass
 
         raw = json.dumps(results, ensure_ascii=False, indent=2)
         prompt = f"以下是 {len(targets)} 个目标的 ping 结果，请分析:\n\n{raw}"
-        if gcoc_extra:
-            prompt += f"\n\n从 GCOC 查到的补充信息:{gcoc_extra}"
+        if opscore_extra:
+            prompt += f"\n\n从 OPS-CORE 查到的补充信息:{opscore_extra}"
 
         analysis = await self.llm_chat(prompt=prompt, system=NETWORK_ANALYSIS_PROMPT)
         await self.reply(msg, result={"text": analysis, "raw_data": results, "targets": targets})
@@ -185,13 +185,13 @@ class NetworkAgent(BaseAgent):
         await self.log_daily(f"路由追踪: {', '.join(targets)}")
 
     async def _network_chat(self, msg: AgentMessage):
-        """网络运维对话 — 自动检索 GCOC DNS/网络数据"""
+        """网络运维对话 — 自动检索 OPS-CORE DNS/网络数据"""
         prompt = msg.text or msg.params.get("text", "")
         if not prompt:
             await self.reply(msg, error="缺少问题内容")
             return
 
-        # 智能查询 GCOC DNS/网络数据
+        # 智能查询 OPS-CORE DNS/网络数据
         raw_data = await smart_query(
             question=prompt, domains=NET_DOMAINS,
             llm_func=self.llm_chat, max_queries=3
@@ -199,10 +199,10 @@ class NetworkAgent(BaseAgent):
 
         if raw_data:
             result = await self.llm_chat(
-                prompt=f"用户问题: {prompt}\n\n从 GCOC 平台查询到的网络/DNS数据:\n{raw_data}",
+                prompt=f"用户问题: {prompt}\n\n从 OPS-CORE 平台查询到的网络/DNS数据:\n{raw_data}",
                 system=NETWORK_ANALYSIS_PROMPT
             )
-            await self.reply(msg, result={"text": result, "source": "gcoc"})
+            await self.reply(msg, result={"text": result, "source": "opscore"})
             await self.log_daily(f"网络智能查询: {prompt[:50]}")
         else:
             result = await self.llm_chat(
@@ -210,7 +210,7 @@ class NetworkAgent(BaseAgent):
                 system=(
                     "你是 Z-OPS 运维智能体的网络运维专家。"
                     "擅长网络拓扑分析、连通性诊断、交换机/路由器配置、DNS 解析等。\n"
-                    "你可以查询 GCOC 平台的 DNS 记录(查询/SPF/DMARC/Zone)、"
+                    "你可以查询 OPS-CORE 平台的 DNS 记录(查询/SPF/DMARC/Zone)、"
                     "CMDB 网络设备信息、监控数据等。"
                 )
             )

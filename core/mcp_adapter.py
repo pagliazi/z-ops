@@ -4,8 +4,8 @@ Z-OPS v4 — MCP Tool Adapter (外部 MCP 服务集成)
 将外部 MCP (Model Context Protocol) 服务暴露的工具注册到 Z-OPS Tool System
 
 MCP 端点:
-- SSE: https://gcoc-mgt.example.com/mcp/sse (16 tools)
-- REST API: https://gcoc-mgt.example.com/api/snapshot/mcp/tools/<name>/
+- SSE: https://opscore-mgt.example.com/mcp/sse (16 tools)
+- REST API: https://opscore-mgt.example.com/api/snapshot/mcp/tools/<name>/
 
 用法:
     from core.mcp_adapter import MCPToolAdapter

@@ -227,7 +227,7 @@ def agent_tools_from_handlers(
                 "handler": self._backup_status_tool,
                 "params": [ToolParam(name="search", ...)],
             },
-        }, agent_id="gcoc_agent")
+        }, agent_id="opscore_agent")
 
     Args:
         handlers: {action_name: {"description", "handler", "params"}} 字典

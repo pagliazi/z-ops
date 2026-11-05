@@ -15,7 +15,7 @@ while [ "$(date +%s)" -lt "$WAIT_UNTIL" ]; do sleep 5; done
 FAIL=0
 UNITS="redis-server nginx docker zops-backend zops-frontend zops-feishu"
 # nms_agent 除外: 2026-10-09 起预期停用 (NMS 密码待人工更新, 已加防锁号熔断)
-for a in orchestrator general_agent ops_agent network_agent vm_agent dev_agent browser_agent gcoc_agent kb_agent; do
+for a in orchestrator general_agent ops_agent network_agent vm_agent dev_agent browser_agent opscore_agent kb_agent; do
     UNITS="$UNITS zops-agent@$a"
 done
 

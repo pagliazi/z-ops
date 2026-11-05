@@ -95,7 +95,7 @@ class GeneralAgent(BaseAgent):
             return
 
         # 数据查询类问题边界: 用户要查生产环境实时数据 (备份状态/清单等),
-        # 通用问答 Agent 无此能力 → 转发给 gcoc_agent 数据查询助手，由它查询真实数据并回复。
+        # 通用问答 Agent 无此能力 → 转发给 opscore_agent 数据查询助手，由它查询真实数据并回复。
         # 保持原 msg_id 转发，用户在同一个 SSE 流中直接拿到真实查询结果。
         # MemoryNudge (Hermes): 数据查询类问题时提醒用户相关历史
         try:
@@ -107,9 +107,9 @@ class GeneralAgent(BaseAgent):
 
         data_hint = detect_data_query(prompt)
         if data_hint:
-            if await self.forward_to_gcoc(msg, prompt):
+            if await self.forward_to_opscore(msg, prompt):
                 await self.send_progress(msg, "检测到数据查询类问题，已转交数据查询助手查询生产数据，请稍候...")
-                await self.log_daily(f"general 数据查询转发 gcoc_agent: {prompt[:60]}", level="info", category="general")
+                await self.log_daily(f"general 数据查询转发 opscore_agent: {prompt[:60]}", level="info", category="general")
                 return  # 不自行 reply，避免双回复提前终止 SSE 流
             await self.send_progress(msg, "数据查询助手暂时不可用...")
             await self.reply(msg, result={"text": (

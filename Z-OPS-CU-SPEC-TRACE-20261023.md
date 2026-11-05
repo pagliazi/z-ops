@@ -55,7 +55,7 @@ Spec: `Computer_Use_本机全面升级_task-eb6.md`
 
 ## 一.6、2026-10-24 真实 WSS 生命周期验收（两台真实 Companion）
 
-验收方式：同一用户下两台真实 Companion（各自独立 `HOME`/`XDG_RUNTIME_DIR`/系统 keyring，运行在独立 dbus 会话中解锁 SecretService），经 `wss://gcoc-ai.example.com/api/cu/devices/connect` 连接真实后端；命令、代际、fencing、吊销全部由真实 `core/cu` 服务下发与核对，无 fake Redis、无源码字符串断言。42 项检查全部通过。
+验收方式：同一用户下两台真实 Companion（各自独立 `HOME`/`XDG_RUNTIME_DIR`/系统 keyring，运行在独立 dbus 会话中解锁 SecretService），经 `wss://opscore-ai.example.com/api/cu/devices/connect` 连接真实后端；命令、代际、fencing、吊销全部由真实 `core/cu` 服务下发与核对，无 fake Redis、无源码字符串断言。42 项检查全部通过。
 
 | 项 | 真实证据 |
 | --- | --- |
@@ -121,7 +121,7 @@ Spec: `Computer_Use_本机全面升级_task-eb6.md`
 
 ## 一.10、2026-10-25 真实设备端到端复跑（当前工作区代码）
 
-验收方式：不复用旧脚本、不造 fake Redis；脚本已固化在 `scripts/cu_e2e_device_check.py`，必须显式 `ZOPS_CU_E2E=1` 才会运行（避免误触），不使用生产账号凭据。临时访问令牌只用来换一次性配对码；Companion 以普通系统用户 `cpcnet` 在独立 dbus 会话里解锁系统 keyring 后运行当前代码，经 `https://gcoc-ai.example.com` 走真实 nginx TLS 与真实 WSS，任务与命令由真实 `core/cu` 服务下发；浏览器为操作端 Playwright 无头 Chromium（`PLAYWRIGHT_BROWSERS_PATH=/opt/zops-pw-browsers`，revision 1194）。**Companion 进程未设置 `SSL_CERT_FILE`**，用来同时验证本轮新增的信任库回落。42 项检查全部通过，验收后设备已吊销，令牌/配对码/设备/任务键与临时目录已清理（任务审计 `:events` 为永久只追加，不自动删除）。
+验收方式：不复用旧脚本、不造 fake Redis；脚本已固化在 `scripts/cu_e2e_device_check.py`，必须显式 `ZOPS_CU_E2E=1` 才会运行（避免误触），不使用生产账号凭据。临时访问令牌只用来换一次性配对码；Companion 以普通系统用户 `cpcnet` 在独立 dbus 会话里解锁系统 keyring 后运行当前代码，经 `https://opscore-ai.example.com` 走真实 nginx TLS 与真实 WSS，任务与命令由真实 `core/cu` 服务下发；浏览器为操作端 Playwright 无头 Chromium（`PLAYWRIGHT_BROWSERS_PATH=/opt/zops-pw-browsers`，revision 1194）。**Companion 进程未设置 `SSL_CERT_FILE`**，用来同时验证本轮新增的信任库回落。42 项检查全部通过，验收后设备已吊销，令牌/配对码/设备/任务键与临时目录已清理（任务审计 `:events` 为永久只追加，不自动删除）。
 
 | 项 | 真实证据 |
 | --- | --- |
@@ -590,7 +590,7 @@ python3 -m unittest tests.p3.test_cu_login_guard tests.p3.test_cu_bridge → Ran
 # 2) 前端构建与部署
 npx tsc --noEmit → rc=0；npm run build → rc=0（BUILD_ID=vFk0WlC_MJJ0cRqM8O33H）
 systemctl restart zops-frontend → active
-curl -k -H 'Host: gcoc-ai.example.com' https://127.0.0.1/ → 200，首页引用
+curl -k -H 'Host: opscore-ai.example.com' https://127.0.0.1/ → 200，首页引用
   /_next/static/chunks/0n3~may8dxulm.js（含「30 秒无人操作自动拒绝」）且经 nginx 200
 
 # 3) 无人值守时必须失败（Xvfb :95 + 真实 venv/配置/验收记录）

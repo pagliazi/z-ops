@@ -32,7 +32,7 @@ async def test_cross_session_memory():
         user_id="test_user",
         agent_id="ops_agent",
         summary="用户查询了服务器状态，执行了健康检查操作",
-        key_learnings=["需要先检查网络连通性", "GCOC API 响应较慢需要超时处理"],
+        key_learnings=["需要先检查网络连通性", "OPS-CORE API 响应较慢需要超时处理"],
         topics=["服务器健康检查", "网络诊断"]
     )
     print(f"  ✓ 存储会话摘要: {session.session_id}")

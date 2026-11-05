@@ -37,7 +37,7 @@ SITE = BASE + "/site"
 WORK = BASE + "/work"
 MANAGED = BASE + "/managed"
 SCRIPTS = BASE + "/scripts"
-SERVER = os.environ.get("ZOPS_CU_E2E_SERVER", "https://gcoc-ai.example.com")
+SERVER = os.environ.get("ZOPS_CU_E2E_SERVER", "https://opscore-ai.example.com")
 NAME = "e2e-current-" + secrets.token_hex(3)
 KR_PASS = "zopspass"
 

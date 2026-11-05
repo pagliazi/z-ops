@@ -1,23 +1,23 @@
 // ArchitectureView Component - Z-OPS Agent Cluster Architecture Diagram
 const ArchitectureView = ({ agents, meta, expandedAgent, setExpandedAgent, onlineCount, totalSkills }) => {
-    const allAgents = ['general_agent', 'ops_agent', 'network_agent', 'vm_agent', 'dev_agent', 'browser_agent', 'gcoc_agent', 'kb_agent'];
+    const allAgents = ['general_agent', 'ops_agent', 'network_agent', 'vm_agent', 'dev_agent', 'browser_agent', 'opscore_agent', 'kb_agent'];
     
     const agentToServices = {
         general_agent: ['llm', 'kb'],
-        ops_agent: ['llm', 'gcoc1', 'gcoc2'],
-        network_agent: ['llm', 'gcoc1'],
-        vm_agent: ['llm', 'vmware', 'gcoc2'],
+        ops_agent: ['llm', 'opscore1', 'opscore2'],
+        network_agent: ['llm', 'opscore1'],
+        vm_agent: ['llm', 'vmware', 'opscore2'],
         dev_agent: ['llm'],
         browser_agent: ['llm'],
-        gcoc_agent: ['llm', 'gcoc1', 'gcoc2'],
+        opscore_agent: ['llm', 'opscore1', 'opscore2'],
         kb_agent: ['llm', 'kb']
     };
     
     const services = [
         { id: 'llm', icon: 'ri-openai-line', label: 'LLM API', color: '#10b981' },
         { id: 'kb', icon: 'ri-git-repository-line', label: '知识库', color: '#8b5cf6' },
-        { id: 'gcoc1', icon: 'ri-server-line', label: 'GCOC信息', color: '#3b82f6' },
-        { id: 'gcoc2', icon: 'ri-database-2-line', label: 'GCOC资源', color: '#6366f1' },
+        { id: 'opscore1', icon: 'ri-server-line', label: 'OPS-CORE信息', color: '#3b82f6' },
+        { id: 'opscore2', icon: 'ri-database-2-line', label: 'OPS-CORE资源', color: '#6366f1' },
         { id: 'vmware', icon: 'ri-cloud-line', label: 'VMware', color: '#f97316' },
     ];
     

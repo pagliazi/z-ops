@@ -23,34 +23,34 @@ cases:
   # ── A1反例. 长文本含问候词不得触发 greeting 特判 ──
   - {id: kw-101, text: "测试一下到10.0.0.1的连通性", expect: {keyword: "", llm: network_agent}, source: greeting-guard}
   - {id: kw-102, text: "帮帮我重启vm-web-01", expect: {keyword: vm_agent, llm: vm_agent}, source: greeting-guard}
-  - {id: kw-103, text: "你好，请查一下GID 47141 的虚拟机", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: greeting-guard}
+  - {id: kw-103, text: "你好，请查一下GID 47141 的虚拟机", expect: {keyword: opscore_agent, llm: opscore_agent}, source: greeting-guard}
 
-  # ── A2. GID/数字编号 + 资源关键词 → gcoc_agent ──
-  - {id: kw-201, text: "GID 47141 有哪些虚拟机", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gid+resource}
-  - {id: kw-202, text: "查一下g12345的备份状态", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gid+resource}
-  - {id: kw-203, text: "47141 这个站点的监控告警", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gid+resource}
-  - {id: kw-204, text: "gid88381 的存储空间", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gid+resource}
-  - {id: kw-205, text: "G123456 的DNS记录", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gid+resource}
-  - {id: kw-206, text: "88381 站点上有什么资源", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gid+resource}
-  - {id: kw-207, text: "GID 30021 的虚拟机列表", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gid+resource}
-  - {id: kw-208, text: "45210 的快照情况", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gid+resource}
-  - {id: kw-209, text: "gid 47141 迁移记录", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gid+resource}
-  - {id: kw-210, text: "G88412 的HA事件", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gid+resource}
+  # ── A2. GID/数字编号 + 资源关键词 → opscore_agent ──
+  - {id: kw-201, text: "GID 47141 有哪些虚拟机", expect: {keyword: opscore_agent, llm: opscore_agent}, source: gid+resource}
+  - {id: kw-202, text: "查一下g12345的备份状态", expect: {keyword: opscore_agent, llm: opscore_agent}, source: gid+resource}
+  - {id: kw-203, text: "47141 这个站点的监控告警", expect: {keyword: opscore_agent, llm: opscore_agent}, source: gid+resource}
+  - {id: kw-204, text: "gid88381 的存储空间", expect: {keyword: opscore_agent, llm: opscore_agent}, source: gid+resource}
+  - {id: kw-205, text: "G123456 的DNS记录", expect: {keyword: opscore_agent, llm: opscore_agent}, source: gid+resource}
+  - {id: kw-206, text: "88381 站点上有什么资源", expect: {keyword: opscore_agent, llm: opscore_agent}, source: gid+resource}
+  - {id: kw-207, text: "GID 30021 的虚拟机列表", expect: {keyword: opscore_agent, llm: opscore_agent}, source: gid+resource}
+  - {id: kw-208, text: "45210 的快照情况", expect: {keyword: opscore_agent, llm: opscore_agent}, source: gid+resource}
+  - {id: kw-209, text: "gid 47141 迁移记录", expect: {keyword: opscore_agent, llm: opscore_agent}, source: gid+resource}
+  - {id: kw-210, text: "G88412 的HA事件", expect: {keyword: opscore_agent, llm: opscore_agent}, source: gid+resource}
 
   # ── A2反例. 数字编号但无资源关键词 → 交由 LLM ──
-  - {id: kw-301, text: "47141 是什么", expect: {keyword: "", llm: gcoc_agent}, source: gid-guard}
-  - {id: kw-302, text: "g12345", expect: {keyword: "", llm: gcoc_agent}, source: gid-guard}
+  - {id: kw-301, text: "47141 是什么", expect: {keyword: "", llm: opscore_agent}, source: gid-guard}
+  - {id: kw-302, text: "g12345", expect: {keyword: "", llm: opscore_agent}, source: gid-guard}
   - {id: kw-303, text: "3103 这个数字什么意思", expect: {keyword: "", llm: general_agent}, source: gid-guard}
 
-  # ── A3. VM 主机名(字母+数字混合) + 虚拟机关键词 → gcoc_agent ──
-  - {id: kw-401, text: "找到ESXI-03的虚拟机列表", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: vm-hostname}
-  - {id: kw-402, text: "ESXI-03 这台虚拟机在哪", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: vm-hostname}
-  - {id: kw-403, text: "hkpkgal8001ht 的vm信息", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: vm-hostname}
-  - {id: kw-404, text: "VM-BJ-2001 云主机在哪", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: vm-hostname}
-  - {id: kw-405, text: "NODE-SH-028 vm 是哪台", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: vm-hostname}
-  - {id: kw-406, text: "查vm-web-01在哪个集群", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: vm-hostname}
+  # ── A3. VM 主机名(字母+数字混合) + 虚拟机关键词 → opscore_agent ──
+  - {id: kw-401, text: "找到ESXI-03的虚拟机列表", expect: {keyword: opscore_agent, llm: opscore_agent}, source: vm-hostname}
+  - {id: kw-402, text: "ESXI-03 这台虚拟机在哪", expect: {keyword: opscore_agent, llm: opscore_agent}, source: vm-hostname}
+  - {id: kw-403, text: "hkpkgal8001ht 的vm信息", expect: {keyword: opscore_agent, llm: opscore_agent}, source: vm-hostname}
+  - {id: kw-404, text: "VM-BJ-2001 云主机在哪", expect: {keyword: opscore_agent, llm: opscore_agent}, source: vm-hostname}
+  - {id: kw-405, text: "NODE-SH-028 vm 是哪台", expect: {keyword: opscore_agent, llm: opscore_agent}, source: vm-hostname}
+  - {id: kw-406, text: "查vm-web-01在哪个集群", expect: {keyword: opscore_agent, llm: opscore_agent}, source: vm-hostname}
 
-  # ── A4. 具名 VM 电源操作 → vm_agent (vm 特判优先于 gcoc 查询/ops 知识) ──
+  # ── A4. 具名 VM 电源操作 → vm_agent (vm 特判优先于 opscore 查询/ops 知识) ──
   - {id: kw-501, text: "帮我重启vm-web-01", expect: {keyword: vm_agent, llm: vm_agent}, source: vm-power}
   - {id: kw-502, text: "vm-web-01 开机", expect: {keyword: vm_agent, llm: vm_agent}, source: vm-power}
   - {id: kw-503, text: "给test-server创建快照", expect: {keyword: vm_agent, llm: vm_agent}, source: vm-power}
@@ -59,50 +59,50 @@ cases:
   # 反例: 带疑问词的 VM 快照问题 → 知识库
   - {id: kw-506, text: "怎么给vm-web-01做快照", expect: {keyword: kb_agent, llm: kb_agent}, source: vm-power-guard}
 
-  # ── A5. 平台资源关键词 (无需 GID) → gcoc_agent ──
-  - {id: kw-601, text: "平台资源概览", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-602, text: "集群资源使用情况", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-603, text: "资源池还剩多少", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-604, text: "vcenter资源情况", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-605, text: "存储空间还剩多少", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-606, text: "datastore 使用率", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-607, text: "容量规划报告", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-608, text: "查一下真实资源", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-609, text: "vcd资源列表", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-610, text: "宿主机资源分配", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-611, text: "nimble 存储健康", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
-  - {id: kw-612, text: "netapp 卷列表", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: platform-resource}
+  # ── A5. 平台资源关键词 (无需 GID) → opscore_agent ──
+  - {id: kw-601, text: "平台资源概览", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-602, text: "集群资源使用情况", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-603, text: "资源池还剩多少", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-604, text: "vcenter资源情况", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-605, text: "存储空间还剩多少", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-606, text: "datastore 使用率", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-607, text: "容量规划报告", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-608, text: "查一下真实资源", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-609, text: "vcd资源列表", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-610, text: "宿主机资源分配", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-611, text: "nimble 存储健康", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
+  - {id: kw-612, text: "netapp 卷列表", expect: {keyword: opscore_agent, llm: opscore_agent}, source: platform-resource}
 
-  # ── A6. IP + 资源查询 → gcoc_agent ──
-  - {id: kw-701, text: "198.18.96.169上有哪些备份", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: ip+resource}
-  - {id: kw-702, text: "192.168.1.100 这台虚拟机是谁的", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: ip+resource}
-  - {id: kw-703, text: "172.16.0.5 的vm列表", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: ip+resource}
-  - {id: kw-704, text: "10.0.0.8 上的快照有哪些", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: ip+resource}
-  - {id: kw-705, text: "192.168.100.200 的存储使用", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: ip+resource}
+  # ── A6. IP + 资源查询 → opscore_agent ──
+  - {id: kw-701, text: "198.18.96.169上有哪些备份", expect: {keyword: opscore_agent, llm: opscore_agent}, source: ip+resource}
+  - {id: kw-702, text: "192.168.1.100 这台虚拟机是谁的", expect: {keyword: opscore_agent, llm: opscore_agent}, source: ip+resource}
+  - {id: kw-703, text: "172.16.0.5 的vm列表", expect: {keyword: opscore_agent, llm: opscore_agent}, source: ip+resource}
+  - {id: kw-704, text: "10.0.0.8 上的快照有哪些", expect: {keyword: opscore_agent, llm: opscore_agent}, source: ip+resource}
+  - {id: kw-705, text: "192.168.100.200 的存储使用", expect: {keyword: opscore_agent, llm: opscore_agent}, source: ip+resource}
 
-  # ── A7. 备份查询动词模式 → gcoc_agent ──
-  - {id: kw-801, text: "有哪些备份任务", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: backup-query}
-  - {id: kw-802, text: "备份作业列表", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: backup-query}
-  - {id: kw-803, text: "昨天有多少备份成功", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: backup-query}
-  - {id: kw-804, text: "备份文件占了多大空间", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: backup-query}
-  - {id: kw-805, text: "哪些备份失败了", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: backup-query}
-  - {id: kw-806, text: "查看备份任务状态", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: backup-query}
-  - {id: kw-807, text: "查PROD数据库的备份Job状态", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: backup-query}
-  - {id: kw-808, text: "检查PRODDB01是否在备份作业中", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: backup-query}
-  - {id: kw-809, text: "上周备份失败统计", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: backup-query}
+  # ── A7. 备份查询动词模式 → opscore_agent ──
+  - {id: kw-801, text: "有哪些备份任务", expect: {keyword: opscore_agent, llm: opscore_agent}, source: backup-query}
+  - {id: kw-802, text: "备份作业列表", expect: {keyword: opscore_agent, llm: opscore_agent}, source: backup-query}
+  - {id: kw-803, text: "昨天有多少备份成功", expect: {keyword: opscore_agent, llm: opscore_agent}, source: backup-query}
+  - {id: kw-804, text: "备份文件占了多大空间", expect: {keyword: opscore_agent, llm: opscore_agent}, source: backup-query}
+  - {id: kw-805, text: "哪些备份失败了", expect: {keyword: opscore_agent, llm: opscore_agent}, source: backup-query}
+  - {id: kw-806, text: "查看备份任务状态", expect: {keyword: opscore_agent, llm: opscore_agent}, source: backup-query}
+  - {id: kw-807, text: "查PROD数据库的备份Job状态", expect: {keyword: opscore_agent, llm: opscore_agent}, source: backup-query}
+  - {id: kw-808, text: "检查PRODDB01是否在备份作业中", expect: {keyword: opscore_agent, llm: opscore_agent}, source: backup-query}
+  - {id: kw-809, text: "上周备份失败统计", expect: {keyword: opscore_agent, llm: opscore_agent}, source: backup-query}
 
-  # ── A8. 长文本 VM 清单 (>200 字符, 3+ 主机名 + 状态词) → gcoc_agent ──
+  # ── A8. 长文本 VM 清单 (>200 字符, 3+ 主机名 + 状态词) → opscore_agent ──
   - id: kw-901
     text: "查询这22台VM的备份任务状态: ESXI-HK-8025, ESXI-HK-8031, ESXI-HK-8040, ESXI-HK-8055, ESXI-HK-8066, ESXI-HK-8071, ESXI-HK-8082, ESXI-HK-8093, ESXI-HK-8104, ESXI-HK-8115, ESXI-HK-8126, ESXI-HK-8137, 上周的备份Job有没有失败的"
-    expect: {keyword: gcoc_agent, llm: gcoc_agent}
+    expect: {keyword: opscore_agent, llm: opscore_agent}
     source: vm-list-query
   - id: kw-902
     text: "这批虚拟机的快照情况帮我确认一下: ESXI-03, ESXI-04, ESXI-05, ESXI-06, ESXI-07, ESXI-08, ESXI-09, ESXI-10, ESXI-11, ESXI-12, 看看哪台没做快照，回复我一份清单"
-    expect: {keyword: gcoc_agent, llm: gcoc_agent}
+    expect: {keyword: opscore_agent, llm: opscore_agent}
     source: vm-list-query
   - id: kw-903
     text: "以下是监控有问题的机器请查一下状态: VM-BJ-2001, VM-BJ-2002, VM-BJ-2003, VM-BJ-2004, VM-BJ-2005, VM-BJ-2006, VM-BJ-2007, VM-BJ-2008, 各自的CPU和内存现在占用多少，帮我汇总成表格"
-    expect: {keyword: gcoc_agent, llm: gcoc_agent}
+    expect: {keyword: opscore_agent, llm: opscore_agent}
     source: vm-list-query
 
   # ── A8反例. 长文本但非主机名清单 → 交由 LLM ──
@@ -145,12 +145,12 @@ cases:
   - {id: kw-1304, text: "检查主机CPU使用率", expect: {keyword: "", llm: ops_agent}, source: ops-action}
   - {id: kw-1305, text: "生成健康报告", expect: {keyword: ops_agent, llm: ops_agent}, source: ops-action}
 
-  # ── A12. 平台事件/告警记录查询 → gcoc_agent (数据查询而非知识) ──
-  - {id: kw-1401, text: "备份失败有哪些故障事件", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gcoc-events}
-  - {id: kw-1402, text: "上周有哪些运维事件", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gcoc-events}
-  - {id: kw-1403, text: "查一下最近的告警记录", expect: {keyword: gcoc_agent, llm: gcoc_agent}, source: gcoc-events}
+  # ── A12. 平台事件/告警记录查询 → opscore_agent (数据查询而非知识) ──
+  - {id: kw-1401, text: "备份失败有哪些故障事件", expect: {keyword: opscore_agent, llm: opscore_agent}, source: opscore-events}
+  - {id: kw-1402, text: "上周有哪些运维事件", expect: {keyword: opscore_agent, llm: opscore_agent}, source: opscore-events}
+  - {id: kw-1403, text: "查一下最近的告警记录", expect: {keyword: opscore_agent, llm: opscore_agent}, source: opscore-events}
   # 反例: 问排查方法 → 知识库
-  - {id: kw-1404, text: "有哪些故障事件的排查方法", expect: {keyword: kb_agent, llm: kb_agent}, source: gcoc-events-guard}
+  - {id: kw-1404, text: "有哪些故障事件的排查方法", expect: {keyword: kb_agent, llm: kb_agent}, source: opscore-events-guard}
 
   # ── A13. NMS/网管告警 → nms_agent ──
   - {id: kw-1501, text: "NMS告警现在怎么样", expect: {keyword: nms_agent, llm: nms_agent}, source: nms}
@@ -176,27 +176,27 @@ cases:
   - {id: llm-0604, text: "谢谢", expect: {keyword: "", llm: general_agent}, source: general}
   - {id: llm-0605, text: "k8s 是什么", expect: {keyword: "", llm: general_agent}, source: general}
 
-  # ── B3. gcoc vs vm_agent 边界: 查询类 → gcoc, 操作类 → vm_agent ──
-  - {id: llm-0101, text: "列出所有虚拟机", expect: {keyword: "", llm: gcoc_agent}, source: gcoc-vs-vm}
-  - {id: llm-0102, text: "查询虚拟机列表", expect: {keyword: "", llm: gcoc_agent}, source: gcoc-vs-vm}
-  - {id: llm-0103, text: "搜索叫abc的虚拟机", expect: {keyword: "", llm: gcoc_agent}, source: gcoc-vs-vm}
-  - {id: llm-0104, text: "这台测试虚拟机能关掉吗", expect: {llm: vm_agent}, source: gcoc-vs-vm}
-  - {id: llm-0105, text: "生产虚拟机不建议直接关机的原因", expect: {llm: kb_agent}, source: gcoc-vs-vm}
+  # ── B3. opscore vs vm_agent 边界: 查询类 → opscore, 操作类 → vm_agent ──
+  - {id: llm-0101, text: "列出所有虚拟机", expect: {keyword: "", llm: opscore_agent}, source: opscore-vs-vm}
+  - {id: llm-0102, text: "查询虚拟机列表", expect: {keyword: "", llm: opscore_agent}, source: opscore-vs-vm}
+  - {id: llm-0103, text: "搜索叫abc的虚拟机", expect: {keyword: "", llm: opscore_agent}, source: opscore-vs-vm}
+  - {id: llm-0104, text: "这台测试虚拟机能关掉吗", expect: {llm: vm_agent}, source: opscore-vs-vm}
+  - {id: llm-0105, text: "生产虚拟机不建议直接关机的原因", expect: {llm: kb_agent}, source: opscore-vs-vm}
 
   # ── C1. 追问场景 (带 history, 仅 llm 模式) ──
   - id: hist-001
     text: "有几台？"
     history:
       - {role: user, content: "查一下GID 47141的虚拟机"}
-      - {role: assistant, content: "该站点共有 12 台虚拟机，其中 3 台处于关机状态。", source: gcoc_agent}
-    expect: {llm: gcoc_agent}
+      - {role: assistant, content: "该站点共有 12 台虚拟机，其中 3 台处于关机状态。", source: opscore_agent}
+    expect: {llm: opscore_agent}
     source: followup
   - id: hist-002
     text: "那备份状态呢"
     history:
       - {role: user, content: "查一下GID 47141的虚拟机"}
-      - {role: assistant, content: "该站点共有 12 台虚拟机。", source: gcoc_agent}
-    expect: {llm: gcoc_agent}
+      - {role: assistant, content: "该站点共有 12 台虚拟机。", source: opscore_agent}
+    expect: {llm: opscore_agent}
     source: followup
   - id: hist-003
     text: "第一步展开讲讲"
@@ -210,9 +210,9 @@ cases:
   - {id: cmd-001, action: vm_power, expect: {agent: vm_agent}, source: COMMAND_ROUTES}
   - {id: cmd-002, action: vm_snapshot, expect: {agent: vm_agent}, source: COMMAND_ROUTES}
   - {id: cmd-003, action: vm_migrate, expect: {agent: vm_agent}, source: COMMAND_ROUTES}
-  - {id: cmd-004, action: backup_status, expect: {agent: gcoc_agent}, source: COMMAND_ROUTES}
-  - {id: cmd-005, action: backup_sessions, expect: {agent: gcoc_agent}, source: COMMAND_ROUTES}
-  - {id: cmd-006, action: snapshot_check, expect: {agent: gcoc_agent}, source: COMMAND_ROUTES}
+  - {id: cmd-004, action: backup_status, expect: {agent: opscore_agent}, source: COMMAND_ROUTES}
+  - {id: cmd-005, action: backup_sessions, expect: {agent: opscore_agent}, source: COMMAND_ROUTES}
+  - {id: cmd-006, action: snapshot_check, expect: {agent: opscore_agent}, source: COMMAND_ROUTES}
   - {id: cmd-007, action: nms_alarm_query, expect: {agent: nms_agent}, source: COMMAND_ROUTES}
   - {id: cmd-008, action: nms_alarm_now, expect: {agent: nms_agent}, source: COMMAND_ROUTES}
   - {id: cmd-009, action: kb_search, expect: {agent: kb_agent}, source: COMMAND_ROUTES}
@@ -224,4 +224,4 @@ cases:
   - {id: cmd-015, action: script_gen, expect: {agent: dev_agent}, source: COMMAND_ROUTES}
   - {id: cmd-016, action: ansible_run, expect: {agent: dev_agent}, source: COMMAND_ROUTES}
   - {id: cmd-017, action: web_screenshot, expect: {agent: browser_agent}, source: COMMAND_ROUTES}
-  - {id: cmd-018, action: cmdb_query, expect: {agent: gcoc_agent}, source: COMMAND_ROUTES}
+  - {id: cmd-018, action: cmdb_query, expect: {agent: opscore_agent}, source: COMMAND_ROUTES}

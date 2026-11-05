@@ -74,7 +74,7 @@ Z-OPS (Operation Claw) 是一个基于 LLM 的智能运维辅助系统，通过 
 | **vm_agent** | 虚拟化管理 (VMware/KVM/PVE) | 🟢 online | vm_list, vm_power, vm_snapshot, vm_migrate |
 | **dev_agent** | 脚本开发 / SSH 批量执行 | 🟢 online | script_gen, script_exec, ansible_run |
 | **browser_agent** | 浏览器自动化 | 🟢 online | web_screenshot, web_action, browser_attach |
-| **gcoc_agent** | GCOC 平台数据集成 | 🟢 online | cmdb, dns, backup, snapshot, ha, overview, brr, smartops |
+| **opscore_agent** | OPS-CORE 平台数据集成 | 🟢 online | cmdb, dns, backup, snapshot, ha, overview, brr, smartops |
 | **kb_agent** | 知识库 RAG | 🟢 online | search, chat, rag_enhance |
 
 ### 2.2 消息通道
@@ -93,7 +93,7 @@ Z-OPS (Operation Claw) 是一个基于 LLM 的智能运维辅助系统，通过 
 | **LLM** | 🟢 online | DeepSeek API (多模型支持) |
 | **N8N** | 🟢 online | 工作流自动化 (:5678) - 执行中枢 |
 | **LDAP/AD** | 🟢 online | AD 域认证 (198.19.5.191:3268) |
-| **GCOC API** | 🟢 online | 信息管理系统 + 资源管理平台 (117端点) |
+| **OPS-CORE API** | 🟢 online | 信息管理系统 + 资源管理平台 (117端点) |
 | **KB API** | 🟢 online | 知识库 RAG |
 
 ### 2.4 N8N 集成 (执行中枢)
@@ -172,13 +172,13 @@ web-next/
 │          ▼    ▼                        ▼               ▼        │
 │   ┌─────────────┐              ┌─────────────┐ ┌─────────┐    │
 │   │  LLM        │              │ 标准化工作流 │ │ 触发器  │    │
-│   │  意图识别   │              │(VM/GCOC/AD) │ │(告警/定时)│    │
+│   │  意图识别   │              │(VM/OPS-CORE/AD) │ │(告警/定时)│    │
 │   └─────────────┘              └─────────────┘ └─────────┘    │
 │                                              │                │
 │                                              ▼                │
 │                                       ┌─────────────┐         │
 │                                       │  外部系统   │         │
-│                                       │(VM/GCOC/DNS)│         │
+│                                       │(VM/OPS-CORE/DNS)│         │
 │                                       └─────────────┘         │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -199,7 +199,7 @@ zops/
 │   ├── ops_agent.py          # 运维专家
 │   ├── network_agent.py      # 网络专家
 │   ├── vm_agent.py           # 虚拟化专家
-│   ├── gcoc_agent.py         # GCOC 集成
+│   ├── opscore_agent.py         # OPS-CORE 集成
 │   ├── kb_agent.py           # 知识库
 │   ├── browser_agent.py      # 浏览器自动化
 │   └── dev_agent.py          # 开发助手
@@ -253,7 +253,7 @@ zops/
 ├── skills/                    # 技能实现
 │   ├── ops/                 # 运维技能
 │   ├── network/             # 网络技能
-│   ├── gcoc/                # GCOC技能
+│   ├── opscore/                # OPS-CORE技能
 │   ├── vm/                  # 虚拟化技能
 │   ├── dev/                 # 开发技能
 │   ├── browser/             # 浏览器技能
@@ -326,7 +326,7 @@ zops/
     ┌────┴────┬────────┬────────┐
     ▼         ▼        ▼        ▼
 ┌───────┐ ┌───────┐ ┌───────┐ ┌──────┐
-│ Ops   │ │Network│ │ GCOC  │ │ ...  │
+│ Ops   │ │Network│ │ OPS-CORE  │ │ ...  │
 │ Agent │ │ Agent │ │ Agent │ │      │
 └───┬───┘ └───┬───┘ └───┬───┘ └──┬───┘
     │         │         │         │
@@ -381,7 +381,7 @@ zops:user_ops:{date}         # 用户操作日志 (List)
 总用户数: 9
 ├── 本地用户: admin (管理员), temp (临时用户)
 └── AD域用户: 
-    ├── svc-gcoc (Cyril Zhong) - 管理员
+    ├── svc-opscore (Cyril Zhong) - 管理员
     ├── user-2141 (User A) - 已授权
     ├── user-1069 (User B) - 已授权
     ├── user-1744, user-2136, user-2002, user-1983 - 待授权
@@ -437,7 +437,7 @@ curl http://localhost:7789/api/overview -H "Authorization: Bearer {token}"
 ```
 zops/logs/
 ├── orchestrator.log      # 编排器日志
-├── gcoc_agent.log        # GCOC Agent
+├── opscore_agent.log        # OPS-CORE Agent
 ├── ops_agent.log         # 运维 Agent
 ├── network_agent.log     # 网络 Agent
 ├── vm_agent.log          # 虚拟机 Agent
@@ -804,12 +804,12 @@ engine = get_improving_engine()
 # 注册技能标签
 engine.register_skill_tags("vm_backup_check", ["vmware", "backup", "api"])
 engine.register_skill_tags("vm_snapshot", ["vmware", "snapshot", "api"])
-engine.register_skill_tags("gcoc_backup", ["gcoc", "backup", "api"])
+engine.register_skill_tags("opscore_backup", ["opscore", "backup", "api"])
 
 # 获取迁移洞察
 insights = engine.get_transfer_insights("vm_backup_check", error_category="timeout")
 # ["[迁移自 vm_snapshot] 修复建议: 增加超时时间或检查目标服务响应",
-#  "[迁移自 gcoc_backup] 有效策略: retry_with_backoff"]
+#  "[迁移自 opscore_backup] 有效策略: retry_with_backoff"]
 ```
 
 #### 11.7.5 A/B 测试与自动回滚

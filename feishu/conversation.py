@@ -67,8 +67,8 @@ class ConversationDomain:
                     "**💬 免记指令，直接说人话**\n"
                     "- `有哪些分组`：列出全部重点分组（带编号）\n"
                     "- `3` / `截图 3`：看第 3 组明细 / 截第 3 组告警图\n"
-                    "- `截个 GCOC_use 的图`：直接申请该分组告警截图\n"
-                    "- `GCOC_use 组有什么告警` / `GCOC_use 怎么了`：分组告警明细\n"
+                    "- `截个 OPSCORE_use 的图`：直接申请该分组告警截图\n"
+                    "- `OPSCORE_use 组有什么告警` / `OPSCORE_use 怎么了`：分组告警明细\n"
                     "- `当前有哪些告警`：秒回 NMS 实时告警状态"}},
                 {"tag": "hr"},
                 {"tag": "div", "text": {"tag": "lark_md", "content":
@@ -102,8 +102,8 @@ _HELP_TEXT = (
     "\n【免记指令，直接说人话】\n"
     "- 「有哪些分组」列出全部重点分组（带编号）\n"
     "- 「3」/「截图 3」看第 3 组明细 / 截第 3 组告警图\n"
-    "- 「截个 GCOC_use 的图」申请该分组告警截图\n"
-    "- 「GCOC_use 组有什么告警」/「GCOC_use 怎么了」分组告警明细\n"
+    "- 「截个 OPSCORE_use 的图」申请该分组告警截图\n"
+    "- 「OPSCORE_use 组有什么告警」/「OPSCORE_use 怎么了」分组告警明细\n"
     "- 「当前有哪些告警」秒回 NMS 实时告警状态\n"
     "\n【直接对话】智能路由到各运维助手，支持追问上下文\n"
     "- 「XX故障如何排查」知识库检索回答\n"
@@ -156,7 +156,7 @@ async def _auto_bind_feishu_user(sender_id: str) -> tuple:
         u = ((data.get("data") or {}).get("user") or {})
         email = (u.get("email") or "").strip()
         emp_no = str(u.get("employee_no") or "").strip()
-        # 工号候选优先级: 通讯录工号字段 → 邮箱前缀 (svc-gcoc@xx → svc-gcoc)
+        # 工号候选优先级: 通讯录工号字段 → 邮箱前缀 (svc-opscore@xx → svc-opscore)
         candidates = [emp_no] if emp_no else []
         m = re.match(r"(op\d{3,6})", email, re.I)
         if m:
@@ -218,7 +218,7 @@ async def _resolve_feishu_user(sender_id: str) -> tuple:
 
 _BINDING_GUIDE = (
     "🔐 **首次使用需绑定账号**\n\n"
-    "检测到您尚未绑定系统账号。请直接回复您的工号（如 `svc-gcoc`）完成绑定，"
+    "检测到您尚未绑定系统账号。请直接回复您的工号（如 `svc-opscore`）完成绑定，"
     "绑定后即可正常提问，问答记录将归入您的账号。\n\n"
     "如需换号：发送「重新绑定」")
 
@@ -242,7 +242,7 @@ async def _handle_binding(text: str, message_id: str, chat_id: str,
             await r.hdel(config.KEY_FEISHU_USER_MAP, sender_id)
         except Exception as e:
             logger.debug(f"feishu 解绑失败: {e}")
-        await _bot._reply_im(message_id, "已解除绑定。请回复新工号（如 `svc-gcoc`）重新绑定。", chat_id)
+        await _bot._reply_im(message_id, "已解除绑定。请回复新工号（如 `svc-opscore`）重新绑定。", chat_id)
         return True
     # 工号绑定：仅当文本就是工号格式才拦截（不误伤普通提问）
     if not re.fullmatch(r"op\d{3,6}", t):
@@ -314,7 +314,7 @@ async def _handle_feishu_message(text: str, message_id: str, chat_id: str,
         logger.info(f"飞书 NMS 命令已回复: {text[:50]}")
         return
 
-    # ①.2 自然语言 NMS 查询（免记指令）：「截个 GCOC_use 的图」「GCOC_use 组有什么告警」
+    # ①.2 自然语言 NMS 查询（免记指令）：「截个 OPSCORE_use 的图」「OPSCORE_use 组有什么告警」
     #      命中真实分组名 + 告警/截图语境词才执行，秒回；否则返回空串交给下游
     try:
         nl_text = await _bot._nms_nl_query(text, message_id, chat_id)

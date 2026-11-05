@@ -103,11 +103,11 @@ async def probe_dns(targets: List[str], timeout: float = 15) -> Dict[str, Any]:
     return _result("dns", results, unknown)
 
 
-# ═══ 备份作业（GCOC-MGT 只读查询）═══
+# ═══ 备份作业（OPS-CORE-MGT 只读查询）═══
 async def _backup_once(ip: str, timeout: float) -> Dict[str, Any]:
     """按前 3 段搜索后客户端按 server_url 精确过滤：
-    GCOC-MGT 的 search 不支持完整 IP 串，直接搜完整 IP 会得到 0 条。"""
-    from agents.gcoc_api import get_mgt_client
+    OPS-CORE-MGT 的 search 不支持完整 IP 串，直接搜完整 IP 会得到 0 条。"""
+    from agents.opscore_api import get_mgt_client
     from collections import Counter
     client = get_mgt_client()
     prefix = ".".join(ip.split(".")[:3])

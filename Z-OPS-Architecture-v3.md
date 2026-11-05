@@ -53,7 +53,7 @@ graph TB
         DA[dev_agent]
         BA[browser_agent]
         KA[kb_agent]
-        GCA[gcoc_agent]
+        GCA[opscore_agent]
     end
 
     subgraph 核心引擎层
@@ -80,8 +80,8 @@ graph TB
     subgraph 数据与基础设施
         REDIS[Redis 消息总线<br/>心跳 + 状态 + 会话]
         LLM[AI 模型网关 OneAPI<br/>7 Provider / 20+ 模型<br/>Qwen3-235B 主力]
-        GCOC1[GCOC 信息管理系统<br/>29 个 API 端点]
-        GCOC2[GCOC 资源管理平台<br/>88 个 API 端点]
+        OPS-CORE1[OPS-CORE 信息管理系统<br/>29 个 API 端点]
+        OPS-CORE2[OPS-CORE 资源管理平台<br/>88 个 API 端点]
         KB[知识库 RAG API]
     end
 
@@ -109,8 +109,8 @@ graph TB
     QE --> TR
     TR --> ER
     QE --> LLM
-    GCA --> GCOC1
-    GCA --> GCOC2
+    GCA --> OPS-CORE1
+    GCA --> OPS-CORE2
     OA --> N8N
     VA --> N8N
     N8N --> BRIDGE
@@ -175,12 +175,12 @@ v3.5: LLM 原生 function_calling      → 准确率 ~98%    维护成本: 零
 |:---|:---|:---|:---|
 | **orchestrator** | 意图路由 + 任务派发 | Agents-as-Tools function_calling、心跳监控、上下文管理 | Redis |
 | **general_agent** | 通用问答 + 文档生成 | RAG 增强问答、文档总结、最佳实践 | 知识库 |
-| **ops_agent** | 巡检 + 监控 + 故障诊断 | SSH 采集、日志分析、批量执行、健康报告 | GCOC + N8N |
-| **network_agent** | 网络拓扑 + 连通性检测 | Ping 扫描、端口检测、路由追踪、配置审计 | GCOC |
-| **vm_agent** | VM 生命周期管理 | 开关机、快照、迁移、状态查询 | GCOC + VMware + N8N |
+| **ops_agent** | 巡检 + 监控 + 故障诊断 | SSH 采集、日志分析、批量执行、健康报告 | OPS-CORE + N8N |
+| **network_agent** | 网络拓扑 + 连通性检测 | Ping 扫描、端口检测、路由追踪、配置审计 | OPS-CORE |
+| **vm_agent** | VM 生命周期管理 | 开关机、快照、迁移、状态查询 | OPS-CORE + VMware + N8N |
 | **dev_agent** | 自动化脚本生成与执行 | Shell/Python 生成、远程执行、Ansible | 本地 |
 | **browser_agent** | Web 自动化操作 | Playwright 截图、表单填写、页面操作 | 浏览器引擎 |
-| **gcoc_agent** | 全平台数据智能查询 | 30+ Action、117 API 端点、Tool-Use 模式 | GCOC 双平台 |
+| **opscore_agent** | 全平台数据智能查询 | 30+ Action、117 API 端点、Tool-Use 模式 | OPS-CORE 双平台 |
 | **kb_agent** | RAG 知识增强 | 语义搜索、Query Rewriting、多路召回 | KB API |
 
 ### 3.4 核心引擎层（企业级基础设施）
@@ -304,7 +304,7 @@ tool_calls[0].function.name → 目标 Agent
   ↓
 QueryEngine (Tool-Call Loop)
   ↓
-并行调用: LLM + GCOC API + N8N + KB
+并行调用: LLM + OPS-CORE API + N8N + KB
   ↓
 ExecutionRegistry 记录
   ↓
@@ -369,7 +369,7 @@ Z-OPS 构建了完整的系统可观测性：
 | API 端点 | 72 个 RESTful |
 | Agent 专业体 | 9 个（8 专业 + 1 编排器） |
 | 运维技能 | 30+ 个 |
-| GCOC API 对接 | 117 个端点（29 + 88） |
+| OPS-CORE API 对接 | 117 个端点（29 + 88） |
 | N8N 工作流 | 20 个生产级 |
 | LLM Provider | 7 家 / 20+ 模型 |
 | 工作流 JSON | 1,829 行 |
@@ -429,7 +429,7 @@ Agent 集群页面的拓扑动画完全由真实 API 调用数据驱动：
   ├── N8N 工作流引擎
   └── OneAPI 模型网关 (https://aigw-noc.example.com)
 
-域名: https://gcoc-ai.example.com
+域名: https://opscore-ai.example.com
 ```
 
 ---
@@ -441,7 +441,7 @@ Agent 集群页面的拓扑动画完全由真实 API 调用数据驱动：
 | 版本 | 时间 | 里程碑 | 核心突破 | 状态 |
 |:---|:---|:---|:---|:---:|
 | **v0** | 2025.06-10 | Dify 工作流探索 | Dify 工作流验证 + 本地 DeepSeek 部署 + Agent 原型设计 | ✅ |
-| **v1.0** | 2025.11 | 基础智能体上线 | 单 Agent + 自然语言对话 + GCOC API 对接 | ✅ |
+| **v1.0** | 2025.11 | 基础智能体上线 | 单 Agent + 自然语言对话 + OPS-CORE API 对接 | ✅ |
 | v1.1 | 2025.12 | 数据查询增强 | 备份/快照/VCD 查询技能 + 多数据源路由 | ✅ |
 | v1.2 | 2025.12 | 渠道扩展 | 飞书机器人接入 + Redis Pub/Sub 消息总线 | ✅ |
 | **v2.0** | 2026.01 | 多 Agent 协作架构 | Orchestrator 编排 + 8 Agent 集群 + Skills 框架 | ✅ |

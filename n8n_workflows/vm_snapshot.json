@@ -83,7 +83,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:7789/api/gcoc/vm/snapshot",
+        "url": "http://localhost:7789/api/opscore/vm/snapshot",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

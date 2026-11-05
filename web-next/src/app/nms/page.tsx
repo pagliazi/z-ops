@@ -1042,10 +1042,10 @@ function ChecklistCard({ m }: { m: ChecklistMatch }) {
                         })}
                       </ul>
                       {m.tool_checks && <ToolChecksPanel checks={m.tool_checks} />}
-                      {/* 硬件告警: 设备资产（SN/固件来自 GCOC资源管理平台） */}
+                      {/* 硬件告警: 设备资产（SN/固件来自 OPS-CORE资源管理平台） */}
                       {m.hardware && m.devices && m.devices.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-sky-100">
-                          <div className="text-[10px] font-medium text-sky-700 mb-1">设备资产（GCOC资源管理平台）</div>
+                          <div className="text-[10px] font-medium text-sky-700 mb-1">设备资产（OPS-CORE资源管理平台）</div>
                           <div className="overflow-x-auto rounded border border-sky-100 bg-white">
                             <table className="min-w-full text-[10px]">
                               <thead className="bg-sky-50/60">

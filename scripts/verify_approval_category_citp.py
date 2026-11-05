@@ -26,10 +26,10 @@ async def main():
     for u, dn in [(AP, "分类验证申请人"), (DSR, "分类验证DS")]:
         await r.hset(config.KEY_USERS, u, json.dumps(
             {"password_hash": PASS_HASH, "display_name": dn, "role": "user",
-             "group": "GCOC", "biz_perms": (["approval.ds_review"] if u == DSR else []),
+             "group": "OPS-CORE", "biz_perms": (["approval.ds_review"] if u == DSR else []),
              "created_at": now}, ensure_ascii=False))
-    old_tabs = await r.hget(config.KEY_GROUP_TABS, "GCOC")
-    await r.hset(config.KEY_GROUP_TABS, "GCOC", json.dumps(["/", "/nms"]))
+    old_tabs = await r.hget(config.KEY_GROUP_TABS, "OPS-CORE")
+    await r.hset(config.KEY_GROUP_TABS, "OPS-CORE", json.dumps(["/", "/nms"]))
 
     c = httpx.Client(timeout=120)
     def login(u):
@@ -340,7 +340,7 @@ async def main():
     check("非本人编辑拒绝 403", non_owner.status_code == 403, non_owner.status_code)
     # 决策后不可编辑: 给 DSR 补 approval.decide 后终审, 再编辑应 400
     await r.hset(config.KEY_USERS, DSR, json.dumps({"password_hash": PASS_HASH, "display_name": "DS",
-        "role": "user", "group": "GCOC", "biz_perms": ["approval.ds_review", "approval.decide"],
+        "role": "user", "group": "OPS-CORE", "biz_perms": ["approval.ds_review", "approval.decide"],
         "created_at": now}, ensure_ascii=False))
     t_dsr2 = c.post(f"{BASE}/api/auth/login", json={"username": DSR, "password": "vpass"}).json()["token"]
     for _ in range(3):  # 逐级推完 (ds 已重置, 依次 ds→tech)
@@ -364,18 +364,18 @@ async def main():
     no_perm_decide = c.post(f"{BASE}/api/approvals/{aid3}/decide", headers=HJ(t_ap),
                             json={"decision": "approve"})
     check("无权限用户决策仍拒绝 403", no_perm_decide.status_code == 403, no_perm_decide.status_code)
-    # 组别权限: 跨组用户不可见 (GCOC 组单 vs 无组用户), 同组可见, 管理员全局
+    # 组别权限: 跨组用户不可见 (OPS-CORE 组单 vs 无组用户), 同组可见, 管理员全局
     await r.hset(config.KEY_USERS, "tmp_xg", json.dumps(
         {"password_hash": PASS_HASH, "display_name": "xg", "role": "user", "group": "",
          "biz_perms": [], "created_at": now}, ensure_ascii=False))
     t_xg = c.post(f"{BASE}/api/auth/login", json={"username": "tmp_xg", "password": "vpass"}).json()["token"]
     pool_xg = c.get(f"{BASE}/api/approvals", headers={"Authorization": f"Bearer {t_xg}"}).json()
-    check("跨组(无组)用户待办池不含 GCOC 组单",
+    check("跨组(无组)用户待办池不含 OPS-CORE 组单",
           not any(x.get("username") == AP for x in (pool_xg.get("pending") or [])),
           [x.get("username") for x in (pool_xg.get("pending") or [])][:5])
-    pool_gcoc = c.get(f"{BASE}/api/approvals", headers=H(t_ap)).json()
-    check("GCOC 组用户待办池含本组单",
-          any(x.get("username") == AP for x in (pool_gcoc.get("pending") or [])))
+    pool_opscore = c.get(f"{BASE}/api/approvals", headers=H(t_ap)).json()
+    check("OPS-CORE 组用户待办池含本组单",
+          any(x.get("username") == AP for x in (pool_opscore.get("pending") or [])))
     detail_xg = c.get(f"{BASE}/api/approvals/{aid3}", headers={"Authorization": f"Bearer {t_xg}"})
     check("跨组用户查详情 403", detail_xg.status_code == 403, detail_xg.status_code)
     xlsx_xg = c.get(f"{BASE}/api/approvals/{aid3}/citp.xlsx", headers={"Authorization": f"Bearer {t_xg}"})
@@ -412,7 +412,7 @@ async def main():
     from feishu.approval import ApprovalDomain
     ap_card = {
         "approval_id": "apr_cardtest", "category": "maintenance", "tool_name": "hw_disk_replace",
-        "username": "svc-gcoc", "service_type": "硬件/服务器存储设备", "site": "CNSHHCCC",
+        "username": "svc-opscore", "service_type": "硬件/服务器存储设备", "site": "CNSHHCCC",
         "case_no": "5942775", "priority": "high", "change_window": "2026/08/29 14:00-18:00 HKT",
         "customer": "Nidec", "customer_gid": "TW43727", "customer_order_no": "ORDER-71631",
         "customer_site_ids": "HKGAAA", "target_host": "CEPH-SH-3161", "related_alerts_n": 2,
@@ -456,7 +456,7 @@ async def main():
         "approver_ds": DSR})
     aid_ex = ca2.json().get("approval_id", "")
     await r.hset(config.KEY_USERS, DSR, json.dumps({"password_hash": PASS_HASH, "display_name": "DS",
-        "role": "user", "group": "GCOC", "biz_perms": ["approval.ds_review", "approval.decide"],
+        "role": "user", "group": "OPS-CORE", "biz_perms": ["approval.ds_review", "approval.decide"],
         "created_at": now}, ensure_ascii=False))
     t_dsx = c.post(f"{BASE}/api/auth/login", json={"username": DSR, "password": "vpass"}).json()["token"]
     for _ in range(3):
@@ -499,9 +499,9 @@ async def main():
         await r.delete(f"{config.REDIS_PREFIX}:approval:{bad.json().get('approval_id', '')}")
     await r.delete(f"{config.REDIS_PREFIX}:approval_draft:{AP}")
     if old_tabs is None:
-        await r.hdel(config.KEY_GROUP_TABS, "GCOC")
+        await r.hdel(config.KEY_GROUP_TABS, "OPS-CORE")
     else:
-        await r.hset(config.KEY_GROUP_TABS, "GCOC", old_tabs)
+        await r.hset(config.KEY_GROUP_TABS, "OPS-CORE", old_tabs)
 
     fails = [n for n, ok, _ in results if not ok]
     print(f"\n{'='*46}\n结果: {len(results)-len(fails)}/{len(results)} PASS" + (f" · FAIL: {fails}" if fails else " · 全部通过"))

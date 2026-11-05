@@ -1,15 +1,15 @@
 """
-Z-OPS — gcoc_api: GCOC 平台 API 共享模块
+Z-OPS — opscore_api: OPS-CORE 平台 API 共享模块
 提供统一的 API 客户端、完整端点目录、智能查询函数
-供 gcoc_agent / vm_agent / ops_agent / network_agent 等共享使用
+供 opscore_agent / vm_agent / ops_agent / network_agent 等共享使用
 
 两个平台:
-  - 信息管理系统 (Token 鉴权, Bearer): 145 / gcoc-info.example.com
+  - 信息管理系统 (Token 鉴权, Bearer): 145 / opscore-info.example.com
   - 管理平台 (Django REST Framework, 账号密码换 Token): 198.18.18.146
 
 2026-10-27 起 145 已关闭 AD 账号本地密码兜底: 信息平台只走 Token,
 代码里不再保留 /api/auth/login/ 调用; 401/403 直接失败, 不回退账号密码。
-迁移说明: https://gcoc-info.example.com/handoff/GCOC_AI_TOKEN_MIGRATION.md
+迁移说明: https://opscore-info.example.com/handoff/OPSCORE_AI_TOKEN_MIGRATION.md
 """
 
 import json
@@ -42,7 +42,7 @@ INFO_API_CATALOG = {
     "site_info":        "/api/site_info/",
     "datacenter":       "/api/datacenter/",
     # 信息目录
-    "gcoc_access":      "/api/gcoc_access/",
+    "opscore_access":      "/api/opscore_access/",
     "idc_info":         "/api/idc_info/",
     "vendor_info":      "/api/vendor_info/",
     "temp_password":    "/api/temp_password/",
@@ -279,8 +279,8 @@ def get_domain_api_desc(domain: str) -> str:
 #  API 客户端
 # ═══════════════════════════════════════════════
 
-class GcocApiClient:
-    """GCOC 平台 API 客户端
+class OpscoreApiClient:
+    """OPS-CORE 平台 API 客户端
 
     两种鉴权:
       - 信息平台: 静态 Token (Authorization: Bearer), 无登录/重登路径
@@ -346,19 +346,19 @@ class GcocApiClient:
                     self._session_cookie = str(resp.cookies)
                 self._session_ok = True
                 self._login_fails = 0
-                logger.info(f"[gcoc_api] 登录成功: {self.base_url} "
+                logger.info(f"[opscore_api] 登录成功: {self.base_url} "
                             f"({'token' if self._token else 'session-cookie'})")
                 return True
             else:
                 self._login_fails += 1
                 self._last_login_fail_ts = time.time()
-                logger.warning(f"[gcoc_api] 登录失败 {self.base_url}: {resp.status_code} "
+                logger.warning(f"[opscore_api] 登录失败 {self.base_url}: {resp.status_code} "
                                f"(连续 {self._login_fails} 次, 退避 {int(self._login_cooldown())}s)")
                 return False
         except Exception as e:
             self._login_fails += 1
             self._last_login_fail_ts = time.time()
-            logger.warning(f"[gcoc_api] 登录异常 {self.base_url}: {e}")
+            logger.warning(f"[opscore_api] 登录异常 {self.base_url}: {e}")
             return False
 
     def _headers(self) -> dict:
@@ -396,9 +396,9 @@ class GcocApiClient:
                 if not self._auth_warned:
                     reason = "Token 无效/被吊销" if resp.status_code == 401 else \
                         "Token 缺 scope 或来源 IP 不在白名单(198.18.18.147)"
-                    logger.error(f"[gcoc_api] GCOC Token 鉴权失败 {resp.status_code}: {url} — {reason}")
+                    logger.error(f"[opscore_api] OPS-CORE Token 鉴权失败 {resp.status_code}: {url} — {reason}")
                     self._auth_warned = True
-                return {"error": f"HTTP {resp.status_code}: GCOC Token 鉴权失败", "url": url}
+                return {"error": f"HTTP {resp.status_code}: OPS-CORE Token 鉴权失败", "url": url}
             if resp.status_code == 401:
                 # 管理平台 DRF Token 过期，重新登录
                 if await self.login():
@@ -428,41 +428,41 @@ class GcocApiClient:
 
 # ═══ 单例客户端 ═══
 
-_info_client: Optional[GcocApiClient] = None
-_mgt_client: Optional[GcocApiClient] = None
+_info_client: Optional[OpscoreApiClient] = None
+_mgt_client: Optional[OpscoreApiClient] = None
 
 
-def get_info_client() -> GcocApiClient:
+def get_info_client() -> OpscoreApiClient:
     """获取信息管理系统客户端 (Token 鉴权; 145 已禁用密码兜底, 无登录路径)"""
     global _info_client
     if _info_client is None:
-        _info_client = GcocApiClient(
-            base_url=config.GCOC_INFO_URL,
+        _info_client = OpscoreApiClient(
+            base_url=config.OPSCORE_INFO_URL,
             catalog=INFO_API_CATALOG,
-            token=config.GCOC_API_TOKEN or "",
+            token=config.OPSCORE_API_TOKEN or "",
             token_scheme="Bearer",
         )
-        if not config.GCOC_API_TOKEN:
-            logger.warning("[gcoc_api] 未配置 GCOC_API_TOKEN, 信息平台接口将全部 401 "
+        if not config.OPSCORE_API_TOKEN:
+            logger.warning("[opscore_api] 未配置 OPSCORE_API_TOKEN, 信息平台接口将全部 401 "
                            "(禁止回退账号密码登录)")
     return _info_client
 
 
-def get_mgt_client() -> GcocApiClient:
+def get_mgt_client() -> OpscoreApiClient:
     """获取管理平台 (146) 客户端"""
     global _mgt_client
     if _mgt_client is None:
-        _mgt_client = GcocApiClient(
-            base_url=config.GCOC_MGT_URL,
-            username=config.GCOC_MGT_USER,
-            password=config.GCOC_MGT_PASS,
+        _mgt_client = OpscoreApiClient(
+            base_url=config.OPSCORE_MGT_URL,
+            username=config.OPSCORE_MGT_USER,
+            password=config.OPSCORE_MGT_PASS,
             catalog=MGT_API_CATALOG,
             token_scheme="Token",
         )
     return _mgt_client
 
 
-def _get_client_for_endpoint(endpoint_key: str) -> GcocApiClient:
+def _get_client_for_endpoint(endpoint_key: str) -> OpscoreApiClient:
     """根据端点名自动选择对应平台客户端"""
     if endpoint_key in INFO_API_CATALOG:
         return get_info_client()
@@ -1023,8 +1023,8 @@ async def query_crm_storage_mappings() -> dict:
 #  MCP REST 网关直连 (smartops_vms 全量缓存 / esxi_host 索引)
 #
 #  背景: REST /api/smart-ops/vms/ 无过滤大页查询在 Z-OPS→146 链路上单页 20s+、
-#  page_size>=500 直接 30s 超时 (VMStatus 聚合序列化开销)，是 gcoc_agent
-#  主机 VM 查询平均 77s 的根因。MCP 网关 (gcoc-mgt /api/snapshot/mcp/tools/)
+#  page_size>=500 直接 30s 超时 (VMStatus 聚合序列化开销)，是 opscore_agent
+#  主机 VM 查询平均 77s 的根因。MCP 网关 (opscore-mgt /api/snapshot/mcp/tools/)
 #  返回精简字段、无 VMStatus 聚合，全量 3 页并发热态 <2s。
 #  主机查询链路: MCP 全量缓存建 esxi_host 索引 → 短名解析完整主机 →
 #  REST host=<完整值> 服务端精确过滤 (索引命中 vm_host_idx, 0.2s)。
@@ -1046,7 +1046,7 @@ async def _get_mcp_gateway_client() -> httpx.AsyncClient:
 
 
 async def mcp_call_tool(tool: str, payload: dict = None) -> dict:
-    """调用 GCOC MCP REST 网关工具: POST {MCP_REST_BASE}/{tool}/
+    """调用 OPS-CORE MCP REST 网关工具: POST {MCP_REST_BASE}/{tool}/
 
     Returns:
         工具 data 字段 (dict)；失败时 {"error": ...}
@@ -1151,7 +1151,7 @@ def resolve_esxi_host_candidates(host_code: str) -> List[str]:
     return [h for h in _mcp_vms_cache["esxi_hosts"] if code in h.lower()]
 
 
-# ── 主机 VM 查询 (gcoc_agent / vm_agent 共用核心) ──
+# ── 主机 VM 查询 (opscore_agent / vm_agent 共用核心) ──
 
 _HOST_CODE_RE = re.compile(r'^([A-Za-z]{2,8})(\d{3,5})([A-Za-z]{0,4})$')
 _HOST_SKIP_PREFIXES = {'GID', 'HTTP', 'DNS', 'API', 'URL', 'SSH', 'TCP', 'UDP'}
@@ -1172,7 +1172,7 @@ def expand_host_code(search: str) -> Optional[str]:
 async def query_vms_on_esxi_host(search: str) -> Optional[dict]:
     """主机 VM 查询核心: 将 'ESXI-02' 视为 ESXi 主机名, 返回该主机上全部 VM
 
-    链路 (gcoc_agent._expand_site_search / vm_agent._expand_site_vm_search 共用):
+    链路 (opscore_agent._expand_site_search / vm_agent._expand_site_vm_search 共用):
       1. MCP 全量缓存建 esxi_host 索引, 短名子串解析出完整宿主机 (FQDN/IP)
       2. REST smartops_vms?host=<完整值> 服务端精确过滤拿丰富字段明细 (索引命中, ~0.2s)
          REST 不可用时退回 MCP 缓存内同宿主机 VM (精简字段)

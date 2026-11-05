@@ -69,50 +69,50 @@ COMMAND_ROUTES = {
     # dev_agent — 补充
     "ansible_run":     ("dev_agent", "ansible_run"),
 
-    # gcoc_agent — 信息管理系统 (145)
-    "cmdb_query":      ("gcoc_agent", "cmdb_query"),
-    "rack_query":      ("gcoc_agent", "rack_query"),
-    "monitor_query":   ("gcoc_agent", "monitor_query"),
-    "alert_query":     ("gcoc_agent", "alert_query"),
-    "case_query":      ("gcoc_agent", "case_query"),
-    "dns_query":       ("gcoc_agent", "dns_query"),
-    "datacenter_info": ("gcoc_agent", "datacenter_info"),
-    "login_info":      ("gcoc_agent", "login_info"),
-    # gcoc_agent — 管理平台 (146) BRR 备份
-    "backup_status":   ("gcoc_agent", "backup_status"),
-    "backup_objects":  ("gcoc_agent", "backup_objects"),
-    "backup_repos":    ("gcoc_agent", "backup_repos"),
-    "backup_sessions": ("gcoc_agent", "backup_sessions"),
-    "brr_jobs":        ("gcoc_agent", "backup_status"),  # 新增：备份作业查询
-    "brr_stats":       ("gcoc_agent", "backup_status"),  # 新增：备份统计
-    # gcoc_agent — 管理平台 (146) 快照
-    "snapshot_check":  ("gcoc_agent", "snapshot_check"),
-    "snapshot_list":   ("gcoc_agent", "snapshot_check"),  # 新增：快照列表
-    "snapshot_summary": ("gcoc_agent", "snapshot_check"),  # 新增：快照汇总
-    # gcoc_agent — 管理平台 (146) Smart-Ops
-    "smartops_vms":    ("gcoc_agent", "smartops_vms"),
-    "smartops_events": ("gcoc_agent", "smartops_events"),
-    "smartops_status": ("gcoc_agent", "smartops_status"),
-    "smartops_alerts": ("gcoc_agent", "smartops_events"),  # 新增：运维告警
-    # gcoc_agent — 管理平台 (146) Aria
-    "aria_ops":        ("gcoc_agent", "aria_ops"),
-    "aria_dashboard":  ("gcoc_agent", "aria_ops"),  # 新增：Aria 仪表盘
-    "aria_capacity":   ("gcoc_agent", "aria_ops"),  # 新增：Aria 容量
-    # gcoc_agent — 管理平台 (146) VCD
-    "vcd_resources":   ("gcoc_agent", "vcd_resources"),
-    "vcd_orgs":       ("gcoc_agent", "vcd_resources"),  # 新增：VCD 组织
-    # gcoc_agent — 管理平台 (146) M365
-    "m365_status":     ("gcoc_agent", "m365_status"),
-    "m365_dashboard":  ("gcoc_agent", "m365_status"),  # 新增：M365 仪表盘
-    # gcoc_agent — 管理平台 (146) CRM
-    "crm_query":       ("gcoc_agent", "backup_status"),  # 新增：CRM 客户查询
-    "crm_customers":   ("gcoc_agent", "backup_status"),  # 新增：CRM 客户列表
-    # gcoc_agent — HA 高可用
-    "ha_query":        ("gcoc_agent", "ha_query"),
-    "ha_vms":          ("gcoc_agent", "ha_query"),  # 新增：HA VM 查询
-    # gcoc_agent — 综合
-    "gcoc_overview":   ("gcoc_agent", "overview"),
-    "gcoc_chat":       ("gcoc_agent", "chat"),  # 新增：GCOC 通用聊天
+    # opscore_agent — 信息管理系统 (145)
+    "cmdb_query":      ("opscore_agent", "cmdb_query"),
+    "rack_query":      ("opscore_agent", "rack_query"),
+    "monitor_query":   ("opscore_agent", "monitor_query"),
+    "alert_query":     ("opscore_agent", "alert_query"),
+    "case_query":      ("opscore_agent", "case_query"),
+    "dns_query":       ("opscore_agent", "dns_query"),
+    "datacenter_info": ("opscore_agent", "datacenter_info"),
+    "login_info":      ("opscore_agent", "login_info"),
+    # opscore_agent — 管理平台 (146) BRR 备份
+    "backup_status":   ("opscore_agent", "backup_status"),
+    "backup_objects":  ("opscore_agent", "backup_objects"),
+    "backup_repos":    ("opscore_agent", "backup_repos"),
+    "backup_sessions": ("opscore_agent", "backup_sessions"),
+    "brr_jobs":        ("opscore_agent", "backup_status"),  # 新增：备份作业查询
+    "brr_stats":       ("opscore_agent", "backup_status"),  # 新增：备份统计
+    # opscore_agent — 管理平台 (146) 快照
+    "snapshot_check":  ("opscore_agent", "snapshot_check"),
+    "snapshot_list":   ("opscore_agent", "snapshot_check"),  # 新增：快照列表
+    "snapshot_summary": ("opscore_agent", "snapshot_check"),  # 新增：快照汇总
+    # opscore_agent — 管理平台 (146) Smart-Ops
+    "smartops_vms":    ("opscore_agent", "smartops_vms"),
+    "smartops_events": ("opscore_agent", "smartops_events"),
+    "smartops_status": ("opscore_agent", "smartops_status"),
+    "smartops_alerts": ("opscore_agent", "smartops_events"),  # 新增：运维告警
+    # opscore_agent — 管理平台 (146) Aria
+    "aria_ops":        ("opscore_agent", "aria_ops"),
+    "aria_dashboard":  ("opscore_agent", "aria_ops"),  # 新增：Aria 仪表盘
+    "aria_capacity":   ("opscore_agent", "aria_ops"),  # 新增：Aria 容量
+    # opscore_agent — 管理平台 (146) VCD
+    "vcd_resources":   ("opscore_agent", "vcd_resources"),
+    "vcd_orgs":       ("opscore_agent", "vcd_resources"),  # 新增：VCD 组织
+    # opscore_agent — 管理平台 (146) M365
+    "m365_status":     ("opscore_agent", "m365_status"),
+    "m365_dashboard":  ("opscore_agent", "m365_status"),  # 新增：M365 仪表盘
+    # opscore_agent — 管理平台 (146) CRM
+    "crm_query":       ("opscore_agent", "backup_status"),  # 新增：CRM 客户查询
+    "crm_customers":   ("opscore_agent", "backup_status"),  # 新增：CRM 客户列表
+    # opscore_agent — HA 高可用
+    "ha_query":        ("opscore_agent", "ha_query"),
+    "ha_vms":          ("opscore_agent", "ha_query"),  # 新增：HA VM 查询
+    # opscore_agent — 综合
+    "opscore_overview":   ("opscore_agent", "overview"),
+    "opscore_chat":       ("opscore_agent", "chat"),  # 新增：OPS-CORE 通用聊天
 }
 
 
@@ -138,8 +138,8 @@ ROUTE_SYSTEM_PROMPT = """你是 Z-OPS 运维智能体的路由协调器。
 
 # registry 不可用时的内置兜底描述 (与 agents.yaml capability_summary 保持同构, 仅能力边界三句话)
 _FALLBACK_SUMMARIES = {
-    "gcoc_agent": (
-        "GCOC 平台数据查询 Agent。能力: CMDB 主机/服务器、备份作业(BRR/Veeam)状态、快照、"
+    "opscore_agent": (
+        "OPS-CORE 平台数据查询 Agent。能力: CMDB 主机/服务器、备份作业(BRR/Veeam)状态、快照、"
         "VCD 云平台资源、Smart-Ops 虚拟机、运维事件/迁移记录、DNS 记录、Aria Ops 容量、"
         "M365 备份、HA 高可用事件、监控告警、CRM 客户、机柜/IDC、vCenter 集群资源概览。\n"
         "适用: 任何数据查询类请求 — 备份状态、GID/客户/站点信息、虚拟机列表、"
@@ -155,7 +155,7 @@ _FALLBACK_SUMMARIES = {
         "适用: 用户问'XX 怎么处理/排查'、查运维手册/流程/规范、搜索文档资料、"
         "问 VPN/网络/系统故障的处理方法。\n"
         "边界: 问'怎么做/怎么处理/排查方法/操作指南'发此 Agent; "
-        "问'有哪些故障事件/告警记录'是数据查询应发 gcoc_agent。"
+        "问'有哪些故障事件/告警记录'是数据查询应发 opscore_agent。"
     ),
     "ops_agent": (
         "系统运维 Agent。能力: 主机巡检、资源监控、日志分析、批量命令执行、健康报告生成。\n"
@@ -169,7 +169,7 @@ _FALLBACK_SUMMARIES = {
     "vm_agent": (
         "虚拟化直接操作 Agent。能力: 对具体已知 VM 名称执行开机/关机/重启/快照/迁移。\n"
         "适用: 对某台具名 VM 下达操作指令 (重启/开关机/创建快照/迁移到某宿主机)。\n"
-        "边界: 查询/列出/搜索虚拟机信息应使用 gcoc_agent 而非此 Agent。"
+        "边界: 查询/列出/搜索虚拟机信息应使用 opscore_agent 而非此 Agent。"
     ),
     "dev_agent": (
         "脚本开发 Agent。能力: 编写运维脚本、执行 Ansible Playbook、SSH 批量执行、配置自动化。\n"
@@ -252,7 +252,7 @@ def build_agent_tool_definitions() -> list:
 
 
 _TOOL_TO_AGENT = {
-    "dispatch_gcoc_agent": "gcoc_agent",
+    "dispatch_opscore_agent": "opscore_agent",
     "dispatch_kb_agent": "kb_agent",
     "dispatch_ops_agent": "ops_agent",
     "dispatch_network_agent": "network_agent",
@@ -445,7 +445,7 @@ class Orchestrator(BaseAgent):
     # 问题同时命中 >=2 个领域 → 该领域 agent 加入并行 team
     _TEAM_DOMAINS = {
         'kb_agent':       ['知识库', '文档', '操作指南', '最佳实践', '手册', '流程', '规范', '方案', '架构'],
-        'gcoc_agent':     ['cmdb', 'veeam', '备份', '虚拟机', 'vm', '资源', 'brr', 'vcd', 'smart-ops', '工单',
+        'opscore_agent':     ['cmdb', 'veeam', '备份', '虚拟机', 'vm', '资源', 'brr', 'vcd', 'smart-ops', '工单',
                            'goc', '平台数据', '资产', '清单', 'ip', '源ip', 'dns记录', '域名解析',
                            'cidr', '/32', '/24', 'vlan', '路由', 'firewall', 'acl'],
         'network_agent':  ['dns', 'sdns', '网络', '连通性', '路由', 'traceroute', 'ping',
@@ -487,7 +487,7 @@ class Orchestrator(BaseAgent):
                 "ping/traceroute 连通性测试、端口检测。\n"
                 f"用户问题: {user_question}"
             ),
-            "gcoc_agent": (
+            "opscore_agent": (
                 "查询平台数据并返回原始查询结果。\n"
                 "只做数据查询 (CMDB/监控/备份/DNS记录/资产), 不要做分析或建议。\n"
                 f"用户问题: {user_question}"
@@ -611,38 +611,38 @@ class Orchestrator(BaseAgent):
                      '部署', '配置', '安装', '重启', '日志', '权限', '证书', '防火墙',
                      # DNS 知识类问题 (zonefile 导出/域名查询等) 稳定路由 kb_agent，与 KB 徽章语义一致
                      'zonefile', '域名', 'dns记录', '域名解析', 'cname', 'mx记录']
-    # GCOC 资源查询: GID/数字编号 + 资源关键词 → gcoc_agent (有真实 API 数据)
-    _GCOC_RESOURCE_KEYWORDS = [
+    # OPS-CORE 资源查询: GID/数字编号 + 资源关键词 → opscore_agent (有真实 API 数据)
+    _OPSCORE_RESOURCE_KEYWORDS = [
         'vm', '虚拟机', '备份', '快照', '存储', 'vcd', 'cmdb', 'dns',
         '域名', '监控', '告警', '资源', '有什么', '有哪些', '查看', '列表',
         '站点', '组织', '迁移', 'ha', 'aria', 'brr', 'm365',
         '电源', '开机', '关机', '重启', 'snapshot', 'backup',
     ]
-    # 无 GID 也能路由到 gcoc_agent 的平台资源关键词 (集群/平台层面的资源查询)
+    # 无 GID 也能路由到 opscore_agent 的平台资源关键词 (集群/平台层面的资源查询)
     _PLATFORM_RESOURCE_KEYWORDS = [
         '平台资源', '集群资源', '资源池', '资源概览', '资源情况',
         '资源显示', '资源使用', 'vcenter资源', 'vcd资源',
         '宿主机资源', '存储空间', '存储池', 'datastore',
         '容量规划', '容量使用', '资源分配',
         '检查资源', '查资源', '真实资源', '检查真实',
-        # 存储相关查询 (优先于 _OPS_KEYWORDS 的 '存储', 确保走 gcoc_agent 而非 kb_agent)
+        # 存储相关查询 (优先于 _OPS_KEYWORDS 的 '存储', 确保走 opscore_agent 而非 kb_agent)
         '存储资源', '存储部署', '存储配置', '存储检查',
         'vcenter', 'nimble', 'netapp',
     ]
-    # IP + 资源查询模式: IP地址 + 备份/虚拟机等关键词 → gcoc_agent (查实际数据而非知识库)
+    # IP + 资源查询模式: IP地址 + 备份/虚拟机等关键词 → opscore_agent (查实际数据而非知识库)
     _IP_RESOURCE_PATTERN = re.compile(
         r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}.*?(备份|虚拟机|vm|快照|存储|backup|snapshot)',
         re.IGNORECASE
     )
-    # 备份查询动词模式: "有哪些备份" / "备份上有多少" 等 → gcoc_agent
+    # 备份查询动词模式: "有哪些备份" / "备份上有多少" 等 → opscore_agent
     _BACKUP_QUERY_PATTERNS = [
         '有哪些备份', '有多少备份', '备份上有多少', '备份任务', '备份作业',
         '备份文件', '备份大小', '备份数量', '哪些备份', '多少备份',
         '备份job', '备份失败',
     ]
-    # v4.0 (Phase 2.1 评测驱动): 平台事件/告警记录查询 → gcoc_agent (数据查询而非知识)
-    _GCOC_EVENT_KEYWORDS = ['故障事件', '事件记录', '告警记录', '运维事件']
-    # v4.0 (Phase 2.1 评测驱动): 具名 VM 电源操作 → vm_agent (优先于 gcoc 查询/ops 知识)
+    # v4.0 (Phase 2.1 评测驱动): 平台事件/告警记录查询 → opscore_agent (数据查询而非知识)
+    _OPSCORE_EVENT_KEYWORDS = ['故障事件', '事件记录', '告警记录', '运维事件']
+    # v4.0 (Phase 2.1 评测驱动): 具名 VM 电源操作 → vm_agent (优先于 opscore 查询/ops 知识)
     _VM_POWER_VERBS = ['开机', '关机', '关掉', '关了', '重启', '创建快照', '做快照', '打快照',
                        '快照回滚', '恢复快照', '迁移', 'power on', 'power off',
                        'reboot', 'shutdown']
@@ -653,7 +653,7 @@ class Orchestrator(BaseAgent):
     _NMS_KEYWORDS = ['nms', 'netcool', '网管告警', '网管']
     _NETWORK_PATTERN = re.compile(
         r'(\bping\b|traceroute|tracert|端口扫描|扫描.{0,4}端口|port\s*scan)', re.IGNORECASE)
-    # v4.0 (Phase 2.1 评测驱动): 方法疑问词 / 动作请求词 — 用于 gcoc事件、vm操作、ops知识 三处分支的细分
+    # v4.0 (Phase 2.1 评测驱动): 方法疑问词 / 动作请求词 — 用于 opscore事件、vm操作、ops知识 三处分支的细分
     # 知识名词 (原因/原理/区别) 亦属方法询问 (评测 llm-0105 "不建议关机的原因" → kb_agent)
     _KB_METHOD_WORDS = ['怎么', '如何', '为什么', '什么', '啥', '方法', '指南',
                         '规范', '流程', '手册', '最佳实践', '排查', '处理',
@@ -662,7 +662,7 @@ class Orchestrator(BaseAgent):
     # GID 匹配: 要求明确前缀 gid/g，或数字序列不在字母中（避免把 ESXI-03 中的 3103 误认为 GID）
     _GID_PATTERN = re.compile(r'(?:(?:gid|g)(\d{4,6})|(?<![a-zA-Z])(\d{4,6})(?![a-zA-Z]))', re.IGNORECASE)
 
-    # VM 主机名模式: 包含字母+数字的混合字符串 + 虚拟机/VM关键词 → gcoc_agent
+    # VM 主机名模式: 包含字母+数字的混合字符串 + 虚拟机/VM关键词 → opscore_agent
     _VM_HOSTNAME_PATTERN = re.compile(r'[A-Za-z]{2,}\d+[A-Za-z0-9]*', re.IGNORECASE)
     _VM_QUERY_KEYWORDS = ['虚拟机', 'vm', 'vps', '虚机', '云主机']
     # 主机类查询词: "ESXI-02主机状态"/"查一下ESXI-02上有什么机器" 不含 VM 关键词,
@@ -681,12 +681,12 @@ class Orchestrator(BaseAgent):
             return ""
         # 长文本 VM 清单查询 (如"查询这22台VM的备份任务状态: ESXI-HK-8025, ..."):
         # 文本长度超 200 会触发提前返回，但清单类查询恰是长文本，
-        # 必须在此检测多个主机名+状态查询词 → gcoc_agent，否则落入 LLM 路由被误判
+        # 必须在此检测多个主机名+状态查询词 → opscore_agent，否则落入 LLM 路由被误判
         if len(text) > 200:
             hosts = set(self._VM_HOSTNAME_PATTERN.findall(text))
             if len(hosts) >= 3 and any(k in text for k in ('备份', '状态', '快照', 'backup', '恢复', '监控')):
-                logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}...' → gcoc_agent (vm-list-query)")
-                return "gcoc_agent"
+                logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}...' → opscore_agent (vm-list-query)")
+                return "opscore_agent"
             return ""
         # 简单问候 → general_agent (快速响应, 无需 LLM)
         # v4.0: 仅短文本生效 — 防止"测试一下网络连通性"/"你好，请查GID 47141的虚拟机"被误拦 (评测 kw-1xx 守护)
@@ -696,13 +696,13 @@ class Orchestrator(BaseAgent):
             logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → general_agent (greeting)")
             return "general_agent"
         has_method_word = any(w in text for w in self._KB_METHOD_WORDS)
-        # GCOC 资源查询: GID/数字编号 + 资源关键词 → gcoc_agent (有真实 API 数据)
-        if self._GID_PATTERN.search(text) and any(k in text for k in self._GCOC_RESOURCE_KEYWORDS):
-            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → gcoc_agent (gid+resource)")
-            return "gcoc_agent"
+        # OPS-CORE 资源查询: GID/数字编号 + 资源关键词 → opscore_agent (有真实 API 数据)
+        if self._GID_PATTERN.search(text) and any(k in text for k in self._OPSCORE_RESOURCE_KEYWORDS):
+            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → opscore_agent (gid+resource)")
+            return "opscore_agent"
         # 具名 VM 电源操作: 电源动词 + 具体对象名 (vm词/主机名/连字符名) 且非方法询问 → vm_agent
         # v4.0: 修复"帮我重启vm-web-01"被 ops '重启' 关键词误路由 kb_agent (评测 kw-5xx 守护)
-        # 仅限「单对象短指令」: 多主机名是清单查询(→gcoc), 长文本是方案咨询(→LLM), 均非单机操作
+        # 仅限「单对象短指令」: 多主机名是清单查询(→opscore), 长文本是方案咨询(→LLM), 均非单机操作
         if len(text) <= 60 and any(v in text for v in self._VM_POWER_VERBS) and not has_method_word \
                 and len(set(self._VM_HOSTNAME_PATTERN.findall(text))) <= 1 \
                 and (any(k in text for k in self._VM_QUERY_KEYWORDS)
@@ -710,7 +710,7 @@ class Orchestrator(BaseAgent):
                      or self._HYPHEN_NAME_PATTERN.search(text)):
             logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → vm_agent (vm-power)")
             return "vm_agent"
-        # VM/主机名资源查询: 字母数字混合名/连字符名 + (VM关键词|主机类词) → gcoc_agent
+        # VM/主机名资源查询: 字母数字混合名/连字符名 + (VM关键词|主机类词) → opscore_agent
         # (如 "找到ESXI-03的虚拟机列表"; "ESXI-02主机状态"; "怎么给vm-web-01做快照"是知识问题 → kb_agent)
         # "有什么/哪些/几台"是列举询问非知识提问, 穿透方法词检查
         # (否则 "查一下ESXI-02上有什么机器" 被 '什么' 误伤落入 LLM 路由)
@@ -718,24 +718,24 @@ class Orchestrator(BaseAgent):
         if (not has_method_word or _list_query) \
                 and (self._VM_HOSTNAME_PATTERN.search(text) or self._HYPHEN_NAME_PATTERN.search(text)) \
                 and any(k in text for k in self._VM_QUERY_KEYWORDS + self._HOST_QUERY_KEYWORDS):
-            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → gcoc_agent (vm-hostname)")
-            return "gcoc_agent"
+            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → opscore_agent (vm-hostname)")
+            return "opscore_agent"
         # 平台资源查询 (无需 GID, 关键词明确指向平台数据)
         if any(k in text for k in self._PLATFORM_RESOURCE_KEYWORDS):
-            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → gcoc_agent (platform-resource)")
-            return "gcoc_agent"
-        # IP + 资源查询: "198.18.96.169上有哪些备份" → gcoc_agent (查实际数据)
+            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → opscore_agent (platform-resource)")
+            return "opscore_agent"
+        # IP + 资源查询: "198.18.96.169上有哪些备份" → opscore_agent (查实际数据)
         if self._IP_RESOURCE_PATTERN.search(text):
-            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → gcoc_agent (ip+resource)")
-            return "gcoc_agent"
-        # 备份查询模式: "有哪些备份" / "备份上有多少" → gcoc_agent
+            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → opscore_agent (ip+resource)")
+            return "opscore_agent"
+        # 备份查询模式: "有哪些备份" / "备份上有多少" → opscore_agent
         if any(p in text for p in self._BACKUP_QUERY_PATTERNS):
-            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → gcoc_agent (backup-query)")
-            return "gcoc_agent"
-        # 平台事件/告警记录查询 (数据) → gcoc_agent; 问排查方法 (知识) 落到后面 ops 分支 → kb_agent
-        if not has_method_word and any(k in text for k in self._GCOC_EVENT_KEYWORDS):
-            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → gcoc_agent (gcoc-events)")
-            return "gcoc_agent"
+            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → opscore_agent (backup-query)")
+            return "opscore_agent"
+        # 平台事件/告警记录查询 (数据) → opscore_agent; 问排查方法 (知识) 落到后面 ops 分支 → kb_agent
+        if not has_method_word and any(k in text for k in self._OPSCORE_EVENT_KEYWORDS):
+            logger.info(f"[orchestrator] 关键词快速路由: '{text[:30]}' → opscore_agent (opscore-events)")
+            return "opscore_agent"
         # 显式浏览器意图 → computer_agent (必须早于 shell 词匹配:
         # 10-21 "用浏览器打开X 然后执行 shell 命令" 曾被 shell 词抢路由到 dev_agent)
         if any(k in text for k in self._BROWSER_INTENT):
@@ -866,10 +866,10 @@ class Orchestrator(BaseAgent):
             elif self._VM_HOSTNAME_PATTERN.search(text) or self._HYPHEN_NAME_PATTERN.search(text):
                 # 网关内容安全误判 (如 '涉及提示词注入') / 纯文本拒绝时:
                 # 含主机名模式的资源查询直接降 general 会答非所问 (知识库无平台数据),
-                # 启发式兜底 gcoc_agent (CMDB/VM/监控/告警全家桶)
-                agent_name = "gcoc_agent"
+                # 启发式兜底 opscore_agent (CMDB/VM/监控/告警全家桶)
+                agent_name = "opscore_agent"
                 reasoning = "no_tool_call→hostname_heuristic"
-                logger.info(f"[orchestrator] LLM 未返回 tool_call, 主机名启发式兑底 → gcoc_agent "
+                logger.info(f"[orchestrator] LLM 未返回 tool_call, 主机名启发式兑底 → opscore_agent "
                             f"(content='{content[:60]}')")
             else:
                 logger.warning(f"[orchestrator] LLM 未返回 tool_call, "

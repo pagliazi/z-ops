@@ -11,8 +11,8 @@
 Z-OPS v4 现在支持通过 MCP (Model Context Protocol) 集成外部工具服务。
 
 **MCP 端点:**
-- **SSE 端点**: `https://gcoc-mgt.example.com/mcp/sse` (16 tools)
-- **REST API**: `https://gcoc-mgt.example.com/api/snapshot/mcp/tools/<name>/` (全部可用)
+- **SSE 端点**: `https://opscore-mgt.example.com/mcp/sse` (16 tools)
+- **REST API**: `https://opscore-mgt.example.com/api/snapshot/mcp/tools/<name>/` (全部可用)
 
 ---
 
@@ -25,8 +25,8 @@ Z-OPS v4 现在支持通过 MCP (Model Context Protocol) 集成外部工具服�
 ```bash
 # MCP 工具集成配置
 MCP_ENABLED=true
-MCP_SSE_ENDPOINT=https://gcoc-mgt.example.com/mcp/sse
-MCP_REST_BASE=https://gcoc-mgt.example.com/api/snapshot/mcp/tools
+MCP_SSE_ENDPOINT=https://opscore-mgt.example.com/mcp/sse
+MCP_REST_BASE=https://opscore-mgt.example.com/api/snapshot/mcp/tools
 MCP_TIMEOUT=30
 MCP_VERIFY_SSL=true
 ```
@@ -90,8 +90,8 @@ count = await adapter.discover_and_register()
 | 配置项 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `MCP_ENABLED` | bool | `true` | 是否启用 MCP 集成 |
-| `MCP_SSE_ENDPOINT` | string | `https://gcoc-mgt.example.com/mcp/sse` | SSE 端点 URL |
-| `MCP_REST_BASE` | string | `https://gcoc-mgt.example.com/api/snapshot/mcp/tools` | REST API 基础 URL |
+| `MCP_SSE_ENDPOINT` | string | `https://opscore-mgt.example.com/mcp/sse` | SSE 端点 URL |
+| `MCP_REST_BASE` | string | `https://opscore-mgt.example.com/api/snapshot/mcp/tools` | REST API 基础 URL |
 | `MCP_TIMEOUT` | int | `30` | 工具调用超时 (秒) |
 | `MCP_VERIFY_SSL` | bool | `true` | 是否验证 SSL 证书 |
 
@@ -207,7 +207,7 @@ async def handle_tool_call(self, tool_call):
 
 **检查清单:**
 1. ✅ `MCP_ENABLED=true` 是否设置
-2. ✅ MCP 端点是否可访问: `curl https://gcoc-mgt.example.com/mcp/sse`
+2. ✅ MCP 端点是否可访问: `curl https://opscore-mgt.example.com/mcp/sse`
 3. ✅ 网络连接是否正常
 4. ✅ SSL 证书是否有效 (或设置 `MCP_VERIFY_SSL=false`)
 
@@ -258,5 +258,5 @@ wrapper = MCPToolWrapper(
 ---
 
 *最后更新: 2026-06-25*  
-*MCP 端点: https://gcoc-mgt.example.com/mcp/sse (16 tools)*  
+*MCP 端点: https://opscore-mgt.example.com/mcp/sse (16 tools)*  
 *状态: ✅ 生产就绪*

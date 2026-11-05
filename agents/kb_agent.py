@@ -559,17 +559,17 @@ class KbAgent(BaseAgent):
             return
 
         # 数据查询类问题边界: 用户要查生产环境实时数据 (备份状态/清单等),
-        # 知识库无此能力 → 直接转发给 gcoc_agent 数据查询助手，由它查询真实数据并回复。
-        # 关键点: 转发消息保持原 msg_id，gcoc_agent 的进度/流式增量/最终回复都会
+        # 知识库无此能力 → 直接转发给 opscore_agent 数据查询助手，由它查询真实数据并回复。
+        # 关键点: 转发消息保持原 msg_id，opscore_agent 的进度/流式增量/最终回复都会
         # 发到原 reply 频道，用户在同一个 SSE 流中直接拿到真实查询结果，
         # 而不是"请用户自行登录第三方系统核查"的踢皮球回答。
         data_hint = detect_data_query(raw_query)
         if data_hint:
-            if await self.forward_to_gcoc(msg, raw_query):
+            if await self.forward_to_opscore(msg, raw_query):
                 await self.send_progress(msg, "检测到数据查询类问题，已转交数据查询助手查询生产数据，请稍候...")
-                await self.log_daily(f"KB 数据查询转发 gcoc_agent: {raw_query[:60]}", level="info", category="kb")
+                await self.log_daily(f"KB 数据查询转发 opscore_agent: {raw_query[:60]}", level="info", category="kb")
                 return  # 不自行 reply，避免双回复提前终止 SSE 流
-            # gcoc_agent 离线/转发失败 → 降级为边界说明，绝不编造数据
+            # opscore_agent 离线/转发失败 → 降级为边界说明，绝不编造数据
             await self.send_progress(msg, "数据查询助手暂时不可用...")
             await self.reply(msg, result={"text": (
                 f"这是【实时数据查询】类问题（{data_hint}），数据查询助手当前不在线，"

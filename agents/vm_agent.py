@@ -1,7 +1,7 @@
 """
 Z-OPS — vm_agent: 虚拟化管理 Agent
 职责: VMware/KVM/PVE 虚拟机生命周期管理、资源查询、快照、迁移
-集成 GCOC API: 自动从 GCOC 平台检索虚拟机数据
+集成 OPS-CORE API: 自动从 OPS-CORE 平台检索虚拟机数据
 """
 
 import asyncio
@@ -11,7 +11,7 @@ import shlex
 from typing import Optional, Dict
 
 from agents.base import BaseAgent, AgentMessage, run_agent
-from agents.gcoc_api import smart_query, query_api, query_vms_on_esxi_host, query_vms_on_esxi_host
+from agents.opscore_api import smart_query, query_api, query_vms_on_esxi_host, query_vms_on_esxi_host
 
 import sys
 from pathlib import Path
@@ -22,7 +22,7 @@ logger = logging.getLogger("zops")
 
 VM_ANALYSIS_PROMPT = """你是 Z-OPS 运维智能体的虚拟化管理模块。
 
-你可以通过 GCOC 平台查询虚拟机数据:
+你可以通过 OPS-CORE 平台查询虚拟机数据:
 - Smart-Ops VM列表/汇总: 查看所有虚拟机及状态
 - Aria Ops 虚拟机: VMware 层面的虚拟机清单
 - 快照管理: 虚拟机快照列表和问题检查
@@ -42,7 +42,7 @@ VM_DOMAINS = ["vm", "snapshot", "vcd", "backup"]
 
 class VMAgent(BaseAgent):
     name = "vm_agent"
-    description = "VMware/KVM/PVE 虚拟化管理 + GCOC 虚拟机数据查询"
+    description = "VMware/KVM/PVE 虚拟化管理 + OPS-CORE 虚拟机数据查询"
 
     async def handle(self, msg: AgentMessage):
         action = msg.action or "vm_list"
@@ -146,7 +146,7 @@ class VMAgent(BaseAgent):
         except Exception as e:
             raise RuntimeError(f"PVE API 调用失败: {e}")
 
-    # ═══ GCOC 虚拟机数据查询 ═══
+    # ═══ OPS-CORE 虚拟机数据查询 ═══
 
     async def _filter_vms_by_scope(self, raw_json: str, username: str) -> str:
         """VM 查询站点范围裁剪: scope.sites 非空 → 仅保留命中站点关键词的 VM 记录
@@ -195,14 +195,14 @@ class VMAgent(BaseAgent):
             logger.warning(f"[vm_agent] scope 裁剪失败, fail-open: {e}")
             return raw_json
 
-    async def _query_gcoc_vms(self, search: str = "") -> str:
-        """从 GCOC 平台查询虚拟机数据 (多源汇总)
-        支持站点代码扩展搜索: 'ESXI-02' → 查找 YUD3102 设备上的所有 VM"""
+    async def _query_opscore_vms(self, search: str = "") -> str:
+        """从 OPS-CORE 平台查询虚拟机数据 (多源汇总)
+        支持站点代码扩展搜索: 'ESXI-02' → 查找 ESXI-02 设备上的所有 VM"""
         all_data = {}
         params = {"page_size": 50}
         if search:
             params["search"] = search
-            logger.info(f"[vm_agent] GCOC VM 查询: search='{search}'")
+            logger.info(f"[vm_agent] OPS-CORE VM 查询: search='{search}'")
 
         # 查询多个数据源
         endpoints = [
@@ -243,16 +243,16 @@ class VMAgent(BaseAgent):
                     logger.info(f"[vm_agent] 主机查询: host={host_count} > name={snap_count}")
 
         if not all_data:
-            logger.info("[vm_agent] GCOC 查询: 所有端点均无数据")
+            logger.info("[vm_agent] OPS-CORE 查询: 所有端点均无数据")
             return ""
         
-        logger.info(f"[vm_agent] GCOC 查询完成: {len(all_data)} 个数据源有结果")
+        logger.info(f"[vm_agent] OPS-CORE 查询完成: {len(all_data)} 个数据源有结果")
         return json.dumps(all_data, ensure_ascii=False, indent=2)[:8000]
 
     async def _expand_site_vm_search(self, search: str) -> dict:
         """主机 VM 查询: 将 'ESXI-02' 视为主机名，按 host 字段查找该主机上的所有 VM
         合并 smartops_vms + snapshot_vms 数据
-        数据链路统一在 gcoc_api.query_vms_on_esxi_host:
+        数据链路统一在 opscore_api.query_vms_on_esxi_host:
           MCP 全量缓存建 esxi_host 索引 → 短名解析完整宿主机 →
           REST host= 服务端精确过滤 (~0.2s, 替代旧的全量分页拉取 20s+/页) →
           snapshot_vms 站点前缀合并 (命中率达标即早停, 不做全量兑底)"""
@@ -266,7 +266,7 @@ class VMAgent(BaseAgent):
     # ═══ 统一接口 ═══
 
     async def _vm_list(self, msg: AgentMessage):
-        """列出虚拟机 — 优先从 GCOC 平台查询"""
+        """列出虚拟机 — 优先从 OPS-CORE 平台查询"""
         platform = self._detect_platform(msg.params)
         
         # 智能提取搜索关键词: 从 params.search / params.args / msg.text 中提取
@@ -287,18 +287,18 @@ class VMAgent(BaseAgent):
         
         logger.info(f"[vm_agent] VM 列表查询: 搜索关键词='{search}'")
 
-        # 优先从 GCOC 平台查询
-        gcoc_data = await self._query_gcoc_vms(search)
-        if gcoc_data:
+        # 优先从 OPS-CORE 平台查询
+        opscore_data = await self._query_opscore_vms(search)
+        if opscore_data:
             # L4 范围约束: 用户站点范围非空时, VM 结果按站点关键词裁剪 (范围外资源不可见)
-            gcoc_data = await self._filter_vms_by_scope(gcoc_data, getattr(msg, "username", "") or "")
-        if gcoc_data:
+            opscore_data = await self._filter_vms_by_scope(opscore_data, getattr(msg, "username", "") or "")
+        if opscore_data:
             analysis = await self.llm_chat(
-                prompt=f"以下是从 GCOC 平台查询到的虚拟机数据 (关键词: '{search}'):\n\n{gcoc_data}",
+                prompt=f"以下是从 OPS-CORE 平台查询到的虚拟机数据 (关键词: '{search}'):\n\n{opscore_data}",
                 system=VM_ANALYSIS_PROMPT
             )
-            await self.reply(msg, result={"text": analysis, "platform": "gcoc", "raw_data": gcoc_data})
-            await self.log_daily(f"VM 列表查询: GCOC (搜索: {search})")
+            await self.reply(msg, result={"text": analysis, "platform": "opscore", "raw_data": opscore_data})
+            await self.log_daily(f"VM 列表查询: OPS-CORE (搜索: {search})")
             return
 
         # 降级: 尝试本地虚拟化平台
@@ -319,7 +319,7 @@ class VMAgent(BaseAgent):
             await self.reply(msg, result={"text": analysis, "platform": platform, "raw_data": raw})
             await self.log_daily(f"VM 列表查询: {platform}")
         except Exception as e:
-            await self.reply(msg, error=f"获取 VM 列表失败: 本地 {platform} 不可用且 GCOC 无数据")
+            await self.reply(msg, error=f"获取 VM 列表失败: 本地 {platform} 不可用且 OPS-CORE 无数据")
 
     async def _vm_power(self, msg: AgentMessage):
         vm_name = msg.params.get("name") or msg.params.get("vm", "")
@@ -379,17 +379,17 @@ class VMAgent(BaseAgent):
         # ── 智能判断: 查询迁移记录 vs 执行迁移操作 ──
         # 如果没有指定 vm_name 和 target_host，说明是查询类请求 ("最近迁移过的VM"、"检查迁移记录")
         if not vm_name and not target_host:
-            # 查询迁移事件 — 从 GCOC Smart-Ops 获取迁移相关数据
+            # 查询迁移事件 — 从 OPS-CORE Smart-Ops 获取迁移相关数据
             search_kw = text or "迁移"
-            gcoc_data = await smart_query(
+            opscore_data = await smart_query(
                 question=search_kw, domains=["vm", "monitoring"],
                 llm_func=self.llm_chat, max_queries=2
             )
-            if gcoc_data:
+            if opscore_data:
                 analysis = await self.llm_chat(
                     prompt=(
                         f"用户问题: {text}\n\n"
-                        f"以下是从 GCOC 平台查询到的迁移相关数据:\n{gcoc_data}"
+                        f"以下是从 OPS-CORE 平台查询到的迁移相关数据:\n{opscore_data}"
                     ),
                     system=(
                         "你是 Z-OPS 运维智能体的虚拟化管理模块。\n"
@@ -397,15 +397,15 @@ class VMAgent(BaseAgent):
                         "用 🔴(故障) 🟡(警告) 🟢(正常) 标注状态，用表格展示结果。"
                     )
                 )
-                await self.reply(msg, result={"text": analysis, "source": "gcoc"})
+                await self.reply(msg, result={"text": analysis, "source": "opscore"})
                 await self.log_daily(f"VM 迁移查询: {text[:50]}")
             else:
-                # GCOC 也没数据，给出提示
+                # OPS-CORE 也没数据，给出提示
                 result = await self.llm_chat(
                     prompt=text,
                     system=(
                         "你是 Z-OPS 运维智能体的虚拟化专家。\n"
-                        "用户询问迁移记录，但当前无法从 GCOC 平台获取迁移数据。\n"
+                        "用户询问迁移记录，但当前无法从 OPS-CORE 平台获取迁移数据。\n"
                         "请告知用户可以通过 vCenter 直接查看 vMotion 事件，或提供具体的 VM 名称和目标主机来执行迁移操作。"
                     )
                 )
@@ -444,13 +444,13 @@ class VMAgent(BaseAgent):
             await self.reply(msg, error=f"获取宿主机状态失败: {str(e)}")
 
     async def _vm_chat(self, msg: AgentMessage):
-        """虚拟化运维对话 — 自动检索 GCOC API 获取真实数据"""
+        """虚拟化运维对话 — 自动检索 OPS-CORE API 获取真实数据"""
         prompt = msg.text or msg.params.get("text", "")
         if not prompt:
             await self.reply(msg, error="缺少问题内容")
             return
 
-        # 智能查询 GCOC 平台 VM 相关数据
+        # 智能查询 OPS-CORE 平台 VM 相关数据
         raw_data = await smart_query(
             question=prompt, domains=VM_DOMAINS,
             llm_func=self.llm_chat, max_queries=3
@@ -458,18 +458,18 @@ class VMAgent(BaseAgent):
 
         if raw_data:
             result = await self.llm_chat(
-                prompt=f"用户问题: {prompt}\n\n从 GCOC 平台查询到的虚拟化数据:\n{raw_data}",
+                prompt=f"用户问题: {prompt}\n\n从 OPS-CORE 平台查询到的虚拟化数据:\n{raw_data}",
                 system=VM_ANALYSIS_PROMPT
             )
-            await self.reply(msg, result={"text": result, "source": "gcoc"})
+            await self.reply(msg, result={"text": result, "source": "opscore"})
             await self.log_daily(f"VM 智能查询: {prompt[:50]}")
         else:
             result = await self.llm_chat(
                 prompt=prompt,
                 system=(
                     "你是 Z-OPS 运维智能体的虚拟化专家。擅长 VMware vSphere、KVM/QEMU、Proxmox VE 管理。\n"
-                    "你可以查询 GCOC 平台的 Smart-Ops VM列表、Aria Ops VM、快照VM、VCD资源 等数据。\n"
-                    "如果用户需要查询实际的虚拟机数据，请告知你会从 GCOC 平台获取。"
+                    "你可以查询 OPS-CORE 平台的 Smart-Ops VM列表、Aria Ops VM、快照VM、VCD资源 等数据。\n"
+                    "如果用户需要查询实际的虚拟机数据，请告知你会从 OPS-CORE 平台获取。"
                 )
             )
             await self.reply(msg, result={"text": result})

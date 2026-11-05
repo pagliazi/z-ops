@@ -33,7 +33,7 @@ async def main():
     now = time.strftime("%Y-%m-%dT%H:%M:%S")
     for u, dn in [(ADM, "v4验证管理员"), (APPA, "v4审批人A"), (APPB, "v4审批人B"), (AP, "v4申请人")]:
         role = "admin" if u == ADM else "user"
-        await r.hset(config.KEY_USERS, u, json.dumps({"password_hash": PASS_HASH, "display_name": dn, "role": role, "group": "GCOC", "created_at": now}, ensure_ascii=False))
+        await r.hset(config.KEY_USERS, u, json.dumps({"password_hash": PASS_HASH, "display_name": dn, "role": role, "group": "OPS-CORE", "created_at": now}, ensure_ascii=False))
     # 度量原值备份 (测试后恢复, 不污染生产累计值)
     metrics_before = await r.hgetall(config.KEY_PERM_METRICS)
 
@@ -137,7 +137,7 @@ async def main():
         {"name": "YUD-FLEX-WEB02", "vcenter_server": "vc-yud01", "power": "off"},
         {"name": "SZXGC-TEST-DB1", "vcenter_server": "vc-szx01", "power": "on"},
     ], "count": 3})
-    await r.hset(config.KEY_USERS, AP, json.dumps({"password_hash": PASS_HASH, "display_name": "v4申请人", "role": "user", "group": "GCOC",
+    await r.hset(config.KEY_USERS, AP, json.dumps({"password_hash": PASS_HASH, "display_name": "v4申请人", "role": "user", "group": "OPS-CORE",
         "created_at": now, "scopes": {"sites": ["香港"], "customers": []}}, ensure_ascii=False))
     # 返回体是 "JSON 主体 + 附注行" 的展示文本, 按文本断言
     out = await agent._filter_vms_by_scope(raw, AP)

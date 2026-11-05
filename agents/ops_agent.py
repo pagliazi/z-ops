@@ -1,7 +1,7 @@
 """
 Z-OPS — ops_agent: 系统运维 Agent
 职责: 主机巡检、资源监控、日志分析、故障诊断
-集成 GCOC API: 自动从 GCOC 平台检索监控、告警、CMDB 数据
+集成 OPS-CORE API: 自动从 OPS-CORE 平台检索监控、告警、CMDB 数据
 """
 
 import asyncio
@@ -13,7 +13,7 @@ import shlex
 from typing import Optional
 
 from agents.base import BaseAgent, AgentMessage, run_agent
-from agents.gcoc_api import smart_query, query_api
+from agents.opscore_api import smart_query, query_api
 
 import sys
 from pathlib import Path
@@ -24,7 +24,7 @@ logger = logging.getLogger("zops")
 
 ANALYSIS_PROMPT = """你是 Z-OPS 运维智能体的系统分析模块。
 
-你可以通过 GCOC 平台查询以下运维数据:
+你可以通过 OPS-CORE 平台查询以下运维数据:
 - CMDB: 服务器/主机基础信息、资产清单
 - 监控数据: 主机监控状态、性能指标
 - 告警信息: 系统告警、异常事件
@@ -42,7 +42,7 @@ OPS_DOMAINS = ["monitoring", "infra", "aria"]
 
 class OpsAgent(BaseAgent):
     name = "ops_agent"
-    description = "系统巡检 / 资源监控 / 故障诊断 + GCOC 监控告警查询"
+    description = "系统巡检 / 资源监控 / 故障诊断 + OPS-CORE 监控告警查询"
 
     # 本机只读诊断命令直通 (10-21: "执行 shell 命令 uptime" 此前被 LLM 幻觉"无法执行")
     _LOCAL_CMD_RE = re.compile(r'(?:执行|运行|跑一?下|查看)\s*(?:shell\s*|bash\s*)?命令\s*[`"\'\u201c]?([A-Za-z][A-Za-z0-9\- ./=]*)')
@@ -197,7 +197,7 @@ class OpsAgent(BaseAgent):
                     host_data[name] = await self._run_local_cmd(cmd)
                 else:
                     host_data[name] = await self._ssh_exec(host, cmd)
-            # GCOC CMDB 补充信息
+            # OPS-CORE CMDB 补充信息
             if host not in ("localhost", "127.0.0.1", "local"):
                 try:
                     cmdb_data = await query_api("cmdb_info", {"search": host})
@@ -328,24 +328,24 @@ class OpsAgent(BaseAgent):
                 all_data[host] = await _collect_health(host)
             raw = json.dumps(all_data, ensure_ascii=False, indent=2)
 
-        # 同时从 GCOC 获取监控和告警数据
-        gcoc_extra = ""
+        # 同时从 OPS-CORE 获取监控和告警数据
+        opscore_extra = ""
         try:
             monitor_data = await query_api("monitor_info", {"page_size": 10})
             if "error" not in monitor_data:
-                gcoc_extra += f"\nGCOC 监控数据: {json.dumps(monitor_data, ensure_ascii=False)[:2000]}"
+                opscore_extra += f"\nOPS-CORE 监控数据: {json.dumps(monitor_data, ensure_ascii=False)[:2000]}"
         except Exception:
             pass
         try:
             alarm_data = await query_api("alarm_info", {"page_size": 10})
             if "error" not in alarm_data:
-                gcoc_extra += f"\nGCOC 告警数据: {json.dumps(alarm_data, ensure_ascii=False)[:2000]}"
+                opscore_extra += f"\nOPS-CORE 告警数据: {json.dumps(alarm_data, ensure_ascii=False)[:2000]}"
         except Exception:
             pass
 
         prompt = f"根据以下 {len(hosts)} 台主机的系统数据，生成运维健康报告:\n\n{raw}"
-        if gcoc_extra:
-            prompt += f"\n\n从 GCOC 平台查到的监控/告警数据:{gcoc_extra}"
+        if opscore_extra:
+            prompt += f"\n\n从 OPS-CORE 平台查到的监控/告警数据:{opscore_extra}"
 
         report = await self.llm_chat(
             prompt=prompt,
@@ -360,7 +360,7 @@ class OpsAgent(BaseAgent):
         await self.notify(f"健康报告已生成 ({len(hosts)} 台主机)\n\n{report[:500]}", "report")
 
     async def _ops_chat(self, msg: AgentMessage):
-        """运维对话 — 自动检索 GCOC 监控/告警/CMDB 数据"""
+        """运维对话 — 自动检索 OPS-CORE 监控/告警/CMDB 数据"""
         prompt = msg.text or msg.params.get("text", "")
         if not prompt:
             await self.reply(msg, error="缺少问题内容")
@@ -369,7 +369,7 @@ class OpsAgent(BaseAgent):
         # P2 收尾: 注入的已发布技能块 (由 handle 统一放入 params)
         skill_block = (msg.params or {}).pop("_skill_block", "") or ""
 
-        # 智能查询 GCOC 监控/告警数据
+        # 智能查询 OPS-CORE 监控/告警数据
         raw_data = await smart_query(
             question=prompt, domains=OPS_DOMAINS,
             llm_func=self.llm_chat, max_queries=3
@@ -377,10 +377,10 @@ class OpsAgent(BaseAgent):
 
         if raw_data:
             result = await self.llm_chat(
-                prompt=f"{skill_block}用户问题: {prompt}\n\n从 GCOC 平台查询到的运维数据:\n{raw_data}",
+                prompt=f"{skill_block}用户问题: {prompt}\n\n从 OPS-CORE 平台查询到的运维数据:\n{raw_data}",
                 system=ANALYSIS_PROMPT
             )
-            await self.reply(msg, result={"text": result, "source": "gcoc"})
+            await self.reply(msg, result={"text": result, "source": "opscore"})
             await self.log_daily(f"运维智能查询: {prompt[:50]}")
         else:
             result = await self.llm_chat(
@@ -388,7 +388,7 @@ class OpsAgent(BaseAgent):
                 system=(
                     "你是 Z-OPS 运维智能体的系统运维专家。"
                     "回答系统运维相关问题，提供诊断建议和操作步骤。\n"
-                    "你可以查询 GCOC 平台的监控数据、告警信息、CMDB主机信息、"
+                    "你可以查询 OPS-CORE 平台的监控数据、告警信息、CMDB主机信息、"
                     "Smart-Ops运维事件、Aria Ops容量分析等数据。"
                 )
             )

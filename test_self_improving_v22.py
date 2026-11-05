@@ -251,7 +251,7 @@ def test_cross_skill_transfer():
     # 注册技能标签
     engine.register_skill_tags("vm_backup", ["vmware", "backup", "api"])
     engine.register_skill_tags("vm_snapshot", ["vmware", "snapshot", "api"])
-    engine.register_skill_tags("gcoc_backup", ["gcoc", "backup"])
+    engine.register_skill_tags("opscore_backup", ["opscore", "backup"])
     engine.register_skill_tags("net_ping", ["network", "ping"])
 
     # 记录 vm_snapshot 的经验

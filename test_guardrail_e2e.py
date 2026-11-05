@@ -30,7 +30,7 @@ async def main():
     # ── 0. 备份台账 + 造临时 token ─────────────────────────
     backup = open(LEDGER).read()
     tok = f"gt-{int(now)}"
-    r.set(cfg.key_token(tok), "svc-gcoc", ex=600)
+    r.set(cfg.key_token(tok), "svc-opscore", ex=600)
     H = {"Authorization": f"Bearer {tok}"}
     async with httpx.AsyncClient(timeout=30) as c:
         try:

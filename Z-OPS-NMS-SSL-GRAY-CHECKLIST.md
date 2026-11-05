@@ -272,7 +272,7 @@ sudo systemctl restart zops-backend
 ### 9.4 已知边界
 
 - 单元聚合按 `kind:source`，同一设备的同类告警合成一个单元；`source` 为空时归为 `unknown`。
-- 备份探针依赖 GCOC-MGT 数据覆盖：该主机没有备份作业记录时返回 `unknown`，
+- 备份探针依赖 OPS-CORE-MGT 数据覆盖：该主机没有备份作业记录时返回 `unknown`，
   连续 3 次后回退簇级判据，并在 `recovery_evidence` 明确写 `probe_unavailable`。
 - 维护窗口复用 `zops:nms_maint_windows`：窗口内既不判恢复，也不清零静默计时。
 - 通知走 `notify:feishu` 默认通道，只发「确认/恢复」两类事件，不发送告警原文全文。

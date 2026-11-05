@@ -3,7 +3,7 @@ Z-OPS 飞书通道 — 监控域(NMS 告警)
 
   - _build_nms_card: 告警富卡片(级别统计/事件列表/截图内嵌/控制台+静默按钮)
   - _handle_nms_command: 群命令(状态/最新/详情/分组/截图/分析/推送控制/订阅)
-  - _nms_nl_query: 自然语言免记指令(「截个 GCOC_use 的图」「3」编号查询)
+  - _nms_nl_query: 自然语言免记指令(「截个 OPSCORE_use 的图」「3」编号查询)
   - _get_sub_channel/_upsert_sub_channel: 群订阅命令 ↔ 管理页多源通道表
     (Redis KEY_NMS_CHANNELS)的双向读写,保留级别过滤等服务端字段。
 
@@ -226,7 +226,7 @@ class NmsDomain:
         t = (text or "").strip()
         # 去掉 @提及（@_user_1 等）
         t = re.sub(r"@_?[A-Za-z0-9_-]+", "", t).strip()
-        # 命令黏连规范化: nms截图GCOC_use → nms 截图 GCOC_use；nms状态 → nms 状态
+        # 命令黏连规范化: nms截图OPSCORE_use → nms 截图 OPSCORE_use；nms状态 → nms 状态
         # （动词后紧跟参数时插空格，兼容无空格输入习惯；“推送间隔”放最前避免被“推送”吞掉）
         t = re.sub(r"^(/?)nms(推送间隔|截图|状态|分组|详情|分析|最新|静默|订阅|退订|帮助|推送)(?=[^\s，。])",
                    r"\1nms \2 ", t, flags=re.I)
@@ -306,7 +306,7 @@ class NmsDomain:
             if not arg or arg.lower() in ("全部", "all", "状态"):
                 cur = dyn_cfg.get("push_groups") or ""
                 return (f"当前推送分组: {'、'.join(g.strip() for g in cur.split(',') if g.strip()) or '全部（未过滤）'}\n"
-                        "设置: `nms 推送分组 GCOC_use,GCOC_core`；`nms 推送分组 全部` 恢复全量。")
+                        "设置: `nms 推送分组 OPSCORE_use,OPSCORE_core`；`nms 推送分组 全部` 恢复全量。")
             dyn_cfg["push_groups"] = arg.replace("，", ",")
             await r.set(config.KEY_NMS_DYN_CFG, json.dumps(dyn_cfg, ensure_ascii=False))
             return f"✅ 推送分组已设为 **{arg}**（仅推这些组的告警，约 30 秒内生效）。"
@@ -319,7 +319,7 @@ class NmsDomain:
             if arg and not any(k in arg for k in ("列表", "状态")):
                 groups = [g.strip() for g in re.split(r"[\s,，]+", arg) if g.strip()]
                 if not groups:
-                    return "用法: `nms 订阅 GCOC_use GCOC_core`（空格分隔多组）"
+                    return "用法: `nms 订阅 OPSCORE_use OPSCORE_core`（空格分隔多组）"
                 if not chat_id:
                     return ("⚠️ 当前消息未携带群 chat_id（需应用机器人模式），"
                             "请把机器人拉入群后 @机器人 操作，或在管理页「飞书推送通道」配置。")
@@ -421,7 +421,7 @@ class NmsDomain:
             return ("✅ 已受理分析请求：采集进程已被唤醒，即将生成告警分析摘要并推送。\n"
                     "提示：一轮抓取含浏览器采集，预计 15 分钟内完成。")
 
-        # 截图命令（倒装形式: nms GCOC_use 截图）
+        # 截图命令（倒装形式: nms OPSCORE_use 截图）
         m = re.search(r"^(?:nms\s+)?([^\s，。]{2,})\s+截图\s*$", t, re.I)
         if m:
             group = m.group(1)
@@ -434,10 +434,10 @@ class NmsDomain:
         # 截图命令（无参数）→ 用法提示
         if re.search(r"(?:nms\s+)?截图\s*$", t, re.I):
             return ("📸 截图命令用法: `nms 截图「分组名」`\n"
-                    "例如: `nms 截图 GCOC_use`（或倒装写法 `nms GCOC_use 截图`）\n"
-                    "可先 `nms 分组 GCOC_use` 查看分组告警明细。")
+                    "例如: `nms 截图 OPSCORE_use`（或倒装写法 `nms OPSCORE_use 截图`）\n"
+                    "可先 `nms 分组 OPSCORE_use` 查看分组告警明细。")
 
-        # 截图命令（正序: nms 截图 GCOC_use）
+        # 截图命令（正序: nms 截图 OPSCORE_use）
         m = re.search(r"(?:nms\s+)?截图\s+([^\s，。]+)", t, re.I)
         if m:
             group = m.group(1)
@@ -625,9 +625,9 @@ class NmsDomain:
     async def _nms_nl_query(self, text: str, message_id: str = "",
                             chat_id: str = "") -> str:
         """自然语言 NMS 查询（免记指令）：
-        - 「截个 GCOC_use 的图」/「给 GCOC_use 截张告警图」→ 受理截图
-        - 「GCOC_use 组有什么告警」/「GCOC_use 怎么了」→ 分组告警明细
-        从最新告警快照收集真实分组名做包含匹配（长度降序，避免 GCOC 先于 GCOC_use 命中），
+        - 「截个 OPSCORE_use 的图」/「给 OPSCORE_use 截张告警图」→ 受理截图
+        - 「OPSCORE_use 组有什么告警」/「OPSCORE_use 怎么了」→ 分组告警明细
+        从最新告警快照收集真实分组名做包含匹配（长度降序，避免 OPS-CORE 先于 OPSCORE_use 命中），
         命中且含告警/截图语境词才执行，否则返回空串（交给下游路由）。"""
         t = (text or "").strip()
         if len(t) < 1 or t.lower().startswith(("nms", "告警状态")):
@@ -661,7 +661,7 @@ class NmsDomain:
             alarms = latest.get("alarms") or []
         except Exception:
             return ""
-        # 收集真实分组名（长度降序匹配，防 GCOC 先于 GCOC_use 命中）
+        # 收集真实分组名（长度降序匹配，防 OPS-CORE 先于 OPSCORE_use 命中）
         groups = set()
         for a in alarms:
             for g in (a.get("groups") or ([a.get("group")] if a.get("group") else [])):
@@ -674,7 +674,7 @@ class NmsDomain:
                 break
         if not hit:
             # 组名未命中：提取疑似组名 token 做前后缀匹配，给出候选提示
-            # （如用户说“GCOC”实际组名为“GCOC_use”，避免沉入 LLM 得不到告警信息）
+            # （如用户说“OPS-CORE”实际组名为“OPSCORE_use”，避免沉入 LLM 得不到告警信息）
             if re.search(r"告警|截", t):
                 cands = set()
                 for tok in re.findall(r"[A-Za-z][A-Za-z0-9_]{2,}", t):
@@ -685,7 +685,7 @@ class NmsDomain:
                     top = sorted(cands, key=len)[:6]
                     return ("🤔 未识别到准确分组名，您可能是指：\n"
                             + "\n".join(f"- {g}" for g in top)
-                            + "\n请回复完整分组名（如「截个 GCOC_use 的图」）。")
+                            + "\n请回复完整分组名（如「截个 OPSCORE_use 的图」）。")
             return ""
         # 截图意图: 截个 XX 的图 / 截图 / 抓图 / 告警图（允许“截”与“图”间隔组名）
         if re.search(r"截[图屏]|截(?:个|张|一下)?.{0,14}图|抓图|告警图", t):

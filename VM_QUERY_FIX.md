@@ -27,7 +27,7 @@ search = msg.params.get("search") or msg.params.get("args") or msg.text or ""
 - 当用户输入 "找到ESXI-03的虚拟机列表" 时
 - `msg.text` 是整个句子，被直接用作搜索关键词
 - 导致 API 查询 `search="找到ESXI-03的虚拟机列表"`
-- GCOC 平台无法匹配，返回空结果
+- OPS-CORE 平台无法匹配，返回空结果
 
 ### 2. 查询端点不足
 
@@ -50,7 +50,7 @@ for key in ["smartops_vms", "snapshot_vms"]:
 **新代码** (`vm_agent.py:173-192`):
 ```python
 async def _vm_list(self, msg: AgentMessage):
-    """列出虚拟机 — 优先从 GCOC 平台查询"""
+    """列出虚拟机 — 优先从 OPS-CORE 平台查询"""
     platform = self._detect_platform(msg.params)
     
     # 智能提取搜索关键词: 从 params.search / params.args / msg.text 中提取
@@ -128,11 +128,11 @@ for key in endpoints:
 **执行日志**:
 ```
 08:14:18 ✔ INFO  [vm_agent] VM 列表查询: 搜索关键词='ESXI-03'
-08:14:18 ✔ INFO  [vm_agent] GCOC VM 查询: search='ESXI-03'
+08:14:18 ✔ INFO  [vm_agent] OPS-CORE VM 查询: search='ESXI-03'
 08:14:18 ✔ INFO  [vm_agent] smartops_vms: 无结果
 08:14:19 ✔ INFO  [vm_agent] snapshot_vms: 找到 2 条结果  ✅
 08:14:23 ✔ INFO  [vm_agent] aria_ops_vms: 无结果
-08:14:23 ✔ INFO  [vm_agent] GCOC 查询完成: 1 个数据源有结果
+08:14:23 ✔ INFO  [vm_agent] OPS-CORE 查询完成: 1 个数据源有结果
 ```
 
 **查询结果**:

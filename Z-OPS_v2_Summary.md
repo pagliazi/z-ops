@@ -45,7 +45,7 @@ success, stdout, stderr = await execute_in_sandbox(
 - ✅ 支持持久化配置（userDataDir）
 
 **使用场景**:
-- 复用已登录的 GCOC 会话
+- 复用已登录的 OPS-CORE 会话
 - 避免重复登录
 - 使用用户的真实浏览器配置
 
@@ -61,7 +61,7 @@ session = await attach_browser_session(
 )
 
 page = await session.get_page()
-await page.goto("https://gcoc-platform")
+await page.goto("https://opscore-platform")
 ```
 
 ---
@@ -281,14 +281,14 @@ from core.browser_session import attach_browser_session
 
 # Attach 到真实浏览器
 session = await attach_browser_session(
-    session_id="gcoc_session",
+    session_id="opscore_session",
     user_data_dir="/home/user/.config/google-chrome/Default",
     headless=False  # 可见模式
 )
 
 # 复用登录态
 page = await session.get_page()
-await page.goto("https://198.18.18.145")  # GCOC 平台
+await page.goto("https://198.18.18.145")  # OPS-CORE 平台
 ```
 
 ### 3. 使用 CLI 备份

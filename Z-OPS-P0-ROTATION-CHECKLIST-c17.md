@@ -16,7 +16,7 @@
 | `WEBCHAT_AUTH_PASS` | zops.env | 本地认证口令 |
 | `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` / `ONEAPI_API_KEY` | zops.env + Redis `zops:llm_pref` | 经 /api/llm/config 对所有登录用户暴露过；轮换后需同步更新管理页 LLM 配置 |
 | `VCENTER_PASS` / `PVE_TOKEN_SECRET` | zops.env | 基础设施写凭据 |
-| `GCOC_INFO_PASS` / `GCOC_MGT_PASS` / `NMS_PASSWORD` | zops.env | NMS 密码此前已标记待更新；P0 起 NMS 周期任务只认服务主体 |
+| `OPSCORE_INFO_PASS` / `OPSCORE_MGT_PASS` / `NMS_PASSWORD` | zops.env | NMS 密码此前已标记待更新；P0 起 NMS 周期任务只认服务主体 |
 | `KB_API_TOKEN` / `OUTLINE_API_TOKEN` / `HA_API_TOKEN` | zops.env | 第三方系统凭据 |
 | `LDAP_BIND_PASSWORD` | zops.env | AD 绑定账号 |
 | `TELEGRAM_BOT_TOKEN` / `WECOM_SECRET` | zops.env | 通知渠道凭据 |

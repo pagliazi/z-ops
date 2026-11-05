@@ -1,4 +1,4 @@
-"""侦察 v4：主集 rows/serials 对齐性 + GCOC_use 完整 rows 内容是否含 BGP。"""
+"""侦察 v4：主集 rows/serials 对齐性 + OPSCORE_use 完整 rows 内容是否含 BGP。"""
 import asyncio
 import json
 import re
@@ -36,21 +36,21 @@ async def main():
                        if str(rows[i][si]).strip() != str(serials[i]).strip())
             print(f"行内 Serial 列 vs identifierList 错位行数: {mism} / {min(len(rows), len(serials))}")
 
-        # GCOC_use 完整响应（GroupByDevice 视图，与生产一致）
-        f = fmap.get("GCOC_use")
+        # OPSCORE_use 完整响应（GroupByDevice 视图，与生产一致）
+        f = fmap.get("OPSCORE_use")
         url = agent._nms_api_url(f["name"], "global", f["view"], "false")
         resp = await page.request.get(url, headers={"Accept-Encoding": "identity"})
-        print(f"\nGCOC_use status={resp.status}")
+        print(f"\nOPSCORE_use status={resp.status}")
         obj = json.loads(await resp.text())
         ds0 = obj["header"]["datasource"][0]
         gfields = [x.get("name") for x in ds0.get("field", [])]
         grows = obj["rows"][0] if obj.get("rows") else []
         gserials = [x for x in str(ds0.get("identifierList") or "").split(",")
                     if x.strip()]
-        print(f"GCOC_use: rows={len(grows)}, serials={len(gserials)}")
-        print(f"GCOC_use 字段名: {gfields[:20]}")
+        print(f"OPSCORE_use: rows={len(grows)}, serials={len(gserials)}")
+        print(f"OPSCORE_use 字段名: {gfields[:20]}")
 
-        # GCOC_use 的 rows 内容（EventGroup/Summary 抽样）——是否含 BGP
+        # OPSCORE_use 的 rows 内容（EventGroup/Summary 抽样）——是否含 BGP
         eg_idx = None
         sum_idx = None
         for i, nm in enumerate(gfields):
@@ -58,14 +58,14 @@ async def main():
                 eg_idx = i
             if nm == "Summary" and sum_idx is None:
                 sum_idx = i
-        print("\n=== GCOC_use rows 抽样（前 15 行）===")
+        print("\n=== OPSCORE_use rows 抽样（前 15 行）===")
         for i, row in enumerate(grows[:15]):
             eg = row[eg_idx] if eg_idx is not None and eg_idx < len(row) else "?"
             sm = row[sum_idx] if sum_idx is not None and sum_idx < len(row) else "?"
             print(f"  [{i}] serial={gserials[i] if i < len(gserials) else '?'} "
                   f"eg={str(eg)[:40]!r} summary={str(sm)[:45]!r}")
 
-        # GCOC_use rows 里含 BGP 的行数
+        # OPSCORE_use rows 里含 BGP 的行数
         bgp_rows = 0
         for row in grows:
             blob = "|".join(str(x) for x in row)
@@ -75,12 +75,12 @@ async def main():
                     eg = row[eg_idx] if eg_idx is not None and eg_idx < len(row) else "?"
                     sm = row[sum_idx] if sum_idx is not None and sum_idx < len(row) else "?"
                     print(f"  BGP行: eg={str(eg)[:40]!r} summary={str(sm)[:50]!r}")
-        print(f"GCOC_use rows 含 BGP 行数: {bgp_rows} / {len(grows)}")
+        print(f"OPSCORE_use rows 含 BGP 行数: {bgp_rows} / {len(grows)}")
 
-        # 生产 cache 里那 4 条 BGP 串行是否在 GCOC_use 当前列表
+        # 生产 cache 里那 4 条 BGP 串行是否在 OPSCORE_use 当前列表
         targets = {"1295398255", "1295022955", "1295511030", "1295022956"}
         gset = set(gserials)
-        print(f"\n4 条污染串行当前在 GCOC_use 列表: {sorted(targets & gset)}")
+        print(f"\n4 条污染串行当前在 OPSCORE_use 列表: {sorted(targets & gset)}")
         # 这些串行在 BGPStatus 列表吗
         bserials, bfb = await agent._nms_api_serials(page, fmap.get("BGPStatus"))
         bset = set(bserials)

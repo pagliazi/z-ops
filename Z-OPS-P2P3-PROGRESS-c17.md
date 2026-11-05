@@ -84,7 +84,7 @@ P0 93 + P1 51 + P2 25 + P3 预算 9 + 网关 10 + MCP 隔离 15 = **203 项断�
 ## 剩余（SPEC 收尾清单）
 
 1. MCP 生产启用：把 mcp SDK 按部署流程装入受控运行环境（隔离验证已锁定 2.3.0 与适配层），
-   并在 MCP_APPROVED_SERVERS 登记 gcoc 等正式 server。
+   并在 MCP_APPROVED_SERVERS 登记 opscore 等正式 server。
 2. 技能生命周期 admin 页 UI（API 就绪）。
 3. 统一模型层第二批迁移：BaseAgent llm_chat 流式路径/wiki ingest/embedding/synthesizer
    的 HTTP 执行改走网关（解析链已统一；执行层渐进迁移）。
@@ -95,7 +95,7 @@ P0 93 + P1 51 + P2 25 + P3 预算 9 + 网关 10 + MCP 隔离 15 = **203 项断�
 
 | 项 | 结果 |
 |---|---|
-| **MCP 生产启用** | 官方 SDK mcp==2.3.0 装入系统 Python（经隔离 venv 复现系统依赖栈验证 anyio 4.15/FastAPI 0.135 兼容 + FastAPI 冒烟）；解决 httpx/httpx2 双栈 h11 冲突（httpcore 升 1.0.9 对齐 h11 0.16，实网请求验证）；全量回归含 MCP 验证 15/15 在系统 Python 通过。gcoc REST server 已登记 MCP_APPROVED_SERVERS 白名单；REST 适配 discover 加 fail-closed 门控（勘察发现 REST 集成本处于休眠——无 agent 调用，门控零副作用）。stdio/http transport 经 mcp_official 惰性可用 |
+| **MCP 生产启用** | 官方 SDK mcp==2.3.0 装入系统 Python（经隔离 venv 复现系统依赖栈验证 anyio 4.15/FastAPI 0.135 兼容 + FastAPI 冒烟）；解决 httpx/httpx2 双栈 h11 冲突（httpcore 升 1.0.9 对齐 h11 0.16，实网请求验证）；全量回归含 MCP 验证 15/15 在系统 Python 通过。opscore REST server 已登记 MCP_APPROVED_SERVERS 白名单；REST 适配 discover 加 fail-closed 门控（勘察发现 REST 集成本处于休眠——无 agent 调用，门控零副作用）。stdio/http transport 经 mcp_official 惰性可用 |
 | **模型执行层二批迁移** | BaseAgent 三路径接入网关：llm_chat 非流式（request_chat）、Anthropic（preflight+report）、流式（preflight/配对 report）；synthesizer 记忆提炼与 wiki_vector embeddings 走网关同步变体（同一限流/退避/熔断状态机）。生产 e2e 对话正常（reply+done, task succeeded） |
 | **生命周期 admin UI** | web-next 管理页新增「技能生命周期」标签：版本状态徽章/发布指针/成功率口径(null=未验证)/批准/发布/回退/停用操作。已 build+部署 :3000；生产 API 实测（admin token）：vm_backup_check@1.0.0 published、成功率 None |
 

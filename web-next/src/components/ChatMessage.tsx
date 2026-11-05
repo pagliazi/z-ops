@@ -30,7 +30,7 @@ interface Message {
 }
 
 const AGENT_COLORS: Record<string, { bg: string; text: string }> = {
-  gcoc_agent:    { bg: '#ECFDF5', text: '#059669' },
+  opscore_agent:    { bg: '#ECFDF5', text: '#059669' },
   general_agent: { bg: '#F3F4F6', text: '#4B5563' },
   ops_agent:     { bg: '#FFFBEB', text: '#D97706' },
   dev_agent:     { bg: '#ECFEFF', text: '#0891B2' },

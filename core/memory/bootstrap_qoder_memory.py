@@ -258,7 +258,7 @@ MEMORIES = [
             "    A[需求:集成HA VM API] --> B[修改ha_api.py: 替换硬编码URL/TOKEN为config读取]\n"
             "    B --> C[更新zops.env: 在KB_RAG_ENABLED后新增HA配置块]\n"
             "    C --> D[创建HA_INTEGRATION.md: 包含配置说明、调用示例、端点列表]\n"
-            "    D --> E[注册gcoc_api端点并验证调用路径]\n"
+            "    D --> E[注册opscore_api端点并验证调用路径]\n"
             "```"
         ),
     },

@@ -105,7 +105,7 @@ async def auth_login(request: Request):
         # ── SSO 会话引导 (零密码存储): 用本次登录内存中的 AD 凭据一次性登录
         # Netcool, 只把会话 Cookie 存入 Redis (密码即弃, 不落盘不持久化)。
         # 后台执行不阻塞登录响应; 失败静默 (用户回退全局视图)。
-        # 全局监控账号 (svc-gcoc) 同样引导 — 其定时采集优先复用该会话 (SSO keep-alive)。
+        # 全局监控账号 (svc-opscore) 同样引导 — 其定时采集优先复用该会话 (SSO keep-alive)。
         if config.LDAP_ENABLED and username and password:
             async def _bootstrap():
                 try:
@@ -520,22 +520,22 @@ async def perm_metrics_report(current_user: str = Depends(verify_token)):
     return {"metrics": rows, "total_users": len(raw_users)}
 
 
-async def _gcoc_dict_sync(endpoint_key: str, params: dict, ttl: int, timeout: float = 8) -> dict:
-    """GCOC 平台字典同步 (带缓存, 全异常兜底)
+async def _opscore_dict_sync(endpoint_key: str, params: dict, ttl: int, timeout: float = 8) -> dict:
+    """OPS-CORE 平台字典同步 (带缓存, 全异常兜底)
 
     timeout: 单次拉取总上限 (默认 8s; 大数据量接口如客户全量可放宽)
     Returns: {"ok": bool, "data": dict} — ok=False 时调用方回退预置数据
     """
     try:
         import asyncio as _aio
-        from agents.gcoc_api import cached_query_api
-        # 总上限: GCOC 平台不可用 (凭据失效/网络慢) 时快速回退, 不阻塞调用方响应
+        from agents.opscore_api import cached_query_api
+        # 总上限: OPS-CORE 平台不可用 (凭据失效/网络慢) 时快速回退, 不阻塞调用方响应
         data = await _aio.wait_for(cached_query_api(endpoint_key, params, ttl=ttl), timeout=timeout)
         if isinstance(data, dict) and "error" not in data:
             return {"ok": True, "data": data}
-        logger.debug(f"[gcoc_dict_sync] {endpoint_key} 返回异常: {data}")
+        logger.debug(f"[opscore_dict_sync] {endpoint_key} 返回异常: {data}")
     except Exception as e:
-        logger.debug(f"[gcoc_dict_sync] {endpoint_key} 同步失败/超时: {e}")
+        logger.debug(f"[opscore_dict_sync] {endpoint_key} 同步失败/超时: {e}")
     return {"ok": False, "data": {}}
 
 
@@ -552,8 +552,8 @@ def _norm_case(x: str) -> str:
 async def approvals_meta(current_user: str = Depends(verify_token)):
     """申请表单元数据: 操作类型/服务类型/站点/客户/审批人候选 (下拉数据源)
 
-    站点 = GCOC 信息平台 site_info 同步 (失败回退: 预置清单 ∪ 历史审批单去重);
-    客户 (GID+名称) = GCOC 管理平台 CRM crm_customers 同步;
+    站点 = OPS-CORE 信息平台 site_info 同步 (失败回退: 预置清单 ∪ 历史审批单去重);
+    客户 (GID+名称) = OPS-CORE 管理平台 CRM crm_customers 同步;
     审批人候选 = 有效持有 approval.decide 的用户 (含组继承, 排除申请人自己 — SoD 四眼原则)。
     """
     import re as _re
@@ -561,7 +561,7 @@ async def approvals_meta(current_user: str = Depends(verify_token)):
     from core.citp_templates import CITP_FAULT_TYPES
     r = await get_redis()
     preset_sites = [x.strip() for x in (config.APPROVAL_SITES or "").split(",") if x.strip()]
-    # 对齐 GCOC 平台服务模块 (vCenter/VCD 云主机, BRR/Veeam 备份, Snapshot 快照,
+    # 对齐 OPS-CORE 平台服务模块 (vCenter/VCD 云主机, BRR/Veeam 备份, Snapshot 快照,
     # Nimble 存储, SmartDNS, NMS/Aria 监控; 历史 service_type 值经下方历史单去重补充兼容)
     # 对齐分类目录 (v2): 服务类型按 daily/maintenance 目录分组下发;
     # 历史 service_type 值经下方历史单去重补充兼容 (含旧「存储 (Nimble)」)
@@ -569,7 +569,7 @@ async def approvals_meta(current_user: str = Depends(verify_token)):
     preset_stypes = sorted({st for sts in _CAT_STYPES.values() for st in sts})
     sites, stypes = set(preset_sites), set(preset_stypes)
     tool_hist: set = set()  # 历史单操作类型 (未登记的补进「其他」分组, 不丢历史值)
-    # GCOC 站点同步 (信息管理系统): 按机楼逐条 → 完整站点代码 value (如 HKHKGBBB/CNGUZDDD)
+    # OPS-CORE 站点同步 (信息管理系统): 按机楼逐条 → 完整站点代码 value (如 HKHKGBBB/CNGUZDDD)
     # 完整码优先取记录上的完整码字段 (含城市码的大写字母串); 无则 构造 region+city+mansion
     # (region 缺失时 city+mansion, 如 HKGBBB); 兜底仍不完整时退回城市码。
     # label = 机房中文名 (完整码); kw = 搜索域 (完整码+城市码+机楼码+中文名)。
@@ -594,10 +594,10 @@ async def approvals_meta(current_user: str = Depends(verify_token)):
 
     sites_src = "preset"
     site_items: list = []
-    gcoc_sites = await _gcoc_dict_sync("site_info", {"page_size": 200}, ttl=600)
-    if gcoc_sites["ok"]:
+    opscore_sites = await _opscore_dict_sync("site_info", {"page_size": 200}, ttl=600)
+    if opscore_sites["ok"]:
         by_site: dict = {}
-        for x in (gcoc_sites["data"].get("results") or []):
+        for x in (opscore_sites["data"].get("results") or []):
             if not isinstance(x, dict):
                 continue
             city = str(x.get("city") or "").strip()
@@ -614,16 +614,16 @@ async def approvals_meta(current_user: str = Depends(verify_token)):
                        "kw": " ".join(sorted(x for x in e["kw"] if x)).lower()}
                       for c, e in sorted(by_site.items())]
         if site_items:
-            gcoc_codes = {it["value"] for it in site_items}
-            gcoc_cities = {c[:3] for c in gcoc_codes if len(c) >= 3} | \
-                          {x.get("city", "").strip() for x in (gcoc_sites["data"].get("results") or [])}
-            # 预置/历史站点语言不同 (中文城市名), 仅补充 GCOC 未覆盖的;
+            opscore_codes = {it["value"] for it in site_items}
+            opscore_cities = {c[:3] for c in opscore_codes if len(c) >= 3} | \
+                          {x.get("city", "").strip() for x in (opscore_sites["data"].get("results") or [])}
+            # 预置/历史站点语言不同 (中文城市名), 仅补充 OPS-CORE 未覆盖的;
             # 同城双语言去重 (香港↔HKG 等) 避免下拉出现两个"香港"
             cn_city_map = {"香港": "HKG", "上海": "SHH", "北京": "BEJ", "广州": "GUZ"}
-            site_items += [{"value": x, "label": x} for x in sorted(sites - gcoc_cities)
-                           if cn_city_map.get(x, x) not in gcoc_cities]
-            sites.update(gcoc_codes)
-            sites_src = "gcoc+preset"
+            site_items += [{"value": x, "label": x} for x in sorted(sites - opscore_cities)
+                           if cn_city_map.get(x, x) not in opscore_cities]
+            sites.update(opscore_codes)
+            sites_src = "opscore+preset"
     try:  # 历史审批单去重补充 (单据量小, TTL 24h)
         for key in r.scan_iter(match=f"{config.REDIS_PREFIX}:approval:*", count=200):
             d = r.hgetall(key)
@@ -710,10 +710,10 @@ async def approvals_meta(current_user: str = Depends(verify_token)):
 
 @router.get("/api/approvals/customers")
 async def approvals_customers(current_user: str = Depends(verify_token)):
-    """客户字典 (GCOC 管理平台 CRM 同步: GID + 客户名称 + Site ID 列表)
+    """客户字典 (OPS-CORE 管理平台 CRM 同步: GID + 客户名称 + Site ID 列表)
 
     Site ID 从 CRM 资源池名提取 (如 GIDTW43727C-HKGAAA → HKGAAA;
-    GCOC-MGT CRM 无独立 site id 字段, 站点标识嵌于 resource_pools 池名)。
+    OPS-CORE-MGT CRM 无独立 site id 字段, 站点标识嵌于 resource_pools 池名)。
     数据量大 (~千条) 且 146 平台序列化线性慢 (~30ms/条), 单页大 page_size 会超时;
     改为 5 页 × 200 并行拉取 (~7s 全量), 每页独立缓存 10min, 命中后秒回。
     平台不可用时返回 fallback=manual + 空列表 (表单客户字段可手输兜底)。
@@ -742,7 +742,7 @@ async def approvals_customers(current_user: str = Depends(verify_token)):
 
     customers = []
     try:
-        from agents.gcoc_api import cached_query_api
+        from agents.opscore_api import cached_query_api
         pages = await _aio.gather(*[
             _aio.wait_for(cached_query_api("crm_customers",
                                            {"page_size": 200, "page": n}, ttl=600), timeout=15)
@@ -759,30 +759,30 @@ async def approvals_customers(current_user: str = Depends(verify_token)):
                                           "site_ids": _pool_site_ids(c.get("resource_pools")),
                                           "order_no": str(c.get("order_no") or "").strip()[:30]})
     except Exception as e:
-        logger.debug(f"[approvals/customers] GCOC CRM 同步失败: {e}")
+        logger.debug(f"[approvals/customers] OPS-CORE CRM 同步失败: {e}")
     customers.sort(key=lambda x: x["name"])
     return {"customers": customers, "count": len(customers),
-            "source": "gcoc" if customers else "manual"}
+            "source": "opscore" if customers else "manual"}
 
 
 @router.get("/api/approvals/case-lookup")
 async def approval_case_lookup(case_no: str = "", current_user: str = Depends(verify_token)):
-    """case 号联动校验 (与 GCOC 信息管理系统 case_info 同步)
+    """case 号联动校验 (与 OPS-CORE 信息管理系统 case_info 同步)
 
     返回 available (校验服务可用性) / found / cases 摘要 (编号/标题/状态/客户);
-    平台不可用时 available=False, 前端提示但不阻断提交 (GCOC 数据可能有延迟)。
+    平台不可用时 available=False, 前端提示但不阻断提交 (OPS-CORE 数据可能有延迟)。
     """
     import json as _json
     case_no = (case_no or "").strip()
     if len(case_no) < 3:
         return {"available": True, "found": False, "cases": []}
     try:
-        from agents.gcoc_api import cached_query_api
+        from agents.opscore_api import cached_query_api
         data = await cached_query_api("case_info", {"search": case_no, "page_size": 10}, ttl=300)
     except Exception as e:
-        return {"available": False, "found": False, "cases": [], "note": f"GCOC 平台查询异常: {e}"}
+        return {"available": False, "found": False, "cases": [], "note": f"OPS-CORE 平台查询异常: {e}"}
     if isinstance(data, dict) and "error" in data:
-        return {"available": False, "found": False, "cases": [], "note": f"GCOC 信息平台不可用: {data['error']}"}
+        return {"available": False, "found": False, "cases": [], "note": f"OPS-CORE 信息平台不可用: {data['error']}"}
     items = data.get("results", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
     out = []
     for c in items[:10]:
@@ -912,7 +912,7 @@ async def create_approval_api(request: Request, current_user: str = Depends(veri
         raise HTTPException(400, "DS 配置复核为必要级, 不能跳过: 请指定 DS 复核人")
     # L4 申请侧范围约束: 申请人 scope (site/customer) 非空时, 申请字段须落在范围内
     customer_apply = (body.get("customer") or "").strip()[:200]
-    # 客户 GID (GCOC CRM 联动: 表单选客户自动带出; 需先于 scope 校验, 供 GID 维度匹配)
+    # 客户 GID (OPS-CORE CRM 联动: 表单选客户自动带出; 需先于 scope 校验, 供 GID 维度匹配)
     customer_gid = (body.get("customer_gid") or "").strip()[:100]
     eff_apply = await effective_perms(current_user)
     ok_apply, why_apply = scope_allows(eff_apply["scopes"], site, customer_apply, customer_gid)
@@ -1494,7 +1494,7 @@ async def approvals_autofill(request: Request, current_user: str = Depends(verif
     """申请内容自动分析 → 其他表单字段自动填充 (规则提取 + LLM 分类)
 
     规则层 (确定性): case 号 (HD 前缀/纯数字)、设备代码 (站点码+编号+角色后缀)、IP、
-    站点 (设备名前缀匹配 GCOC 站点字典);
+    站点 (设备名前缀匹配 OPS-CORE 站点字典);
     LLM 层 (分类): 产品服务类型 + 操作类型 + 客户名称 (按分类目录约束输出)。
     body: {summary, category} → {fills: {字段: 值}, filled: [字段...], source: {...}}
     """
@@ -1523,9 +1523,9 @@ async def approvals_autofill(request: Request, current_user: str = Depends(verif
     r = await get_redis()
     site_codes: set = set()
     try:
-        gcoc_sites = await _gcoc_dict_sync("site_info", {"page_size": 200}, ttl=600)
-        if gcoc_sites["ok"]:
-            for x in (gcoc_sites["data"].get("results") or []):
+        opscore_sites = await _opscore_dict_sync("site_info", {"page_size": 200}, ttl=600)
+        if opscore_sites["ok"]:
+            for x in (opscore_sites["data"].get("results") or []):
                 c = str(x.get("city") or "").strip()
                 mn = str(x.get("mansion") or "").strip()
                 if c and mn and mn.isalnum() and 2 <= len(mn) <= 4:
@@ -1725,7 +1725,7 @@ async def _cmdb_enrich(host: str) -> dict:
     """CMDB (信息管理系统) 补充字段: SN/机柜位置等; 字段名防御式提取, 平台不可用返回空"""
     out = {}
     try:
-        from agents.gcoc_api import query_api
+        from agents.opscore_api import query_api
         d = await query_api("cmdb_info", {"search": host, "page_size": 3})
         rec = None
         if isinstance(d, dict) and "error" not in d:
@@ -1746,7 +1746,7 @@ async def _cmdb_enrich(host: str) -> dict:
 
 
 async def _citp_match_device(r, target: str) -> dict:
-    """单个设备匹配: GCOC-MGT 资源管理系统 → 统一 device dict (含平台/SN/机柜补充)"""
+    """单个设备匹配: OPS-CORE-MGT 资源管理系统 → 统一 device dict (含平台/SN/机柜补充)"""
     ku = (target or "").strip()
     if not ku:
         return {"target": ku, "matched": False, "reason": "未填写设备"}
@@ -1796,7 +1796,7 @@ async def _citp_device_customers(device: dict) -> tuple:
     if not device or not device.get("matched"):
         return [], 0
     try:
-        from agents.gcoc_api import expand_host_code, query_vms_on_esxi_host
+        from agents.opscore_api import expand_host_code, query_vms_on_esxi_host
         code = expand_host_code(device.get("name") or device.get("target") or "")
         if code:
             info = await query_vms_on_esxi_host(code)
@@ -1830,7 +1830,7 @@ async def _citp_device_customers(device: dict) -> tuple:
 
 @router.get("/api/approvals/citp/devices")
 async def approvals_citp_devices(q: str = "", current_user: str = Depends(verify_token)):
-    """设备候选搜索 (CITP 目标设备下拉): GCOC-MGT 宿主机 + 三家存储阵列
+    """设备候选搜索 (CITP 目标设备下拉): OPS-CORE-MGT 宿主机 + 三家存储阵列
 
     q ≥ 2 字符; 短名(去域大写)/IP/SN 包含匹配, 返回前 10 条候选:
     [{name, kind: host|array, vendor, model, ip}] — 选中后前端自动走精确匹配带出详情。
@@ -1881,7 +1881,7 @@ async def approvals_citp_devices(q: str = "", current_user: str = Depends(verify
 
 @router.post("/api/approvals/citp/match")
 async def approvals_citp_match(request: Request, current_user: str = Depends(verify_token)):
-    """设备手动选择 → 资源管理系统 (GCOC-MGT) 匹配: SN/IP/型号/位置 + 受影响客户列表"""
+    """设备手动选择 → 资源管理系统 (OPS-CORE-MGT) 匹配: SN/IP/型号/位置 + 受影响客户列表"""
     body = await request.json()
     target = (body.get("target") or "").strip()[:200]
     if not target:
@@ -1994,7 +1994,7 @@ async def approvals_citp(request: Request, current_user: str = Depends(verify_to
     return citp
 
 
-# ═══ 维护验收: 主机网卡测试 (GCOC-MGT test-nic API) → 结果写入 CITP ═══
+# ═══ 维护验收: 主机网卡测试 (OPS-CORE-MGT test-nic API) → 结果写入 CITP ═══
 
 def _fmt_nic_test(data: dict) -> dict:
     """test-nic 原始结果 → 紧凑验收记录 (存入审批单 citp.acceptance, 控制体积)"""
@@ -2023,7 +2023,7 @@ def _fmt_nic_test(data: dict) -> dict:
 async def approval_acceptance(approval_id: str, current_user: str = Depends(verify_token)):
     """维护验收: 执行主机网卡测试并将结果写入该单 CITP 验收记录
 
-    流程: 定位单据 CITP 设备 (ESXi 主机) → GCOC-MGT id → POST test-nic 触发
+    流程: 定位单据 CITP 设备 (ESXi 主机) → OPS-CORE-MGT id → POST test-nic 触发
     (权限不足降级 GET 最新结果) → 紧凑化写入 citp.acceptance → 审计留痕
     (approval_acceptance); xlsx 导出自动包含「验收结果」页。
     """
@@ -2050,7 +2050,7 @@ async def approval_acceptance(approval_id: str, current_user: str = Depends(veri
     if not host_name:
         raise HTTPException(400, "CITP 设备名为空")
 
-    # 主机 → GCOC-MGT 数字 id (短名匹配)
+    # 主机 → OPS-CORE-MGT 数字 id (短名匹配)
     from core.approval import _audit_async
     r = await get_redis()
     from agents.nms_cmdb import _nms_mgt_list_cached
@@ -2062,7 +2062,7 @@ async def approval_acceptance(approval_id: str, current_user: str = Depends(veri
         raise HTTPException(404, f"资源管理系统未找到主机 {host_name}")
 
     # 触发测试 (POST 无权限时降级 GET 最新结果)
-    from agents.gcoc_api import get_mgt_client
+    from agents.opscore_api import get_mgt_client
     data, mode = None, ""
     try:
         data = await get_mgt_client().request("POST", f"/api/vcenter/hosts/{mgt_id}/test-nic/")
@@ -2358,7 +2358,7 @@ async def set_group_permissions(request: Request, current_user: str = Depends(ve
 async def set_group_members(request: Request, current_user: str = Depends(verify_token)):
     """批量管理组成员: 将多个用户加入/移出指定组 (仅管理员)
 
-    body: {group: "GCOC", usernames: ["u1","u2"], action: "add"|"remove"}
+    body: {group: "OPS-CORE", usernames: ["u1","u2"], action: "add"|"remove"}
     - action=add: 将 usernames 的组别设置为 group (group 为空字符串即清除组别)
     - action=remove: 仅当用户当前属于 group 时将其组别清空
     """
@@ -2491,7 +2491,7 @@ async def oneapi_keys_delete(key_id: str, current_user: str = Depends(verify_tok
 def _normalize_base_url(url: str) -> str:
     """规范化 OpenAI 兼容 base URL; 非法输入抛 ValueError (调用方 400)。
 
-    - 必须带 http(s):// 前缀 (拒绝主机片段如 "svc-gcoc" 被默默存成坏 URL)
+    - 必须带 http(s):// 前缀 (拒绝主机片段如 "svc-opscore" 被默默存成坏 URL)
     - 剥掉误粘贴的 /chat/completions 端点后缀
     - 路径已含 /v1 等版本段则不再追加
     """
@@ -2693,7 +2693,7 @@ async def llm_config_set(request: Request, current_user: str = Depends(verify_to
     submitted = {k: v for k, v in body.items() if k in allowed and v not in ("", None, "__KEEP__")}
     clear_keys = [k for k in (body.get("clear_keys") or []) if k in _CLEARABLE]
 
-    # URL 校验+规范化 (非法直接 400, 不再默默存坏值 — 如 "svc-gcoc" → "svc-gcoc/v1")
+    # URL 校验+规范化 (非法直接 400, 不再默默存坏值 — 如 "svc-opscore" → "svc-opscore/v1")
     for uk in ("base_url", "oneapi_base_url"):
         if uk in submitted:
             try:

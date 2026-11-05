@@ -56,7 +56,7 @@ class ToolPool:
     
     使用方式:
         pool = get_tool_pool()
-        pool.register_agent("gcoc_agent", tools=[...], capabilities=[...])
+        pool.register_agent("opscore_agent", tools=[...], capabilities=[...])
         results = pool.search_tools("备份查询")
         agent = pool.find_best_agent("查询客户资源池")
     """
@@ -140,7 +140,7 @@ class ToolPool:
 
     def ensure_agent_registered(self, agent_id: str, description: str = "",
                                  capabilities: List[str] = None) -> bool:
-        """若 Redis 中无该 agent 的注册则补注册 (已有注册不覆盖，保护 gcoc 等自带工具清单的条目)
+        """若 Redis 中无该 agent 的注册则补注册 (已有注册不覆盖，保护 opscore 等自带工具清单的条目)
 
         BaseAgent 心跳统一调用，保证全部 agent (含 nms/ops/network 等)
         都有 ToolPool 生产者，而不是只有显式 register_agent 的 3 个。

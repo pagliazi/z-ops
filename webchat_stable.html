@@ -359,7 +359,7 @@ function ChatPanel({ user }) {
     const AGENT_OPTIONS = [
         { value: '', label: '自动', icon: 'ri-magic-line', bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
         { value: 'kb_agent', label: 'KB', icon: 'ri-book-open-line', bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
-        { value: 'gcoc_agent', label: 'GCOC', icon: 'ri-database-2-line', bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
+        { value: 'opscore_agent', label: 'OPS-CORE', icon: 'ri-database-2-line', bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
         { value: 'ops_agent', label: '运维', icon: 'ri-terminal-box-line', bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
         { value: 'dev_agent', label: '脚本', icon: 'ri-code-s-slash-line', bg: '#ecfeff', text: '#0e7490', border: '#a5f3fc' },
         { value: 'general_agent', label: '通用', icon: 'ri-chat-smile-2-line', bg: '#f9fafb', text: '#4b5563', border: '#d1d5db' },
@@ -520,7 +520,7 @@ function ChatPanel({ user }) {
                             vm_agent: { icon: 'ri-cloud-line', color: 'text-green-500', bg: 'bg-green-50' },
                             dev_agent: { icon: 'ri-code-s-slash-line', color: 'text-gray-500', bg: 'bg-gray-100' },
                             browser_agent: { icon: 'ri-chrome-line', color: 'text-teal-500', bg: 'bg-teal-50' },
-                            gcoc_agent: { icon: 'ri-database-2-line', color: 'text-pink-500', bg: 'bg-pink-50' },
+                            opscore_agent: { icon: 'ri-database-2-line', color: 'text-pink-500', bg: 'bg-pink-50' },
                             kb_agent: { icon: 'ri-book-open-line', color: 'text-indigo-500', bg: 'bg-indigo-50' },
                         };
                         const am = m.source ? (agentMeta[m.source] || { icon: 'ri-robot-line', color: 'text-gray-400', bg: 'bg-gray-50' }) : null;
@@ -642,7 +642,7 @@ function AgentsPanel({ overview, user }) {
         vm_agent:       { icon: 'ri-cloud-line', color: '#22c55e', textColor: 'text-green-500', bg: 'bg-green-50', label: 'VM', desc: '虚拟化专家' },
         dev_agent:      { icon: 'ri-code-s-slash-line', color: '#6b7280', textColor: 'text-gray-500', bg: 'bg-gray-100', label: 'Dev', desc: '开发助手' },
         browser_agent:  { icon: 'ri-chrome-line', color: '#14b8a6', textColor: 'text-teal-500', bg: 'bg-teal-50', label: 'Browser', desc: '浏览器自动化' },
-        gcoc_agent:     { icon: 'ri-database-2-line', color: '#ec4899', textColor: 'text-pink-500', bg: 'bg-pink-50', label: 'GCOC', desc: 'GCOC 数据' },
+        opscore_agent:     { icon: 'ri-database-2-line', color: '#ec4899', textColor: 'text-pink-500', bg: 'bg-pink-50', label: 'OPS-CORE', desc: 'OPS-CORE 数据' },
         kb_agent:       { icon: 'ri-book-open-line', color: '#6366f1', textColor: 'text-indigo-500', bg: 'bg-indigo-50', label: 'KB', desc: '知识库检索' },
     };
     
@@ -651,7 +651,7 @@ function AgentsPanel({ overview, user }) {
     
     // 架构布局
     const coreAgents = ['general_agent', 'ops_agent', 'network_agent', 'vm_agent'];
-    const extAgents = ['dev_agent', 'browser_agent', 'gcoc_agent', 'kb_agent'];
+    const extAgents = ['dev_agent', 'browser_agent', 'opscore_agent', 'kb_agent'];
     
     // 调度关系定义
     const routes = [
@@ -660,9 +660,9 @@ function AgentsPanel({ overview, user }) {
         { from: 'orchestrator', to: 'network_agent', label: '网络配置' },
         { from: 'orchestrator', to: 'vm_agent', label: '虚拟化' },
         { from: 'ops_agent', to: 'kb_agent', label: '知识查询' },
-        { from: 'ops_agent', to: 'gcoc_agent', label: 'GCOC数据' },
+        { from: 'ops_agent', to: 'opscore_agent', label: 'OPS-CORE数据' },
         { from: 'dev_agent', to: 'kb_agent', label: '文档检索' },
-        { from: 'browser_agent', to: 'gcoc_agent', label: '数据采集' },
+        { from: 'browser_agent', to: 'opscore_agent', label: '数据采集' },
     ];
     
     // 渲染 Agent 节点
@@ -717,24 +717,24 @@ function AgentsPanel({ overview, user }) {
     
     // ArchitectureView Component - Z-OPS Agent Cluster Architecture Diagram
     const ArchitectureView = ({ agents, meta, expandedAgent, setExpandedAgent, onlineCount, totalSkills }) => {
-        const allAgents = ['general_agent', 'ops_agent', 'network_agent', 'vm_agent', 'dev_agent', 'browser_agent', 'gcoc_agent', 'kb_agent'];
+        const allAgents = ['general_agent', 'ops_agent', 'network_agent', 'vm_agent', 'dev_agent', 'browser_agent', 'opscore_agent', 'kb_agent'];
         
         const agentToServices = {
             general_agent: ['llm', 'kb'],
-            ops_agent: ['llm', 'gcoc1', 'gcoc2'],
-            network_agent: ['llm', 'gcoc1'],
-            vm_agent: ['llm', 'vmware', 'gcoc2'],
+            ops_agent: ['llm', 'opscore1', 'opscore2'],
+            network_agent: ['llm', 'opscore1'],
+            vm_agent: ['llm', 'vmware', 'opscore2'],
             dev_agent: ['llm'],
             browser_agent: ['llm'],
-            gcoc_agent: ['llm', 'gcoc1', 'gcoc2'],
+            opscore_agent: ['llm', 'opscore1', 'opscore2'],
             kb_agent: ['llm', 'kb']
         };
         
         const services = [
             { id: 'llm', icon: 'ri-openai-line', label: 'LLM API', color: '#10b981' },
             { id: 'kb', icon: 'ri-git-repository-line', label: '知识库', color: '#8b5cf6' },
-            { id: 'gcoc1', icon: 'ri-server-line', label: 'GCOC信息', color: '#3b82f6' },
-            { id: 'gcoc2', icon: 'ri-database-2-line', label: 'GCOC资源', color: '#6366f1' },
+            { id: 'opscore1', icon: 'ri-server-line', label: 'OPS-CORE信息', color: '#3b82f6' },
+            { id: 'opscore2', icon: 'ri-database-2-line', label: 'OPS-CORE资源', color: '#6366f1' },
             { id: 'vmware', icon: 'ri-cloud-line', label: 'VMware', color: '#f97316' },
         ];
         
@@ -2209,7 +2209,7 @@ function AdminOneAPIKeys() {
 
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm mb-4">
                 <div className="flex gap-2 mb-4">
-                    <input type="text" placeholder="名称 (如: svc-gcoc)，生成 Label 为 oneapi:名称" value={newName} onChange={e => setNewName(e.target.value)}
+                    <input type="text" placeholder="名称 (如: svc-opscore)，生成 Label 为 oneapi:名称" value={newName} onChange={e => setNewName(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && createKey()} className={inp + ' flex-1'} />
                     <button onClick={createKey} disabled={creating || !newName.trim()}
                         className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap">

@@ -270,13 +270,13 @@ function ApplyForm({ onSubmitted, onClose, prefill, editRecord }: {
   const [toolName, setToolName] = useState(prefill?.tool_name || '');  // 默认「请选择」
   const [customType, setCustomType] = useState('');
   const [customer, setCustomer] = useState(prefill?.customer || '');
-  const [customerGid, setCustomerGid] = useState(prefill?.customer_gid || '');  // GCOC CRM 联动带出
+  const [customerGid, setCustomerGid] = useState(prefill?.customer_gid || '');  // OPS-CORE CRM 联动带出
   const [custList, setCustList] = useState<{ gid: string; name: string; site_ids?: string[]; order_no?: string }[]>([]);
-  const [customerOrder, setCustomerOrder] = useState('');  // GCOC-MGT CRM 订单号 (选客户自动带出)
-  const [customerSiteIds, setCustomerSiteIds] = useState('');  // GCOC-MGT CRM 资源池 Site ID (选中客户自动带出)
+  const [customerOrder, setCustomerOrder] = useState('');  // OPS-CORE-MGT CRM 订单号 (选客户自动带出)
+  const [customerSiteIds, setCustomerSiteIds] = useState('');  // OPS-CORE-MGT CRM 资源池 Site ID (选中客户自动带出)
   const [custOpen, setCustOpen] = useState(false);
   const [approvers, setApprovers] = useState('');
-  // 站点 combobox: 输入匹配 GCOC 结构化项 (label=机房中文名, value=城市三字码)
+  // 站点 combobox: 输入匹配 OPS-CORE 结构化项 (label=机房中文名, value=城市三字码)
   const [site, setSite] = useState(prefill?.site || '');
   const [siteText, setSiteText] = useState(prefill?.site || '');
   const [siteOpen, setSiteOpen] = useState(false);
@@ -617,7 +617,7 @@ function ApplyForm({ onSubmitted, onClose, prefill, editRecord }: {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site, customer, caseNo, targetHost]);
-  // GCOC CRM 客户字典异步加载 (独立接口, 首次数秒; 加载完成前可手输兜底)
+  // OPS-CORE CRM 客户字典异步加载 (独立接口, 首次数秒; 加载完成前可手输兜底)
   useEffect(() => { getApprovalCustomers().then(d => setCustList(d.customers || [])).catch(() => {}); }, []);
 
   const reset = () => {
@@ -693,20 +693,20 @@ function ApplyForm({ onSubmitted, onClose, prefill, editRecord }: {
     saveMyTemplates(next);
   };
 
-  // case 号联动校验: blur 时查 GCOC 信息平台 (平台不可用仅提示, 不阻断提交)
+  // case 号联动校验: blur 时查 OPS-CORE 信息平台 (平台不可用仅提示, 不阻断提交)
   const checkCase = async () => {
     const v = caseNo.trim();
     if (v.length < 3) { setCaseCheck({ state: 'idle', text: '' }); return; }
-    setCaseCheck({ state: 'checking', text: '正在 GCOC 平台校验 case 号...' });
+    setCaseCheck({ state: 'checking', text: '正在 OPS-CORE 平台校验 case 号...' });
     try {
       const d = await lookupCaseNo(v);
       if (!d.available) {
-        setCaseCheck({ state: 'unavail', text: 'GCOC 校验服务暂不可用，可继续提交（平台数据可能有延迟）' });
+        setCaseCheck({ state: 'unavail', text: 'OPS-CORE 校验服务暂不可用，可继续提交（平台数据可能有延迟）' });
       } else if (d.found && d.cases[0]) {
         const c = d.cases[0];
-        setCaseCheck({ state: 'ok', text: `已在 GCOC 平台找到: ${c.title || c.case_no || v}${c.status ? ` · 状态 ${c.status}` : ''}${c.customer ? ` · 客户 ${c.customer}` : ''}`, hit: c });
+        setCaseCheck({ state: 'ok', text: `已在 OPS-CORE 平台找到: ${c.title || c.case_no || v}${c.status ? ` · 状态 ${c.status}` : ''}${c.customer ? ` · 客户 ${c.customer}` : ''}`, hit: c });
       } else {
-        setCaseCheck({ state: 'miss', text: '未在 GCOC 平台找到该 case 号，请确认编号无误（新 case 可能尚未同步）' });
+        setCaseCheck({ state: 'miss', text: '未在 OPS-CORE 平台找到该 case 号，请确认编号无误（新 case 可能尚未同步）' });
       }
     } catch {
       setCaseCheck({ state: 'unavail', text: 'Case 校验请求失败，可继续提交' });
@@ -932,7 +932,7 @@ function ApplyForm({ onSubmitted, onClose, prefill, editRecord }: {
     applySiteByCode(siteIds[0]);
   };
 
-  // 客户搜索下拉: 输入过滤 GCOC 字典 (前 20 条); 精确匹配 name 自动带出 GID
+  // 客户搜索下拉: 输入过滤 OPS-CORE 字典 (前 20 条); 精确匹配 name 自动带出 GID
   const custFiltered = custList
     .filter(c => !customer.trim() || c.name.toLowerCase().includes(customer.trim().toLowerCase()) || c.gid.toLowerCase().includes(customer.trim().toLowerCase()))
     .slice(0, 20);
@@ -1202,7 +1202,7 @@ function ApplyForm({ onSubmitted, onClose, prefill, editRecord }: {
               {customerSiteIds.split(',').filter(Boolean).length > 4 && (
                 <span className="text-[10px] font-mono text-teal-700">+{customerSiteIds.split(',').filter(Boolean).length - 4}</span>
               )}
-              <span className="text-[10px] text-[#9CA3AF]">GCOC CRM 自动关联</span>
+              <span className="text-[10px] text-[#9CA3AF]">OPS-CORE CRM 自动关联</span>
             </div>
           )}
         </div>

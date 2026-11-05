@@ -78,11 +78,11 @@ class ExampleSelfImprovingSkill(BaseSkill):
             )
 
 
-class GcocQuerySkill(BaseSkill):
+class OpscoreQuerySkill(BaseSkill):
     """
-    GCOC 查询技能（带自我进化）
+    OPS-CORE 查询技能（带自我进化）
     
-    功能：查询 GCOC 平台数据，并从历史查询中学习
+    功能：查询 OPS-CORE 平台数据，并从历史查询中学习
     
     学习点:
     - 常见查询模式
@@ -91,8 +91,8 @@ class GcocQuerySkill(BaseSkill):
     - 提升查询性能
     """
     
-    name = "gcoc_query_optimized"
-    description = "GCOC 平台智能查询技能（带自我优化）"
+    name = "opscore_query_optimized"
+    description = "OPS-CORE 平台智能查询技能（带自我优化）"
     parameters = [
         SkillParam(
             name="query_type",
@@ -120,7 +120,7 @@ class GcocQuerySkill(BaseSkill):
         
         # 基于信心分数调整查询策略
         if self.confidence_score < 0.6:
-            logger.warning(f"[gcoc_query] 信心分数较低 ({self.confidence_score:.2f})，将使用保守查询策略")
+            logger.warning(f"[opscore_query] 信心分数较低 ({self.confidence_score:.2f})，将使用保守查询策略")
             # 可以在这里调整查询参数
         
         # 获取相似查询的经验
@@ -129,31 +129,31 @@ class GcocQuerySkill(BaseSkill):
         
         similar = engine.get_similar_experiences(self.name, params, limit=5)
         if similar:
-            logger.info(f"[gcoc_query] 发现 {len(similar)} 条相似查询经验")
+            logger.info(f"[opscore_query] 发现 {len(similar)} 条相似查询经验")
             
             # 分析历史查询的成功模式
             success_count = sum(1 for exp in similar if exp.success)
             if success_count < len(similar) * 0.6:
-                logger.warning(f"[gcoc_query] 历史查询成功率较低 ({success_count}/{len(similar)})")
+                logger.warning(f"[opscore_query] 历史查询成功率较低 ({success_count}/{len(similar)})")
                 # 可以在这里应用优化策略
     
     async def execute(self, params: Dict[str, Any], context: Dict[str, Any] = None) -> SkillResult:
-        """执行 GCOC 查询"""
+        """执行 OPS-CORE 查询"""
         import time
         
         query_type = params.get("query_type", "")
         site = params.get("site", "")
         filters = params.get("filters", {})
         
-        logger.info(f"[gcoc_query] 查询类型={query_type}, 站点={site or '全部'}")
+        logger.info(f"[opscore_query] 查询类型={query_type}, 站点={site or '全部'}")
         
         start_time = time.time()
         
         try:
             # 实际查询逻辑（这里简化）
-            from agents.gcoc_api import GcocApiClient
+            from agents.opscore_api import OpscoreApiClient
             
-            client = GcocApiClient()
+            client = OpscoreApiClient()
             
             if query_type == "site":
                 # 查询站点信息
@@ -178,7 +178,7 @@ class GcocQuerySkill(BaseSkill):
             
             execution_time = time.time() - start_time
             
-            logger.info(f"[gcoc_query] 查询完成，耗时={execution_time:.2f}s")
+            logger.info(f"[opscore_query] 查询完成，耗时={execution_time:.2f}s")
             
             return SkillResult(
                 success=True,
@@ -188,11 +188,11 @@ class GcocQuerySkill(BaseSkill):
         
         except Exception as e:
             execution_time = time.time() - start_time
-            logger.error(f"[gcoc_query] 查询失败：{e}")
+            logger.error(f"[opscore_query] 查询失败：{e}")
             
             return SkillResult(
                 success=False,
-                error=f"GCOC 查询失败：{str(e)}"
+                error=f"OPS-CORE 查询失败：{str(e)}"
             )
 
 
@@ -317,6 +317,6 @@ class NetworkScanSkill(BaseSkill):
 # 导出技能列表
 __all__ = [
     "ExampleSelfImprovingSkill",
-    "GcocQuerySkill",
+    "OpscoreQuerySkill",
     "NetworkScanSkill",
 ]

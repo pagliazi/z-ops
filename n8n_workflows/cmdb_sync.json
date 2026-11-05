@@ -32,7 +32,7 @@
     },
     {
       "parameters": {
-        "url": "http://localhost:7789/api/gcoc/cmdb/sync",
+        "url": "http://localhost:7789/api/opscore/cmdb/sync",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -166,7 +166,7 @@
     "timezone": "Asia/Shanghai"
   },
   "tags": [
-    "gcoc",
+    "opscore",
     "cmdb",
     "同步"
   ]

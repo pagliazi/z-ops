@@ -129,7 +129,7 @@ async def main():
         check("URL 规范化: 剥 /chat/completions", pref.get("base_url") == "https://gw2.example.com/v1",
               str(pref.get("base_url")))
         resp = client.post("/api/llm/config", headers={"Authorization": "Bearer tok-admin"},
-                           json={"provider": "mygw", "model": "gwx", "base_url": "svc-gcoc"})
+                           json={"provider": "mygw", "model": "gwx", "base_url": "svc-opscore"})
         check("URL 规范化: 无 scheme 拒绝 400", resp.status_code == 400, str(resp.status_code))
 
         # 11. GET: provider_creds 摘要回显 (URL 明文/密钥只回 has_api_key)

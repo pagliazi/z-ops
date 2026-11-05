@@ -151,7 +151,7 @@ def biz_catalog() -> list:
     ]
 
 
-# 站点中文名 ↔ GCOC 三字码互认 (与 GCOC 站点字典一致; 规范化为三字码后比对)
+# 站点中文名 ↔ OPS-CORE 三字码互认 (与 OPS-CORE 站点字典一致; 规范化为三字码后比对)
 _SITE_ALIAS = {"香港": "HKG", "上海": "SHH", "北京": "BEJ", "广州": "GUZ"}
 
 
@@ -167,7 +167,7 @@ def scope_allows(scopes: dict, site: str = "", customer: str = "",
     - 该维度为 NONE (个人与组空交集) → 一律拒绝;
     - 站点: 中文名与三字码互认 (scope 配「香港」可拦单据 site=HKG, 反之亦然);
       完整站点代码 (如 HKHKGBBB) 包含城市三字码 (HKG) 即视为命中城市级范围;
-    - 客户: 名称或 GID 任一命中即通过 (scope 配 GID 亦可拦截, 与 GCOC CRM 联动)。
+    - 客户: 名称或 GID 任一命中即通过 (scope 配 GID 亦可拦截, 与 OPS-CORE CRM 联动)。
     Returns: (allowed: bool, reason: str)
     """
     modes = (scopes.get(_SCOPE_MODES_KEY) if isinstance(scopes, dict) else None) or {}

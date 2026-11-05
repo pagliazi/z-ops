@@ -55,12 +55,12 @@ async def main():
 asyncio.run(main())
 ```
 
-#### 方式二：使用 gcoc_agent 的 HA 查询功能
+#### 方式二：使用 opscore_agent 的 HA 查询功能
 
-在 gcoc_agent 中自动识别 HA 相关意图：
+在 opscore_agent 中自动识别 HA 相关意图：
 
 ```python
-# gcoc_agent 会自动路由到 HA API
+# opscore_agent 会自动路由到 HA API
 用户问题："查看 SCC 站点因 HA 重启的虚拟机"
 → 自动调用 ha_vms 端点
 ```
@@ -186,7 +186,7 @@ telnet 198.18.18.166 8088
 ## 下一步计划
 
 1. ✅ 创建 ha_api.py 客户端模块
-2. ✅ 集成到 gcoc_api 端点目录
-3. ⏳ 添加 gcoc_agent 的 HA 查询技能
+2. ✅ 集成到 opscore_api 端点目录
+3. ⏳ 添加 opscore_agent 的 HA 查询技能
 4. ⏳ 前端增加 HA VM 展示面板
 5. ⏳ 实现 HA 事件自动告警通知

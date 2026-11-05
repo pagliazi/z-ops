@@ -88,88 +88,88 @@
     {
       "id": "kw-103",
       "text": "你好，请查一下GID 47141 的虚拟机",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "greeting-guard"
     },
     {
       "id": "kw-201",
       "text": "GID 47141 有哪些虚拟机",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "gid+resource"
     },
     {
       "id": "kw-202",
       "text": "查一下g12345的备份状态",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "gid+resource"
     },
     {
       "id": "kw-203",
       "text": "47141 这个站点的监控告警",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "gid+resource"
     },
     {
       "id": "kw-204",
       "text": "gid88381 的存储空间",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "gid+resource"
     },
     {
       "id": "kw-205",
       "text": "G123456 的DNS记录",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "gid+resource"
     },
     {
       "id": "kw-206",
       "text": "88381 站点上有什么资源",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "gid+resource"
     },
     {
       "id": "kw-207",
       "text": "GID 30021 的虚拟机列表",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "gid+resource"
     },
     {
       "id": "kw-208",
       "text": "45210 的快照情况",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "gid+resource"
     },
     {
       "id": "kw-209",
       "text": "gid 47141 迁移记录",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "gid+resource"
     },
     {
       "id": "kw-210",
       "text": "G88412 的HA事件",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "gid+resource"
     },
@@ -200,48 +200,48 @@
     {
       "id": "kw-401",
       "text": "找到ESXI-03的虚拟机列表",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "vm-hostname"
     },
     {
       "id": "kw-402",
       "text": "ESXI-03 这台虚拟机在哪",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "vm-hostname"
     },
     {
       "id": "kw-403",
       "text": "hkpkgal8001ht 的vm信息",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "vm-hostname"
     },
     {
       "id": "kw-404",
       "text": "VM-BJ-2001 云主机在哪",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "vm-hostname"
     },
     {
       "id": "kw-405",
       "text": "NODE-SH-028 vm 是哪台",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "vm-hostname"
     },
     {
       "id": "kw-406",
       "text": "查vm-web-01在哪个集群",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "vm-hostname"
     },
@@ -296,232 +296,232 @@
     {
       "id": "kw-601",
       "text": "平台资源概览",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-602",
       "text": "集群资源使用情况",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-603",
       "text": "资源池还剩多少",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-604",
       "text": "vcenter资源情况",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-605",
       "text": "存储空间还剩多少",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-606",
       "text": "datastore 使用率",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-607",
       "text": "容量规划报告",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-608",
       "text": "查一下真实资源",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-609",
       "text": "vcd资源列表",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-610",
       "text": "宿主机资源分配",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-611",
       "text": "nimble 存储健康",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-612",
       "text": "netapp 卷列表",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "platform-resource"
     },
     {
       "id": "kw-701",
       "text": "198.18.96.169上有哪些备份",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "ip+resource"
     },
     {
       "id": "kw-702",
       "text": "192.168.1.100 这台虚拟机是谁的",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "ip+resource"
     },
     {
       "id": "kw-703",
       "text": "172.16.0.5 的vm列表",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "ip+resource"
     },
     {
       "id": "kw-704",
       "text": "10.0.0.8 上的快照有哪些",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "ip+resource"
     },
     {
       "id": "kw-705",
       "text": "192.168.100.200 的存储使用",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "ip+resource"
     },
     {
       "id": "kw-801",
       "text": "有哪些备份任务",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "backup-query"
     },
     {
       "id": "kw-802",
       "text": "备份作业列表",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "backup-query"
     },
     {
       "id": "kw-803",
       "text": "昨天有多少备份成功",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "backup-query"
     },
     {
       "id": "kw-804",
       "text": "备份文件占了多大空间",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "backup-query"
     },
     {
       "id": "kw-805",
       "text": "哪些备份失败了",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "backup-query"
     },
     {
       "id": "kw-806",
       "text": "查看备份任务状态",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "backup-query"
     },
     {
       "id": "kw-807",
       "text": "查PROD数据库的备份Job状态",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "backup-query"
     },
     {
       "id": "kw-808",
       "text": "检查PRODDB01是否在备份作业中",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "backup-query"
     },
     {
       "id": "kw-809",
       "text": "上周备份失败统计",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "backup-query"
     },
     {
       "id": "kw-901",
       "text": "查询这22台VM的备份任务状态: ESXI-HK-8025, ESXI-HK-8031, ESXI-HK-8040, ESXI-HK-8055, ESXI-HK-8066, ESXI-HK-8071, ESXI-HK-8082, ESXI-HK-8093, ESXI-HK-8104, ESXI-HK-8115, ESXI-HK-8126, ESXI-HK-8137, 上周的备份Job有没有失败的",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "vm-list-query"
     },
     {
       "id": "kw-902",
       "text": "这批虚拟机的快照情况帮我确认一下: ESXI-03, ESXI-04, ESXI-05, ESXI-06, ESXI-07, ESXI-08, ESXI-09, ESXI-10, ESXI-11, ESXI-12, 看看哪台没做快照，回复我一份清单",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "vm-list-query"
     },
     {
       "id": "kw-903",
       "text": "以下是监控有问题的机器请查一下状态: VM-BJ-2001, VM-BJ-2002, VM-BJ-2003, VM-BJ-2004, VM-BJ-2005, VM-BJ-2006, VM-BJ-2007, VM-BJ-2008, 各自的CPU和内存现在占用多少，帮我汇总成表格",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
       "source": "vm-list-query"
     },
@@ -736,26 +736,26 @@
     {
       "id": "kw-1401",
       "text": "备份失败有哪些故障事件",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
-      "source": "gcoc-events"
+      "source": "opscore-events"
     },
     {
       "id": "kw-1402",
       "text": "上周有哪些运维事件",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
-      "source": "gcoc-events"
+      "source": "opscore-events"
     },
     {
       "id": "kw-1403",
       "text": "查一下最近的告警记录",
-      "expect": "gcoc_agent",
-      "got": "gcoc_agent",
+      "expect": "opscore_agent",
+      "got": "opscore_agent",
       "ok": true,
-      "source": "gcoc-events"
+      "source": "opscore-events"
     },
     {
       "id": "kw-1404",
@@ -763,7 +763,7 @@
       "expect": "kb_agent",
       "got": "kb_agent",
       "ok": true,
-      "source": "gcoc-events-guard"
+      "source": "opscore-events-guard"
     },
     {
       "id": "kw-1501",
@@ -883,7 +883,7 @@
       "expect": "",
       "got": "<llm>",
       "ok": true,
-      "source": "gcoc-vs-vm"
+      "source": "opscore-vs-vm"
     },
     {
       "id": "llm-0102",
@@ -891,7 +891,7 @@
       "expect": "",
       "got": "<llm>",
       "ok": true,
-      "source": "gcoc-vs-vm"
+      "source": "opscore-vs-vm"
     },
     {
       "id": "llm-0103",
@@ -899,7 +899,7 @@
       "expect": "",
       "got": "<llm>",
       "ok": true,
-      "source": "gcoc-vs-vm"
+      "source": "opscore-vs-vm"
     }
   ]
 }

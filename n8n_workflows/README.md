@@ -59,7 +59,7 @@ Authentication: Header (X-N8N-Key: n8n_webhook_secret_2024)
 
 **流程**:
 ```
-[Webhook/Manual] → [HTTP Request: GCOC BRR API] → [Transform Data] → [Slack/Feishu Notification]
+[Webhook/Manual] → [HTTP Request: OPS-CORE BRR API] → [Transform Data] → [Slack/Feishu Notification]
 ```
 
 **参数**:

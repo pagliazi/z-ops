@@ -31,7 +31,7 @@ async def main():
 
         filters = await agent._nms_fetch_filters_meta(page)
         fmap = {f["name"]: f for f in filters}
-        names = ["GCOC_use", "GCOC_need_confirm", "BGPStatus", "PSC_use", "EU_CS_use"]
+        names = ["OPSCORE_use", "OPSCORE_need_confirm", "BGPStatus", "PSC_use", "EU_CS_use"]
         results = {}
         for nm in names:
             f = fmap.get(nm)
@@ -51,11 +51,11 @@ async def main():
                 print(f"{a} ∩ {b} = {inter} (|a|={len(results[a])}, |b|={len(results[b])})")
 
         # 同一 filter 连抓 2 次
-        f = fmap.get("GCOC_use")
+        f = fmap.get("OPSCORE_use")
         ids1, _, _ = await fetch_idl(page, agent, f)
         ids2, _, _ = await fetch_idl(page, agent, f)
         s1, s2 = set(ids1), set(ids2)
-        print(f"\nGCOC_use 连续2次: {len(s1)} vs {len(s2)}, "
+        print(f"\nOPSCORE_use 连续2次: {len(s1)} vs {len(s2)}, "
               f"仅第1次有={len(s1 - s2)}, 仅第2次有={len(s2 - s1)}")
         if s1 - s2:
             print(f"  仅第1次样本: {sorted(s1 - s2)[:5]}")

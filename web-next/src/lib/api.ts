@@ -48,7 +48,7 @@ export interface ChatMessage {
   isStreaming?: boolean;
   thinking?: string;      // 推理模型思考链 (DeepSeek thinking mode)，前端折叠展示
   // 增强元数据 (参考 claude-code cost-tracker)
-  data_source?: string;   // 数据来源 (如 gcoc_mgt)
+  data_source?: string;   // 数据来源 (如 opscore_mgt)
   data_count?: number;    // 数据条数
   usage?: { input_tokens?: number; output_tokens?: number };
   model?: string;         // 使用的 LLM 模型
@@ -530,9 +530,9 @@ export interface ApprovalApplyFields {
   rollback_plan?: string;
   change_window?: string;
   customer?: string;
-  customer_gid?: string;         // GCOC CRM 客户编号 (表单选客户自动带出)
-  customer_site_ids?: string;    // GCOC-MGT CRM 资源池 Site ID (逗号分隔, 选客户自动带出)
-  customer_order_no?: string;    // GCOC-MGT CRM 订单号 (选客户自动带出)
+  customer_gid?: string;         // OPS-CORE CRM 客户编号 (表单选客户自动带出)
+  customer_site_ids?: string;    // OPS-CORE-MGT CRM 资源池 Site ID (逗号分隔, 选客户自动带出)
+  customer_order_no?: string;    // OPS-CORE-MGT CRM 订单号 (选客户自动带出)
   original_approval_id?: string; // 回退申请关联的原审批单号
   approvers?: string;
   approver_ds?: string;      // 分级审批: DS 配置复核 (必要级, 不能跳过)
@@ -592,7 +592,7 @@ export interface CitpCheckItem {
   expected?: string;
 }
 
-// CITP 设备匹配项 (资源管理系统 GCOC-MGT/CMDB 识别结果)
+// CITP 设备匹配项 (资源管理系统 OPS-CORE-MGT/CMDB 识别结果)
 export interface CitpDevice {
   target: string;         // 前端手选填写的目标 (主机名/IP/SN)
   matched: boolean;       // 是否匹配到资源管理系统设备
@@ -629,7 +629,7 @@ export interface ApprovalMeta {
   apply_types: { value: string; label: string }[];
   service_types: string[];
   sites: string[];
-  site_items?: { value: string; label: string; kw?: string }[];  // GCOC 结构化站点 (kw=搜索域: 城市码+机楼码+中文名)
+  site_items?: { value: string; label: string; kw?: string }[];  // OPS-CORE 结构化站点 (kw=搜索域: 城市码+机楼码+中文名)
   operation_groups?: { stype: string; ops: { value: string; label: string }[] }[];  // 操作类型按服务类型(平台)分组联动 (合并视图)
   operation_groups_by_category?: Record<string, { product: string; services: { service: string; ops: { value: string; label: string }[] }[] }[]>;  // 三级目录: 产品→服务→操作 (按分类)
   approvers: { username: string; display_name: string }[];
@@ -734,7 +734,7 @@ export async function autoFillApproval(body: { summary: string; category?: strin
   return response.json();
 }
 
-// 客户字典 (GCOC 管理平台 CRM 同步: GID + 客户名称; 首次拉取数秒, 缓存 10min)
+// 客户字典 (OPS-CORE 管理平台 CRM 同步: GID + 客户名称; 首次拉取数秒, 缓存 10min)
 export async function getApprovalCustomers(): Promise<{ customers: { gid: string; name: string; site_ids?: string[]; order_no?: string }[]; count: number; source: string }> {
   const response = await fetch(`${API_BASE}/api/approvals/customers`, { headers: getHeaders(), credentials: 'include' });
   handleUnauthorized(response);
@@ -742,7 +742,7 @@ export async function getApprovalCustomers(): Promise<{ customers: { gid: string
   return response.json();
 }
 
-// case 号联动校验 (GCOC 信息管理系统同步; 平台不可用时 available=false, 不阻断提交)
+// case 号联动校验 (OPS-CORE 信息管理系统同步; 平台不可用时 available=false, 不阻断提交)
 export interface CaseLookupResult {
   available: boolean;
   found: boolean;
@@ -818,7 +818,7 @@ export async function getApprovalStats(): Promise<ApprovalStats> {
   return response.json();
 }
 
-// CITP 设备候选搜索 (GCOC-MGT 宿主机 + 存储阵列; 短名/IP/SN 包含匹配, 前 10 条)
+// CITP 设备候选搜索 (OPS-CORE-MGT 宿主机 + 存储阵列; 短名/IP/SN 包含匹配, 前 10 条)
 export interface CitpDeviceCandidate { name: string; kind: 'host' | 'array'; vendor: string; model: string; ip: string }
 export async function searchCitpDevices(q: string):
   Promise<{ candidates: CitpDeviceCandidate[]; count: number; note?: string }> {
@@ -829,7 +829,7 @@ export async function searchCitpDevices(q: string):
   return response.json();
 }
 
-// CITP 设备手动选择 → 资源管理系统 (GCOC-MGT) 匹配: SN/IP/型号/机柜 + 受影响客户列表
+// CITP 设备手动选择 → 资源管理系统 (OPS-CORE-MGT) 匹配: SN/IP/型号/机柜 + 受影响客户列表
 export async function matchApprovalDevice(target: string):
   Promise<{ device: CitpDevice; customers: { name: string; gid?: string; vms?: number }[]; vms_count: number }> {
   const response = await fetch(`${API_BASE}/api/approvals/citp/match`, {

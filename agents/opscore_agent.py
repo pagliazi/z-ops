@@ -1,9 +1,9 @@
 """
-Z-OPS — gcoc_agent: GCOC 平台数据集成 Agent
-对接两个 GCOC 平台 API:
+Z-OPS — opscore_agent: OPS-CORE 平台数据集成 Agent
+对接两个 OPS-CORE 平台 API:
   - 198.18.18.145: 信息管理系统 (CMDB/机柜/监控/案例/DNS/数据中心)
   - 198.18.18.146: 管理平台 (BRR备份/快照管理/VCD资源/Aria Ops/M365/Smart-Ops)
-使用 agents/gcoc_api.py 共享模块
+使用 agents/opscore_api.py 共享模块
 """
 
 import asyncio
@@ -14,8 +14,8 @@ import time
 from typing import Optional, Dict, Any
 
 from agents.base import BaseAgent, AgentMessage, run_agent
-from agents.gcoc_api import (
-    GcocApiClient, get_info_client, get_mgt_client,
+from agents.opscore_api import (
+    OpscoreApiClient, get_info_client, get_mgt_client,
     INFO_API_CATALOG, MGT_API_CATALOG, DOMAIN_ENDPOINTS,
     get_domain_api_desc, query_api, smart_query,
     query_crm_customers, query_crm_customer_by_gid, query_crm_customer_resources,
@@ -35,11 +35,11 @@ import config
 
 logger = logging.getLogger("zops")
 
-GCOC_ANALYSIS_PROMPT = """你是 Z-OPS 运维智能体的 GCOC 数据分析模块。
+OPSCORE_ANALYSIS_PROMPT = """你是 Z-OPS 运维智能体的 OPS-CORE 数据分析模块。
 
-你通过两个 GCOC API 服务器获取运维数据:
-1. GCOC 信息管理系统 (API服务) — 采集并存储: CMDB主机/服务器、机柜、IDC机房、监控、告警、案例/工单、DNS、数据中心、厂商、密码管理
-2. GCOC 管理平台 (API服务) — 采集并存储: Veeam备份(BRR)、虚拟机快照、VCD资源、Aria Ops/Logs、Smart-Ops智能运维(VM/事件/告警/状态)、M365备份
+你通过两个 OPS-CORE API 服务器获取运维数据:
+1. OPS-CORE 信息管理系统 (API服务) — 采集并存储: CMDB主机/服务器、机柜、IDC机房、监控、告警、案例/工单、DNS、数据中心、厂商、密码管理
+2. OPS-CORE 管理平台 (API服务) — 采集并存储: Veeam备份(BRR)、虚拟机快照、VCD资源、Aria Ops/Logs、Smart-Ops智能运维(VM/事件/告警/状态)、M365备份
 
 极其重要的概念区分:
 - 以上两个 API 服务只是数据源，不是用户提问的对象
@@ -58,7 +58,7 @@ GCOC_ANALYSIS_PROMPT = """你是 Z-OPS 运维智能体的 GCOC 数据分析模�
 - CRM客户: 客户列表/详情、资源池、存储映射、VCD VM统计
 
 GID 概念 (极其重要):
-- GID 是客户编号 (如 47915、50123、TW48915)，是 GCOC 平台中标识客户的核心ID
+- GID 是客户编号 (如 47915、50123、TW48915)，是 OPS-CORE 平台中标识客户的核心ID
 - GID 通常嵌入在备份作业名称、备份名称、资源池名称中 (如 "TICKET-47915-Daily-Backup")
 - 当用户提到 GID 时，优先查询 CRM 客户详情，可获取该客户的资源池、VM数量、备份作业数等信息
 - 客户资源包括: Resource Pools (vCenter资源池)、Storage Mappings (存储卷映射)、VCD VMs、快照VMs、BRR备份
@@ -78,7 +78,7 @@ GID 概念 (极其重要):
 
 # ═══ Tool-Use 模式 System Prompt (参考 claude-code QueryEngine + AgentTool 模式) ═══
 
-GCOC_TOOL_USE_PROMPT = """你是 Z-OPS 运维智能体的 GCOC 数据查询模块。你通过调用工具来查询 GCOC 平台的运维数据，并基于查询结果回答用户问题。
+OPSCORE_TOOL_USE_PROMPT = """你是 Z-OPS 运维智能体的 OPS-CORE 数据查询模块。你通过调用工具来查询 OPS-CORE 平台的运维数据，并基于查询结果回答用户问题。
 
 数据源概览:
 - BRR 备份: 备份作业/对象/仓库/会话 (按 site 站点组织，site 如 HKHKGBBB、CNSHHCCC 等站点代码)
@@ -151,9 +151,9 @@ VCD 资源查询规则 (当用户问 GID/客户的 VCD 资源时):
 - 如果你不确定数据来源，标注 [推测] 并明确说明是推理而非查证结果。"""
 
 
-class GcocAgent(BaseAgent):
-    name = "gcoc_agent"
-    description = "GCOC 平台数据集成 (CMDB/监控/备份/快照/VCD/Aria Ops/M365)"
+class OpscoreAgent(BaseAgent):
+    name = "opscore_agent"
+    description = "OPS-CORE 平台数据集成 (CMDB/监控/备份/快照/VCD/Aria Ops/M365)"
 
     def __init__(self):
         super().__init__()
@@ -178,7 +178,7 @@ class GcocAgent(BaseAgent):
                 tools=self._build_tool_defs(),
             )
         except Exception as e:
-            logger.debug(f"[gcoc_agent] ToolPool 注册异常: {e}")
+            logger.debug(f"[opscore_agent] ToolPool 注册异常: {e}")
 
     def _register_tools(self):
         """将所有 action handler 注册为 ToolDef (参考 claude-code AgentTool)"""
@@ -223,7 +223,7 @@ class GcocAgent(BaseAgent):
                     "params": [ToolParam(name="search", type=ParamType.STRING, description="组织名/站点")],
                 },
                 "dns_query": {
-                    "description": "查询 DNS 记录 (GCOC DNS API, 支持 A/AAAA/CNAME/MX/TXT/NS/SOA/PTR/SRV 及批量域名/IP反向解析)",
+                    "description": "查询 DNS 记录 (OPS-CORE DNS API, 支持 A/AAAA/CNAME/MX/TXT/NS/SOA/PTR/SRV 及批量域名/IP反向解析)",
                     "handler": self._tool_dns_query,
                     "params": [ToolParam(name="domain", type=ParamType.STRING, description="域名或 IP (支持多行批量)", required=True),
                                 ToolParam(name="record_type", type=ParamType.STRING, description="记录类型: A/AAAA/CNAME/MX/TXT/NS/SOA/PTR/SRV (默认 A)"),
@@ -279,10 +279,10 @@ class GcocAgent(BaseAgent):
                     "params": [ToolParam(name="gid_or_name", type=ParamType.STRING, description="GID编号(如47141)或客户公司名称")],
                 },
             }
-            agent_tools_from_handlers(handlers, agent_id="gcoc_agent", category="gcoc")
-            logger.info(f"[gcoc_agent] 已注册 {len(handlers)} 个工具到 ToolRegistry")
+            agent_tools_from_handlers(handlers, agent_id="opscore_agent", category="opscore")
+            logger.info(f"[opscore_agent] 已注册 {len(handlers)} 个工具到 ToolRegistry")
         except Exception as e:
-            logger.warning(f"[gcoc_agent] 工具注册失败 (不影响核心功能): {e}")
+            logger.warning(f"[opscore_agent] 工具注册失败 (不影响核心功能): {e}")
 
     # ─── Tool executor wrappers (返回 ToolExecution, 参考 claude-code Tool System) ───
 
@@ -400,11 +400,11 @@ class GcocAgent(BaseAgent):
 
     # ── 主机查询工具 ──
     # 模式: 站点设备代码 (字母+数字+可选后缀), 如 ESXI-02, GDS3103BKP
-    # 短名解析/全量缓存/服务端过滤逻辑统一在 gcoc_api.query_vms_on_esxi_host
+    # 短名解析/全量缓存/服务端过滤逻辑统一在 opscore_api.query_vms_on_esxi_host
 
     async def _expand_site_search(self, search: str) -> tuple:
         """主机 VM 查询: 将 'ESXI-02' 视为主机名，查找该主机上运行的所有 VM
-        数据链路 (gcoc_api.query_vms_on_esxi_host):
+        数据链路 (opscore_api.query_vms_on_esxi_host):
           MCP 全量缓存建 esxi_host 索引 → 短名解析完整宿主机 →
           REST host= 服务端精确过滤 (~0.2s, 替代旧的全量分页拉取 20s+/页) →
           snapshot_vms 站点前缀合并 (命中率达标即早停, 不做全量兑底)
@@ -447,7 +447,7 @@ class GcocAgent(BaseAgent):
         
         # 如果主机查询找到了更多 VM，优先使用主机结果
         if host_items and len(host_items) > len(items1):
-            logger.info(f"[gcoc_agent] 主机查询优先: host={len(host_items)} > name={len(items1)}")
+            logger.info(f"[opscore_agent] 主机查询优先: host={len(host_items)} > name={len(items1)}")
             r1 = {"text": host_text, "data": {"count": len(host_items), "items": host_items}}
             items1 = host_items
         
@@ -559,7 +559,7 @@ class GcocAgent(BaseAgent):
                             lines.append(f"  {vol} | \u9635\u5217:{info['array']} | VM:{info['count']}\u53f0 | CPU:{info['cpu']}\u6838 | \u5185\u5b58:{mem_gb:.0f}GB")
                     lines.append("")
             except Exception as e:
-                logger.warning(f"[gcoc_agent] CRM \u5ba2\u6237\u67e5\u8be2\u5931\u8d25 (GID={raw_gid}): {e}")
+                logger.warning(f"[opscore_agent] CRM \u5ba2\u6237\u67e5\u8be2\u5931\u8d25 (GID={raw_gid}): {e}")
 
         # \u2500\u2500 4. VCD \u8d44\u6e90\u6c60 \u2014 \u5bb9\u91cf\u7528\u91cf\u8be6\u60c5 \u2500\u2500
         if resources:
@@ -709,7 +709,7 @@ class GcocAgent(BaseAgent):
 
 
     async def _tool_dns_query(self, params=None, context=None):
-        """DNS 查询工具 — 调用 GCOC DNS API (新接口, 参考 /dns/api-doc)"""
+        """DNS 查询工具 — 调用 OPS-CORE DNS API (新接口, 参考 /dns/api-doc)"""
         from core.tool_schema import ToolExecution
         domain = (params or {}).get("domain", "")
         record_type = ((params or {}).get("record_type") or "A").upper()
@@ -1076,14 +1076,14 @@ class GcocAgent(BaseAgent):
             try:
                 return await fn(params=args)
             except Exception as e:
-                logger.error(f"[gcoc_agent] 工具执行异常 {name}: {e}")
+                logger.error(f"[opscore_agent] 工具执行异常 {name}: {e}")
                 return ToolExecution(tool_name=name, success=False, error=str(e))
         return ToolExecution(tool_name=name, success=False, error=f"未知工具: {name}")
 
     async def _prefetch_gid_data(self, gid_num: str, msg: AgentMessage) -> str:
         """预获取 GID 相关数据 (CRM 客户信息 + vCenter VM 列表)，不依赖 LLM 调用工具"""
         import asyncio
-        logger.info(f"[gcoc_agent] 预获取 GID {gid_num} 的数据...")
+        logger.info(f"[opscore_agent] 预获取 GID {gid_num} 的数据...")
         await self.send_progress(msg, f"[1] 正在查询 CRM客户...")
         await self.send_progress(msg, f"[2] 正在查询 vCenter VM...")
         
@@ -1097,22 +1097,22 @@ class GcocAgent(BaseAgent):
         context_parts = []
         # 处理 CRM 结果
         if isinstance(crm_result, Exception):
-            logger.warning(f"[gcoc_agent] CRM 查询失败: {crm_result}")
+            logger.warning(f"[opscore_agent] CRM 查询失败: {crm_result}")
         elif crm_result and crm_result.output:
             context_parts.append(f"## CRM 客户信息\n{crm_result.output}")
         
         # 处理 VM 结果
         if isinstance(vm_result, Exception):
-            logger.warning(f"[gcoc_agent] VM 查询失败: {vm_result}")
+            logger.warning(f"[opscore_agent] VM 查询失败: {vm_result}")
         elif vm_result and vm_result.output:
             context_parts.append(f"## vCenter VM 列表\n{vm_result.output}")
         
         if context_parts:
             result = "\n\n".join(context_parts)
-            logger.info(f"[gcoc_agent] 预获取完成: {len(result)} 字符")
+            logger.info(f"[opscore_agent] 预获取完成: {len(result)} 字符")
             return f"\n\n---\n[系统已预获取以下数据，请基于这些数据回答用户问题]\n\n{result}\n\n---\n\n"
         else:
-            logger.info(f"[gcoc_agent] 预获取无数据")
+            logger.info(f"[opscore_agent] 预获取无数据")
             return ""
 
     # LLM 安全过滤触发词改写 ("真实"/"胡扯" 等词被 OneAPI 安全系统解读为 prompt injection)
@@ -1133,7 +1133,7 @@ class GcocAgent(BaseAgent):
         user_text = self.sanitize_user_text(msg.text or "")
         rewritten_text = self._rewrite_for_safety(user_text)
         if rewritten_text != (msg.text or ""):
-            logger.info(f"[gcoc_agent] 查询规范化: '{msg.text}' → '{rewritten_text}'")
+            logger.info(f"[opscore_agent] 查询规范化: '{msg.text}' → '{rewritten_text}'")
         user_text = rewritten_text
         # GID 正则: 要求明确前缀 gid/g，或数字序列不在字母中（避免 ESXI-03 中 3103 被误认为 GID）
         gid_match = re.search(r'(?:(?:gid|g)\s*(\d{4,6})|(?<![a-zA-Z])(\d{4,6})(?![a-zA-Z]))', user_text, re.IGNORECASE)
@@ -1142,7 +1142,7 @@ class GcocAgent(BaseAgent):
             # 短查询如 "46445有什么vm" → "请查询GID 46445相关的资源信息: 有什么vm"
             gid_num = gid_match.group(1) or gid_match.group(2)
             user_text = f"请查询GID {gid_num}相关的资源信息: {msg.text}"
-            logger.info(f"[gcoc_agent] 查询规范化: '{msg.text}' → '{user_text}'")
+            logger.info(f"[opscore_agent] 查询规范化: '{msg.text}' → '{user_text}'")
             # 预获取 GID 相关数据 (CRM + vCenter VM)，不依赖 LLM 调用工具
             prefetched_context = await self._prefetch_gid_data(gid_num, msg)
         prompt = f"{history_prefix}{prefetched_context}用户需要查询以下运维数据: {user_text}"
@@ -1167,7 +1167,7 @@ class GcocAgent(BaseAgent):
 
         result = await self.llm_query(
             prompt=prompt,
-            system=GCOC_TOOL_USE_PROMPT,
+            system=OPSCORE_TOOL_USE_PROMPT,
             tools=tools,
             tool_executor=executor_with_progress,
             max_turns=6,
@@ -1183,7 +1183,7 @@ class GcocAgent(BaseAgent):
         )
 
         if result.get("error"):
-            await self.reply(msg, error=f"GCOC 查询失败: {result['error']}")
+            await self.reply(msg, error=f"OPS-CORE 查询失败: {result['error']}")
         else:
             text = result.get("text", "")
             tool_calls = result.get("tool_calls", [])
@@ -1201,13 +1201,13 @@ class GcocAgent(BaseAgent):
                         "file_name": filename,
                         "file_count": len(csv_files),
                     }
-                    logger.info(f"[gcoc_agent] 自动生成 CSV: {filename}")
+                    logger.info(f"[opscore_agent] 自动生成 CSV: {filename}")
             except Exception as e:
-                logger.warning(f"[gcoc_agent] CSV 导出失败: {e}")
+                logger.warning(f"[opscore_agent] CSV 导出失败: {e}")
             
             reply_data = {
                 "text": text,
-                "source": "gcoc_tool_use",
+                "source": "opscore_tool_use",
                 "tool_calls_count": len(tool_calls),
                 "tools_used": list(set(tc.get("name", "") for tc in tool_calls)),
             }
@@ -1215,7 +1215,7 @@ class GcocAgent(BaseAgent):
             await self.reply(msg, result=reply_data)
             tools_str = ",".join(set(tc.get("name", "") for tc in tool_calls))
             await self.log_daily(
-                f"GCOC Tool-Use: '{msg.text[:40]}' → {len(tool_calls)} 次工具调用 ({tools_str})",
+                f"OPS-CORE Tool-Use: '{msg.text[:40]}' → {len(tool_calls)} 次工具调用 ({tools_str})",
                 level="success", category="llm", session_id=msg.session_id,
                 username=(msg.username or "")  # 完整问答全文由 BaseAgent.reply() 兜底收录
             )
@@ -1292,10 +1292,10 @@ class GcocAgent(BaseAgent):
 
         analysis = await self.llm_chat(
             prompt=f"{history_prefix}用户问题: {msg.text}\n\n以下是{label}查询结果 (关键词: '{search}', 共 {count} 条):\n\n{raw[:6000]}",
-            system=GCOC_ANALYSIS_PROMPT
+            system=OPSCORE_ANALYSIS_PROMPT
         )
 
-        source = "gcoc_info" if endpoint_key in INFO_API_CATALOG else "gcoc_mgt"
+        source = "opscore_info" if endpoint_key in INFO_API_CATALOG else "opscore_mgt"
         await self.reply(msg, result={"text": analysis, "count": count, "source": source})
         await self.log_daily(
             f"{label}: '{search}' → {count} 条",
@@ -1327,7 +1327,7 @@ class GcocAgent(BaseAgent):
         await self._query_and_analyze(msg, "case_info", "案例/工单", search)
 
     async def _dns_query(self, msg: AgentMessage):
-        """DNS 查询 direct action — 调用 GCOC DNS API (新接口)"""
+        """DNS 查询 direct action — 调用 OPS-CORE DNS API (新接口)"""
         domain = msg.params.get("domain") or msg.params.get("args") or msg.text or ""
         query_type = (msg.params.get("type", "query") or "query").lower()
         record_type = (msg.params.get("record_type") or "A").upper()
@@ -1350,9 +1350,9 @@ class GcocAgent(BaseAgent):
             raw = json.dumps(data, ensure_ascii=False, indent=2) if isinstance(data, (dict, list)) else str(data)[:6000]
             analysis = await self.llm_chat(
                 prompt=f"以下是 DNS 查询结果 (域名: '{domain}', 类型: {query_type}):\n\n{raw[:6000]}",
-                system=GCOC_ANALYSIS_PROMPT
+                system=OPSCORE_ANALYSIS_PROMPT
             )
-            await self.reply(msg, result={"text": analysis, "source": "gcoc_info"})
+            await self.reply(msg, result={"text": analysis, "source": "opscore_info"})
             await self.log_daily(f"DNS 查询: {domain}", session_id=msg.session_id, username=(msg.username or ""))
         except Exception as e:
             await self.reply(msg, error=f"DNS 查询异常: {e}")
@@ -1364,14 +1364,14 @@ class GcocAgent(BaseAgent):
             return
         raw = json.dumps(data, ensure_ascii=False, indent=2) if isinstance(data, (dict, list)) else str(data)[:6000]
         analysis = await self.llm_chat(
-            prompt=f"以下是数据中心信息:\n\n{raw[:6000]}", system=GCOC_ANALYSIS_PROMPT
+            prompt=f"以下是数据中心信息:\n\n{raw[:6000]}", system=OPSCORE_ANALYSIS_PROMPT
         )
-        await self.reply(msg, result={"text": analysis, "source": "gcoc_info"})
+        await self.reply(msg, result={"text": analysis, "source": "opscore_info"})
 
     async def _login_info(self, msg: AgentMessage):
         search = msg.params.get("search") or msg.params.get("args") or msg.text or ""
         info_type = msg.params.get("type", "idc")
-        type_map = {"idc": "idc_info", "vendor": "vendor_info", "access": "gcoc_access"}
+        type_map = {"idc": "idc_info", "vendor": "vendor_info", "access": "opscore_access"}
         endpoint_key = type_map.get(info_type, "idc_info")
         await self._query_and_analyze(msg, endpoint_key, f"{info_type} 信息", search)
 
@@ -1390,7 +1390,7 @@ class GcocAgent(BaseAgent):
             gid_from_text = re.findall(r'GID[A-Z]{0,2}\d{4,6}|(?<!\d)\d{5,6}(?!\d)', msg.text, re.IGNORECASE)
             if gid_from_text:
                 search = gid_from_text[0]
-                logger.info(f"[gcoc_agent] 从用户消息提取搜索关键词: '{search}'")
+                logger.info(f"[opscore_agent] 从用户消息提取搜索关键词: '{search}'")
         
         # 智能提取GID：如果search是纯数字，转换为GID格式
         gid_search_term = ""
@@ -1558,7 +1558,7 @@ class GcocAgent(BaseAgent):
             extra_detail = "\n".join(detail_parts)
 
         # 5. LLM 分析 - 增强系统提示防止数据混淆
-        enhanced_system = GCOC_ANALYSIS_PROMPT
+        enhanced_system = OPSCORE_ANALYSIS_PROMPT
         if gid_search_term:
             enhanced_system += f"\n\n⚠️ 用户查询的是 GID: {gid_search_term} 的备份信息。\n- 回答时必须严格引用匹配该GID的备份数据\n- 如果gid_jobs结果中有其他GID的数据，那是其他客户，绝不能用于本问题回答\n- 如果没有找到匹配数据，直接说明未找到，不要用其他站点/GID的数据填充！"
         
@@ -1570,10 +1570,10 @@ class GcocAgent(BaseAgent):
             if extra_detail:
                 prompt_text += f"\n\n以下是与关键词 '{search}' 匹配的具体记录 (重点分析这些):\n{extra_detail}"
 
-        logger.info(f"[gcoc_agent] 备份查询数据: search={search}, 匹配备份={len(backups)}, 匹配作业={len(jobs)}, gid_jobs={len(gid_jobs)}, 概览备份={len(overview_bk)}, 概览作业={len(overview_jb)}")
+        logger.info(f"[opscore_agent] 备份查询数据: search={search}, 匹配备份={len(backups)}, 匹配作业={len(jobs)}, gid_jobs={len(gid_jobs)}, 概览备份={len(overview_bk)}, 概览作业={len(overview_jb)}")
 
         analysis = await self.llm_chat(prompt=prompt_text, system=enhanced_system)
-        await self.reply(msg, result={"text": analysis, "count": total_count, "source": "gcoc_mgt"})
+        await self.reply(msg, result={"text": analysis, "count": total_count, "source": "opscore_mgt"})
         await self.log_daily(
             f"备份查询: {msg.text[:50]} → {len(site_stats)} 站点, {total_count} 条",
             session_id=msg.session_id, username=(msg.username or "")
@@ -1633,9 +1633,9 @@ class GcocAgent(BaseAgent):
 
         analysis = await self.llm_chat(
             prompt=f"用户问题: {msg.text}\n\n以下是备份对象按站点(site)聚合的完整数据 (无截断):\n\n{aggregated}",
-            system=GCOC_ANALYSIS_PROMPT
+            system=OPSCORE_ANALYSIS_PROMPT
         )
-        await self.reply(msg, result={"text": analysis, "count": len(objects), "source": "gcoc_mgt"})
+        await self.reply(msg, result={"text": analysis, "count": len(objects), "source": "opscore_mgt"})
         await self.log_daily(f"备份对象: '{search}' → {len(site_stats)} 站点, {len(objects)} 条",
                              session_id=msg.session_id, username=(msg.username or ""))
 
@@ -1723,9 +1723,9 @@ class GcocAgent(BaseAgent):
 
         analysis = await self.llm_chat(
             prompt=f"用户问题: {msg.text}\n\n以下是 VCD 平台按站点聚合的完整数据 (无截断):\n\n{aggregated}",
-            system=GCOC_ANALYSIS_PROMPT
+            system=OPSCORE_ANALYSIS_PROMPT
         )
-        await self.reply(msg, result={"text": analysis, "count": total_count, "source": "gcoc_mgt"})
+        await self.reply(msg, result={"text": analysis, "count": total_count, "source": "opscore_mgt"})
         await self.log_daily(f"VCD 查询: {msg.text[:50]} → {len(site_stats)} 站点, {total_count} 条",
                              session_id=msg.session_id, username=(msg.username or ""))
 
@@ -1791,12 +1791,12 @@ class GcocAgent(BaseAgent):
                             f"以下是主机 {search.upper()} ({host_display}) 上的全部 {len(vms)} 台虚拟机 "
                             f"(smartops_vms host=服务端过滤 + snapshot_vms 合并, "
                             f"快照覆盖 {info['snapshot_matched']}/{len(vms)}):\n\n{raw[:12000]}"),
-                    system=GCOC_ANALYSIS_PROMPT,
+                    system=OPSCORE_ANALYSIS_PROMPT,
                     on_wait=_llm_wait, on_delta=_llm_delta,
                     on_reasoning=_llm_thinking, username=(msg.username or ""))
                 await self.reply(msg, result={
                     "text": analysis, "count": len(vms),
-                    "source": "gcoc_mgt", "esxi_hosts": info["esxi_hosts"]})
+                    "source": "opscore_mgt", "esxi_hosts": info["esxi_hosts"]})
                 await self.log_daily(
                     f"主机VM: '{search}' → {len(vms)} 台",
                     session_id=msg.session_id, username=(msg.username or ""))
@@ -1857,11 +1857,11 @@ class GcocAgent(BaseAgent):
 
         raw = json.dumps(results, ensure_ascii=False, indent=2)
         analysis = await self.llm_chat(
-            prompt=f"以下是 GCOC 两个平台的数据概览，请生成综合状态报告:\n\n{raw[:8000]}",
-            system=GCOC_ANALYSIS_PROMPT
+            prompt=f"以下是 OPS-CORE 两个平台的数据概览，请生成综合状态报告:\n\n{raw[:8000]}",
+            system=OPSCORE_ANALYSIS_PROMPT
         )
-        await self.reply(msg, result={"text": analysis, "source": "gcoc_all", "overview": results})
-        await self.log_daily("GCOC 平台综合概览", session_id=msg.session_id, username=(msg.username or ""))
+        await self.reply(msg, result={"text": analysis, "source": "opscore_all", "overview": results})
+        await self.log_daily("OPS-CORE 平台综合概览", session_id=msg.session_id, username=(msg.username or ""))
 
     async def _safe_query(self, name: str, endpoint_key: str, params: dict = None) -> tuple:
         try:
@@ -1870,8 +1870,8 @@ class GcocAgent(BaseAgent):
         except Exception as e:
             return (name, {"error": str(e)})
 
-    async def _gcoc_chat(self, msg: AgentMessage):
-        """GCOC 智能对话 — 自动识别并查询所有可用 API，支持对话历史上下文"""
+    async def _opscore_chat(self, msg: AgentMessage):
+        """OPS-CORE 智能对话 — 自动识别并查询所有可用 API，支持对话历史上下文"""
         prompt = msg.text or msg.params.get("text", "")
         if not prompt:
             await self.reply(msg, error="缺少问题内容")
@@ -1935,7 +1935,7 @@ class GcocAgent(BaseAgent):
                             companies = [f"GID {r.get('gid')}: {r.get('company_name')} (资源池:{r.get('resource_pools_count',0)})" for r in results[:5]]
                             await self.reply(msg, result={
                                 "text": f"找到多个匹配客户:\n" + "\n".join(companies) + "\n\n请指定具体的 GID 查询详细备份信息。",
-                                "source": "gcoc_crm"
+                                "source": "opscore_crm"
                             })
                             return
             
@@ -1994,14 +1994,14 @@ class GcocAgent(BaseAgent):
                         full_data += "\n\n" + "\n\n".join(extra_data)
                     
                     # 增强系统提示：强制要求LLM使用CRM返回的实际GID和公司名
-                    enhanced_prompt = GCOC_ANALYSIS_PROMPT + f"\n\n⚠️ 极其重要：回答时必须严格使用CRM返回的实际GID和公司名称！\n- 用户查询的GID: {gid}\n- CRM返回的主GID: {primary_gid}\n- CRM返回的公司名: {company_name}\n- 如果数据中出现其他GID（如GID19934），那是其他客户的数据，绝不能用于回答本问题！\n- 所有引用的备份数据必须来自上述GID: {primary_gid} 或关联GID: {', '.join(related_gids)}\n- 如果找不到这些GID的备份数据，直接说明'未找到该客户的备份记录'，不要用其他客户的数据填充！"
+                    enhanced_prompt = OPSCORE_ANALYSIS_PROMPT + f"\n\n⚠️ 极其重要：回答时必须严格使用CRM返回的实际GID和公司名称！\n- 用户查询的GID: {gid}\n- CRM返回的主GID: {primary_gid}\n- CRM返回的公司名: {company_name}\n- 如果数据中出现其他GID（如GID19934），那是其他客户的数据，绝不能用于回答本问题！\n- 所有引用的备份数据必须来自上述GID: {primary_gid} 或关联GID: {', '.join(related_gids)}\n- 如果找不到这些GID的备份数据，直接说明'未找到该客户的备份记录'，不要用其他客户的数据填充！"
                     
                     analysis = await self.llm_chat(
-                        prompt=f"{history_context}用户问题: {prompt}\n\n从 GCOC 平台查询到的数据:\n{full_data}",
+                        prompt=f"{history_context}用户问题: {prompt}\n\n从 OPS-CORE 平台查询到的数据:\n{full_data}",
                         system=enhanced_prompt
                     )
-                    await self.reply(msg, result={"text": analysis, "source": "gcoc_crm"})
-                    await self.log_daily(f"GCOC CRM查询: GID {gid} (关联: {','.join(related_gids)})",
+                    await self.reply(msg, result={"text": analysis, "source": "opscore_crm"})
+                    await self.log_daily(f"OPS-CORE CRM查询: GID {gid} (关联: {','.join(related_gids)})",
                                           session_id=msg.session_id, username=(msg.username or ""))
                     return
                 else:
@@ -2013,10 +2013,10 @@ class GcocAgent(BaseAgent):
                     if "error" not in brr_jobs and brr_jobs.get("results"):
                         full_data = f"=== BRR GID备份作业 (GID {gid}) ===\n{json.dumps(brr_jobs, ensure_ascii=False, indent=1)[:4000]}"
                         analysis = await self.llm_chat(
-                            prompt=f"{history_context}用户问题: {prompt}\n\n从 GCOC 平台查询到的数据:\n{full_data}\n\n⚠️ 注意：CRM无记录，这些备份作业来自BRR GID端点搜索。",
-                            system=GCOC_ANALYSIS_PROMPT + f"\n\n⚠️ 回答时必须使用查询的GID: {gid}，不要引用其他GID的数据！"
+                            prompt=f"{history_context}用户问题: {prompt}\n\n从 OPS-CORE 平台查询到的数据:\n{full_data}\n\n⚠️ 注意：CRM无记录，这些备份作业来自BRR GID端点搜索。",
+                            system=OPSCORE_ANALYSIS_PROMPT + f"\n\n⚠️ 回答时必须使用查询的GID: {gid}，不要引用其他GID的数据！"
                         )
-                        await self.reply(msg, result={"text": analysis, "source": "gcoc_brr"})
+                        await self.reply(msg, result={"text": analysis, "source": "opscore_brr"})
                         return
 
         # 使用 smart_query 自动路由到正确的 API
@@ -2030,19 +2030,19 @@ class GcocAgent(BaseAgent):
 
         if raw_data:
             analysis = await self.llm_chat(
-                prompt=f"{history_context}用户问题: {prompt}\n\n从 GCOC 平台查询到的数据:\n{raw_data}",
-                system=GCOC_ANALYSIS_PROMPT
+                prompt=f"{history_context}用户问题: {prompt}\n\n从 OPS-CORE 平台查询到的数据:\n{raw_data}",
+                system=OPSCORE_ANALYSIS_PROMPT
             )
-            await self.reply(msg, result={"text": analysis, "source": "gcoc_auto"})
-            await self.log_daily(f"GCOC 智能查询: {prompt[:50]}", session_id=msg.session_id, username=(msg.username or ""))
+            await self.reply(msg, result={"text": analysis, "source": "opscore_auto"})
+            await self.log_daily(f"OPS-CORE 智能查询: {prompt[:50]}", session_id=msg.session_id, username=(msg.username or ""))
         else:
             # 纯知识问答
             result = await self.llm_chat(
                 prompt=history_context + prompt,
                 system=(
-                    "你是 Z-OPS 运维智能体的 GCOC 平台专家。"
-                    "熟悉 GCOC 信息管理系统和管理平台的所有功能。"
-                    "如果用户询问的是可以从 GCOC 平台查询到的数据，请告知用户你正在查询。"
+                    "你是 Z-OPS 运维智能体的 OPS-CORE 平台专家。"
+                    "熟悉 OPS-CORE 信息管理系统和管理平台的所有功能。"
+                    "如果用户询问的是可以从 OPS-CORE 平台查询到的数据，请告知用户你正在查询。"
                     "如果有对话历史，请结合历史上下文理解用户的意图。"
                 )
             )
@@ -2144,7 +2144,7 @@ class GcocAgent(BaseAgent):
 
         # ── Fallback: 如果 HA API 失败，尝试旧版端点 ──
         if not ha_api_ok:
-            logger.warning(f"[gcoc_agent] HA Reports API 不可用 ({'; '.join(errors)})，尝试旧版端点")
+            logger.warning(f"[opscore_agent] HA Reports API 不可用 ({'; '.join(errors)})，尝试旧版端点")
             try:
                 if site:
                     vm_data = await ha_client.get_ha_vms(site, vm_name=search or None)
@@ -2163,10 +2163,10 @@ class GcocAgent(BaseAgent):
             except Exception as e:
                 errors.append(f"HA 旧版端点异常: {e}")
 
-        # ── Fallback: 如果所有 HA API 都失败，从 GCOC Smart-Ops 查询 HA 相关事件 ──
+        # ── Fallback: 如果所有 HA API 都失败，从 OPS-CORE Smart-Ops 查询 HA 相关事件 ──
         if not ha_api_ok:
-            logger.warning(f"[gcoc_agent] HA API 完全不可用 ({'; '.join(errors)})，fallback 到 GCOC Smart-Ops 事件")
-            await self.send_progress(msg, "HA API 不可用，正在从 GCOC 平台查询 HA 相关事件...")
+            logger.warning(f"[opscore_agent] HA API 完全不可用 ({'; '.join(errors)})，fallback 到 OPS-CORE Smart-Ops 事件")
+            await self.send_progress(msg, "HA API 不可用，正在从 OPS-CORE 平台查询 HA 相关事件...")
 
             # 尝试多个 HA 相关端点
             fallback_data = {}
@@ -2191,14 +2191,14 @@ class GcocAgent(BaseAgent):
                     await self.reply(msg, error=(
                         f"HA 数据查询失败:\n"
                         f"- HA API (198.18.18.166:8088): 认证失败，请更新 zops.env 中的 HA_API_TOKEN\n"
-                        f"- GCOC Smart-Ops: 查询失败"
+                        f"- OPS-CORE Smart-Ops: 查询失败"
                     ))
                 else:
                     await self.reply(msg, error=f"HA 查询失败: {error_msg}")
                 return
 
             results = fallback_data
-            data_source = "GCOC Smart-Ops (包含 HA 相关事件)"
+            data_source = "OPS-CORE Smart-Ops (包含 HA 相关事件)"
         elif "dashboard" in results:
             data_source = "HA Reports API (198.18.18.166:8088)"
         else:
@@ -2244,7 +2244,7 @@ class GcocAgent(BaseAgent):
                 "- 如果数据为空或无 HA 事件，明确说明'近期无 HA 事件'"
             )
         )
-        source_key = "ha_api" if ha_api_ok else "gcoc_mgt"
+        source_key = "ha_api" if ha_api_ok else "opscore_mgt"
         await self.reply(msg, result={"text": analysis, "source": source_key})
         await self.log_daily(f"HA 查询({data_source}): site={site}, search={search}",
                              session_id=msg.session_id, username=(msg.username or ""))
@@ -2262,4 +2262,4 @@ class GcocAgent(BaseAgent):
 
 
 if __name__ == "__main__":
-    run_agent(GcocAgent())
+    run_agent(OpscoreAgent())

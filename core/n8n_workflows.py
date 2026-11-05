@@ -1,13 +1,13 @@
 """
 N8N 工作流定义
 基于 n8n设计系统架构.md 的执行中枢架构
-包含：VM管理、GCOC备份、健康检查、通知推送、AD管理、审批流
+包含：VM管理、OPS-CORE备份、健康检查、通知推送、AD管理、审批流
 """
 
 # 工作流分类
 WORKFLOW_CATEGORIES = {
     "vm": "虚拟机管理",
-    "gcoc": "GCOC平台",
+    "opscore": "OPS-CORE平台",
     "ad": "AD/LDAP管理",
     "notification": "通知推送",
     "report": "报告生成",
@@ -50,12 +50,12 @@ WORKFLOW_REGISTRY = {
         "webhook_path": "webhook/create-vm"
     },
 
-    # ========== GCOC 平台类 ==========
+    # ========== OPS-CORE 平台类 ==========
     "backup_check": {
         "workflow_id": "backup_check",
         "name": "备份状态检查",
         "description": "检查GID备份状态",
-        "category": "gcoc",
+        "category": "opscore",
         "params": ["gid", "site"],
         "require_approval": False,
         "webhook_path": "webhook/backup-check"
@@ -64,7 +64,7 @@ WORKFLOW_REGISTRY = {
         "workflow_id": "backup_restore",
         "name": "备份恢复",
         "description": "从备份恢复GID数据",
-        "category": "gcoc",
+        "category": "opscore",
         "params": ["gid", "backup_id", "target_date"],
         "require_approval": True,
         "approval_role": "admin",
@@ -74,7 +74,7 @@ WORKFLOW_REGISTRY = {
         "workflow_id": "cmdb_sync",
         "name": "CMDB同步",
         "description": "同步CMDB主机信息到Z-OPS",
-        "category": "gcoc",
+        "category": "opscore",
         "params": ["sync_mode"],  # full/incremental
         "require_approval": False,
         "webhook_path": "webhook/cmdb-sync"

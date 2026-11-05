@@ -1,4 +1,4 @@
-"""侦察 v6：GCOC_use 响应内部 rows 的 Serial 列 vs identifierList 对齐性。"""
+"""侦察 v6：OPSCORE_use 响应内部 rows 的 Serial 列 vs identifierList 对齐性。"""
 import asyncio
 import json
 import sys
@@ -19,7 +19,7 @@ async def main():
 
         filters = await agent._nms_fetch_filters_meta(page)
         fmap = {f["name"]: f for f in filters}
-        f = fmap.get("GCOC_use")
+        f = fmap.get("OPSCORE_use")
         url = agent._nms_api_url(f["name"], "global", f["view"], "false")
         resp = await page.request.get(url, headers={"Accept-Encoding": "identity"})
         obj = json.loads(await resp.text())
@@ -28,7 +28,7 @@ async def main():
         grows = obj["rows"][0] if obj.get("rows") else []
         gserials = [x for x in str(ds0.get("identifierList") or "").split(",")
                     if x.strip()]
-        print(f"GCOC_use rows={len(grows)} identifierList={len(gserials)}")
+        print(f"OPSCORE_use rows={len(grows)} identifierList={len(gserials)}")
         print(f"字段名: {gfields}")
         si = gfields.index("Serial") if "Serial" in gfields else None
         print(f"Serial 列索引: {si}")

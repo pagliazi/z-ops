@@ -109,8 +109,8 @@ def _build_plan(ws, citp: dict, approval: dict):
         ("Reference number:", ref),
         ("Date: Time:", citp.get("window") or (approval or {}).get("change_window") or "N/A"),
         ("Purpose:", ref),
-        ("Preparedy by:", citp.get("prepared_by") or "GCOC"),
-        ("In-charge by:", citp.get("in_charge_by") or "GCOC"),
+        ("Preparedy by:", citp.get("prepared_by") or "OPS-CORE"),
+        ("In-charge by:", citp.get("in_charge_by") or "OPS-CORE"),
         ("Approved by:", approved_by),
     ]
     for i, (k, v) in enumerate(header, 1):
